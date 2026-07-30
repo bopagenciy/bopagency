@@ -1,0 +1,52 @@
+﻿{
+  "schemaVersion": "1.0.0",
+  "clientId": "__CLIENT_ID__",
+  "lastUpdatedAt": null,
+  "connections": {
+    "metaAds": {
+      "enabled": false,
+      "accountId": null
+    },
+    "googleAds": {
+      "enabled": false,
+      "customerId": null,
+      "loginCustomerId": null
+    },
+    "ga4": {
+      "enabled": false,
+      "propertyId": null
+    },
+    "searchConsole": {
+      "enabled": false,
+      "siteUrl": null
+    },
+    "youtube": {
+      "enabled": false,
+      "channelId": null
+    },
+    "goHighLevel": {
+      "enabled": false,
+      "locationId": null
+    },
+    "emailMarketing": {
+      "enabled": false,
+      "provider": null,
+      "listId": null
+    },
+    "wordpress": {
+      "enabled": false,
+      "siteUrl": null
+    },
+    "projectManagement": {
+      "enabled": false,
+      "provider": null,
+      "workspaceId": null,
+      "projectId": null
+    },
+    "whatsappCloud": {
+      "enabled": false,
+      "phoneNumberId": null,
+      "businessAccountId": null
+    }
+  }
+}

@@ -1,0 +1,42 @@
+{
+  "name": "@bop-agency/web",
+  "version": "0.0.1",
+  "private": true,
+  "scripts": {
+    "dev": "next dev --port 3200",
+    "build": "next build",
+    "start": "next start --port 3200",
+    "lint": "eslint \"src/**/*.{ts,tsx}\"",
+    "typecheck": "tsc --noEmit",
+    "test": "vitest run",
+    "test:watch": "vitest"
+  },
+  "dependencies": {
+    "@bop-agency/application": "*",
+    "@bop-agency/domain": "*",
+    "@bop-agency/infrastructure": "*",
+    "@bop-agency/shared": "*",
+    "@bop-agency/ui": "*",
+    "@supabase/supabase-js": "^2.49.4",
+    "@supabase/ssr": "^0.12.4",
+    "next": "15.5.22",
+    "react": "18.3.1",
+    "react-dom": "18.3.1"
+  },
+  "devDependencies": {
+    "@testing-library/jest-dom": "^6.4.0",
+    "@testing-library/react": "^16.0.0",
+    "@types/node": "^22.0.0",
+    "@types/react": "^18.3.0",
+    "@types/react-dom": "^18.3.0",
+    "@vitejs/plugin-react": "^4.3.0",
+    "autoprefixer": "^10.4.20",
+    "eslint": "^9.39.5",
+    "eslint-config-next": "15.5.22",
+    "jsdom": "^25.0.0",
+    "postcss": "^8.4.40",
+    "tailwindcss": "^3.4.19",
+    "typescript": "^5.9.3",
+    "vitest": "^3.2.7"
+  }
+}

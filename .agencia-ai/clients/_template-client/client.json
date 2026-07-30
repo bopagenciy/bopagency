@@ -1,0 +1,28 @@
+﻿{
+  "schemaVersion": "1.0.0",
+  "id": "__CLIENT_ID__",
+  "name": "__CLIENT_NAME__",
+  "status": "draft",
+  "language": "es",
+  "timezone": "America/Bogota",
+  "industry": "__INDUSTRY__",
+  "createdAt": null,
+  "updatedAt": null,
+  "documents": {
+    "brandProfile": "brand-profile.md",
+    "services": "services.md",
+    "buyerPersonas": "buyer-personas.md",
+    "offers": "offers.md",
+    "campaigns": "campaigns.md",
+    "contentCalendar": "content-calendar.md",
+    "reports": "reports.md",
+    "assets": "assets.md",
+    "notes": "notes.md",
+    "complianceRules": "compliance-rules.md",
+    "automationMap": "automation-map.md"
+  },
+  "dataFiles": {
+    "tasks": "tasks.json",
+    "integrations": "integrations.json"
+  }
+}

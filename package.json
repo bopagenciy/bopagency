@@ -1,0 +1,24 @@
+{
+  "name": "bop-agency",
+  "private": true,
+  "workspaces": [
+    "apps/*",
+    "packages/*"
+  ],
+  "scripts": {
+    "dev": "npm run dev --workspace=apps/web",
+    "build": "npm run build --workspace=packages/shared && npm run build --workspace=packages/ui && npm run build --workspace=packages/domain && npm run build --workspace=packages/application && npm run build --workspace=packages/infrastructure && npm run build --workspace=packages/ai-engine && npm run build --workspace=packages/automation-engine && npm run build --workspace=packages/integrations && npm run build --workspace=apps/web",
+    "typecheck": "npm run typecheck --workspaces --if-present",
+    "lint": "npm run lint --workspaces --if-present",
+    "test": "npm run test --workspaces --if-present",
+    "format": "prettier --write \"**/*.{ts,tsx,js,jsx,json,css,md}\" --ignore-path .prettierignore",
+    "format:check": "prettier --check \"**/*.{ts,tsx,js,jsx,json,css,md}\" --ignore-path .prettierignore"
+  },
+  "devDependencies": {
+    "@typescript-eslint/eslint-plugin": "^8.0.0",
+    "@typescript-eslint/parser": "^8.0.0",
+    "eslint": "9.39.5",
+    "prettier": "^3.3.0",
+    "typescript": "^5.9.3"
+  }
+}

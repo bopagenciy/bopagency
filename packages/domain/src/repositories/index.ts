@@ -1,0 +1,10 @@
+export type { ClientRepository } from './client.repository';
+export type { CampaignRepository } from './campaign.repository';
+export type { AlertRepository } from './alert.repository';
+export type { ReportRepository } from './report.repository';
+export type { TaskRepository } from './task.repository';
+export type { MetricsRepository, MetricsPeriod } from './metrics.repository';
+export type { AgentRepository } from './agent.repository';
+export type { SkillRepository } from './skill.repository';
+export type { TemplateRepository } from './template.repository';
+export type { AutomationRepository } from './automation.repository';

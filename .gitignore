@@ -1,0 +1,126 @@
+# ============================================================
+# BopIAgency — .gitignore raíz
+# Aplica cuando se inicialice git en la raíz del repositorio.
+# ============================================================
+
+# --- Variables de entorno (NUNCA versionar con valores reales) ---
+.env
+.env.local
+.env.*.local
+.env.development
+.env.production
+.env.staging
+# Conservar los archivos de ejemplo
+!.env.example
+!.env.example.*
+
+# --- n8n (credenciales y configuración con secrets) ---
+# El .env de n8n contiene N8N_ENCRYPTION_KEY — no versionar nunca
+n8n-local/.env
+n8n-local/.env.*
+!n8n-local/.env.example
+# Datos del volumen Docker de n8n (si se generan localmente)
+n8n-local/data/
+n8n-local/local-files/
+
+# --- Dependencias de Node ---
+node_modules/
+**/node_modules/
+
+# --- Builds y compilados ---
+dist/
+build/
+.next/
+out/
+**/dist/
+**/.next/
+
+# --- TypeScript ---
+*.tsbuildinfo
+**/*.tsbuildinfo
+
+# --- Cachés ---
+.cache/
+**/.cache/
+.turbo/
+.vercel/
+.parcel-cache/
+
+# --- Logs ---
+*.log
+logs/
+**/logs/
+npm-debug.log*
+yarn-debug.log*
+yarn-error.log*
+
+# --- Cobertura de tests ---
+coverage/
+**/coverage/
+*.lcov
+.nyc_output/
+
+# --- Base de datos local (Supabase dev) ---
+# El directorio supabase/.branches contiene estado local
+supabase/.temp/
+supabase/functions/.cache/
+# Archivo de auth de Supabase CLI (contiene access token)
+.supabase/
+
+# --- Archivos de editores y sistema operativo ---
+# macOS
+.DS_Store
+**/.DS_Store
+.AppleDouble
+.LSOverride
+# Windows
+Thumbs.db
+ehthumbs.db
+Desktop.ini
+$RECYCLE.BIN/
+# Linux
+*~
+# VS Code
+.vscode/settings.json
+.vscode/launch.json
+!.vscode/extensions.json
+# JetBrains
+.idea/
+*.iml
+# Cursor
+.cursor/rules
+
+# --- Archivos temporales ---
+*.tmp
+*.temp
+*.swp
+*.swo
+tmp/
+temp/
+
+# --- Exportaciones y datos locales sensibles ---
+# shared-data contiene IDs de cuentas publicitarias y emails — no versionar completo
+# Excepción: si se decide versionar como backup de datos históricos,
+# revisar S-09 a S-12 en docs/security/SECRET_SCAN_REPORT.md primero
+shared-data/reports/report-recipients.json
+
+# --- Outputs generados localmente ---
+# Los docs de auditoría y arquitectura SÍ se versionan (están en docs/)
+# Los backups de n8n SÍ se versionan como referencia (sin credenciales embebidas)
+# Los archivos de .agencia-ai SÍ se versionan (decisión aprobada #4)
+
+# --- agency-dashboard tiene su propio .gitignore ---
+# Conservar sus exclusiones propias
+
+
+agency-dashboard/
+
+# Datos reales de clientes
+.agencia-ai/clients/*/
+!.agencia-ai/clients/_template-client/
+
+# Backups operativos
+backups/
+
+# Datos operativos y reportes reales
+shared-data/
