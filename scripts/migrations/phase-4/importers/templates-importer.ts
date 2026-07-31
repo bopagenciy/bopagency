@@ -4,6 +4,9 @@
  * Source:  .agencia-ai/templates/*.md
  * Target:  public.templates
  * Key:     organization_id + slug
+ *
+ * IMPORTANT: No .upsert() / onConflict — el esquema usa índices únicos parciales.
+ * Se usa persistScopedContentEntity para el flujo insert/update/skip.
  */
 
 import type { SupabaseClient } from '@supabase/supabase-js';
@@ -17,6 +20,7 @@ import {
   safeResolvePath,
 } from '../adapters/filesystem';
 import { getSupabaseClient } from '../adapters/supabase';
+import { persistScopedContentEntity } from '../adapters/scoped-content-persistence';
 import type { Importer, ImporterContext, MigrationAction, MigrationResult } from '../types';
 
 const TEMPLATES_DIR = '.agencia-ai/templates';
@@ -85,7 +89,7 @@ export class TemplatesImporter implements Importer {
       const start = Date.now();
 
       try {
-        const r = await this.upsertTemplate(
+        const r = await this.persistTemplate(
           client,
           runId,
           organizationId,
@@ -120,7 +124,12 @@ export class TemplatesImporter implements Importer {
     return results;
   }
 
-  private async upsertTemplate(
+  /**
+   * Persiste un template usando persistScopedContentEntity.
+   * - INSERT incluye legacy_path (inmutable por trigger).
+   * - UPDATE excluye legacy_path, organization_id, slug, id, created_at.
+   */
+  private async persistTemplate(
     client: SupabaseClient,
     runId: string,
     organizationId: string,
@@ -132,67 +141,46 @@ export class TemplatesImporter implements Importer {
     content: string,
     mode: string,
   ): Promise<MigrationResult['record']> {
-    const { data: existing } = await client
-      .from('migration_records')
-      .select('source_hash, target_id')
-      .eq('organization_id', organizationId)
-      .eq('source_key', sourceKey)
-      .eq('target_table', 'templates')
-      .eq('action', 'insert')
-      .maybeSingle();
+    const now = new Date().toISOString();
 
-    if (existing && (existing as { source_hash: string }).source_hash === sourceHash) {
-      return this.makeRecord(
-        runId,
-        organizationId,
-        sourcePath,
-        sourceKey,
-        sourceHash,
-        'templates',
-        (existing as { target_id: string }).target_id,
-        'skip-preexisting',
-        null,
-        null,
-      );
-    }
+    const insertPayload: Record<string, unknown> = {
+      organization_id: organizationId,
+      slug,
+      name: nameFromContent(content, slug),
+      template_type: typeFromFilename(filename),
+      content,
+      is_global: false,
+      is_active: true,
+      legacy_path: sourcePath,
+      migrated_at: now,
+      migration_version: '4.0.0',
+      source_hash: sourceHash,
+    };
 
-    if (mode === 'dry_run') {
-      return this.makeRecord(
-        runId,
-        organizationId,
-        sourcePath,
-        sourceKey,
-        sourceHash,
-        'templates',
-        null,
-        'insert',
-        null,
-        null,
-      );
-    }
+    // UPDATE: no enviar organization_id, slug, is_global, legacy_path, id, created_at
+    const updatePayload: Record<string, unknown> = {
+      name: nameFromContent(content, slug),
+      template_type: typeFromFilename(filename),
+      content,
+      is_active: true,
+      migrated_at: now,
+      migration_version: '4.0.0',
+      source_hash: sourceHash,
+    };
 
-    const { data: inserted, error } = await client
-      .from('templates')
-      .upsert(
-        {
-          organization_id: organizationId,
-          slug,
-          name: nameFromContent(content, slug),
-          template_type: typeFromFilename(filename),
-          content,
-          is_global: false,
-          is_active: true,
-          legacy_path: sourcePath,
-          migrated_at: new Date().toISOString(),
-          migration_version: '4.0.0',
-          source_hash: sourceHash,
-        },
-        { onConflict: 'organization_id,slug' },
-      )
-      .select('id')
-      .single();
+    const result = await persistScopedContentEntity({
+      client,
+      table: 'templates',
+      organizationId,
+      slug,
+      sourceHash,
+      insertPayload,
+      updatePayload,
+      mode,
+    });
 
-    if (error) {
+    if (result.action === 'conflict') {
+      this.logger.action('conflict', 'template', sourceKey);
       return this.makeRecord(
         runId,
         organizationId,
@@ -201,12 +189,33 @@ export class TemplatesImporter implements Importer {
         sourceHash,
         'templates',
         null,
-        'error',
-        'UPSERT_FAILED',
-        error.message,
+        'conflict',
+        'CONFLICT_MULTI_ROW',
+        result.message,
       );
     }
 
+    if (result.action === 'error') {
+      return {
+        ...this.makeRecord(
+          runId,
+          organizationId,
+          sourcePath,
+          sourceKey,
+          sourceHash,
+          'templates',
+          null,
+          'error',
+          result.errorCode,
+          result.errorMessage,
+        ),
+        supabaseCode: result.supabaseCode,
+        supabaseDetails: result.supabaseDetails,
+        supabaseHint: result.supabaseHint,
+      };
+    }
+
+    this.logger.action(result.action, 'template', sourceKey);
     return this.makeRecord(
       runId,
       organizationId,
@@ -214,8 +223,8 @@ export class TemplatesImporter implements Importer {
       sourceKey,
       sourceHash,
       'templates',
-      (inserted as { id: string }).id,
-      'insert',
+      result.targetId,
+      result.action,
       null,
       null,
     );

@@ -7,6 +7,9 @@
  *
  * Markdown files treated as untrusted text data only.
  * No secret detection on Markdown content.
+ *
+ * IMPORTANT: No .upsert() / onConflict — el esquema usa índices únicos parciales.
+ * Se usa persistScopedContentEntity para el flujo insert/update/skip.
  */
 
 import type { SupabaseClient } from '@supabase/supabase-js';
@@ -15,6 +18,7 @@ import { computeTextHash } from '../hash';
 import { Logger } from '../logger';
 import { listDirectory, pathExists, readTextFile, safeResolvePath } from '../adapters/filesystem';
 import { getSupabaseClient } from '../adapters/supabase';
+import { persistScopedContentEntity } from '../adapters/scoped-content-persistence';
 import type { Importer, ImporterContext, MigrationAction, MigrationResult } from '../types';
 
 const AGENTS_DIR = '.agencia-ai/.claude/agents';
@@ -118,7 +122,7 @@ export class AgentsImporter implements Importer {
       const start = Date.now();
 
       try {
-        const r = await this.upsertAgent(
+        const r = await this.persistAgent(
           client,
           runId,
           organizationId,
@@ -152,7 +156,12 @@ export class AgentsImporter implements Importer {
     return results;
   }
 
-  private async upsertAgent(
+  /**
+   * Persiste un agent usando persistScopedContentEntity.
+   * - INSERT incluye legacy_path (inmutable por trigger).
+   * - UPDATE excluye legacy_path, organization_id, slug, id, created_at.
+   */
+  private async persistAgent(
     client: SupabaseClient,
     runId: string,
     organizationId: string,
@@ -163,68 +172,48 @@ export class AgentsImporter implements Importer {
     content: string,
     mode: string,
   ): Promise<MigrationResult['record']> {
-    const { data: existing } = await client
-      .from('migration_records')
-      .select('source_hash, target_id')
-      .eq('organization_id', organizationId)
-      .eq('source_key', sourceKey)
-      .eq('target_table', 'agents')
-      .eq('action', 'insert')
-      .maybeSingle();
+    const now = new Date().toISOString();
 
-    if (existing && (existing as { source_hash: string }).source_hash === sourceHash) {
-      return this.makeRecord(
-        runId,
-        organizationId,
-        sourcePath,
-        sourceKey,
-        sourceHash,
-        'agents',
-        (existing as { target_id: string }).target_id,
-        'skip-preexisting',
-        null,
-        null,
-      );
-    }
+    const insertPayload: Record<string, unknown> = {
+      organization_id: organizationId,
+      slug,
+      name: nameFromContent(content, slug),
+      agent_type: agentTypeFromContent(content),
+      description: descriptionFromContent(content),
+      content,
+      is_global: false,
+      is_active: true,
+      legacy_path: sourcePath,
+      migrated_at: now,
+      migration_version: '4.0.0',
+      source_hash: sourceHash,
+    };
 
-    if (mode === 'dry_run') {
-      return this.makeRecord(
-        runId,
-        organizationId,
-        sourcePath,
-        sourceKey,
-        sourceHash,
-        'agents',
-        null,
-        'insert',
-        null,
-        null,
-      );
-    }
+    // UPDATE: no enviar organization_id, slug, is_global, legacy_path, id, created_at
+    const updatePayload: Record<string, unknown> = {
+      name: nameFromContent(content, slug),
+      agent_type: agentTypeFromContent(content),
+      description: descriptionFromContent(content),
+      content,
+      is_active: true,
+      migrated_at: now,
+      migration_version: '4.0.0',
+      source_hash: sourceHash,
+    };
 
-    const { data: inserted, error } = await client
-      .from('agents')
-      .upsert(
-        {
-          organization_id: organizationId,
-          slug,
-          name: nameFromContent(content, slug),
-          agent_type: agentTypeFromContent(content),
-          description: descriptionFromContent(content),
-          content,
-          is_global: false,
-          is_active: true,
-          legacy_path: sourcePath,
-          migrated_at: new Date().toISOString(),
-          migration_version: '4.0.0',
-          source_hash: sourceHash,
-        },
-        { onConflict: 'organization_id,slug' },
-      )
-      .select('id')
-      .single();
+    const result = await persistScopedContentEntity({
+      client,
+      table: 'agents',
+      organizationId,
+      slug,
+      sourceHash,
+      insertPayload,
+      updatePayload,
+      mode,
+    });
 
-    if (error) {
+    if (result.action === 'conflict') {
+      this.logger.action('conflict', 'agent', sourceKey);
       return this.makeRecord(
         runId,
         organizationId,
@@ -233,12 +222,33 @@ export class AgentsImporter implements Importer {
         sourceHash,
         'agents',
         null,
-        'error',
-        'UPSERT_FAILED',
-        error.message,
+        'conflict',
+        'CONFLICT_MULTI_ROW',
+        result.message,
       );
     }
 
+    if (result.action === 'error') {
+      return {
+        ...this.makeRecord(
+          runId,
+          organizationId,
+          sourcePath,
+          sourceKey,
+          sourceHash,
+          'agents',
+          null,
+          'error',
+          result.errorCode,
+          result.errorMessage,
+        ),
+        supabaseCode: result.supabaseCode,
+        supabaseDetails: result.supabaseDetails,
+        supabaseHint: result.supabaseHint,
+      };
+    }
+
+    this.logger.action(result.action, 'agent', sourceKey);
     return this.makeRecord(
       runId,
       organizationId,
@@ -246,8 +256,8 @@ export class AgentsImporter implements Importer {
       sourceKey,
       sourceHash,
       'agents',
-      (inserted as { id: string }).id,
-      'insert',
+      result.targetId,
+      result.action,
       null,
       null,
     );

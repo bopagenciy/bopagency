@@ -32,25 +32,19 @@ export async function verifyConnection(
 
   const { data, error } = await client
     .from('organizations')
-    .select('id, name, deleted_at')
+    .select('id, name, slug')
     .eq('id', config.organizationId)
-    .single();
+    .maybeSingle();
 
   if (error) {
     throw new Error(`[SUPABASE] No se pudo verificar la organización: ${error.message}`);
   }
 
-  if (!data) {
+  if (data === null) {
     throw new Error(`[SUPABASE] Organización no encontrada: ${config.organizationId}`);
   }
 
-  const org = data as { id: string; name: string; deleted_at: string | null };
-
-  if (org.deleted_at !== null) {
-    throw new Error(
-      `[SUPABASE] La organización está eliminada (soft delete): ${config.organizationId}`,
-    );
-  }
+  const org = data as { id: string; name: string; slug: string };
 
   return { organizationId: org.id, organizationName: org.name };
 }

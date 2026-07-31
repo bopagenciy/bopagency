@@ -15,7 +15,6 @@
  * - NO secrets are printed, logged, or saved to output files.
  */
 
-import * as fs from 'fs';
 import * as path from 'path';
 import { loadConfig } from './config';
 import { Logger } from './logger';
@@ -30,6 +29,7 @@ import { AgentsImporter } from './importers/agents-importer';
 import { SkillsImporter } from './importers/skills-importer';
 import { TemplatesImporter } from './importers/templates-importer';
 import { AutomationsImporter } from './importers/automations-importer';
+import { writeRunReport } from './adapters/report-writer';
 import type { CliArgs, MigrationMode, RunSummary } from './types';
 
 // ─── Arg parsing ──────────────────────────────────────────────────────────────
@@ -39,6 +39,7 @@ function parseArgs(argv: string[]): CliArgs {
 
   let mode: MigrationMode = 'dry_run';
   let organizationId: string | undefined;
+  let actorUserId: string | undefined;
   const clients: string[] = [];
   let limit: number | null = null;
   let verbose = false;
@@ -46,6 +47,7 @@ function parseArgs(argv: string[]): CliArgs {
   let rollback = false;
   let runId: string | null = null;
   let listRuns = false;
+  let repositoryRoot: string | undefined;
 
   for (const arg of args) {
     if (arg === '--dry-run') {
@@ -79,6 +81,12 @@ function parseArgs(argv: string[]): CliArgs {
       continue;
     }
 
+    const actorMatch = arg.match(/^--actor-user-id=(.+)$/);
+    if (actorMatch) {
+      actorUserId = actorMatch[1];
+      continue;
+    }
+
     const clientMatch = arg.match(/^--client=(.+)$/);
     if (clientMatch) {
       clients.push(clientMatch[1] as string);
@@ -96,57 +104,27 @@ function parseArgs(argv: string[]): CliArgs {
       runId = runIdMatch[1] as string;
       continue;
     }
+
+    const repoRootMatch = arg.match(/^--repository-root=(.+)$/);
+    if (repoRootMatch) {
+      repositoryRoot = repoRootMatch[1];
+      continue;
+    }
   }
 
-  return { mode, organizationId, clients, limit, verbose, resume, rollback, runId, listRuns };
-}
-
-// ─── Report writer ────────────────────────────────────────────────────────────
-
-function writeSanitizedReport(
-  outputDir: string,
-  summary: RunSummary,
-  errors: Array<{ sourceKey: string; errorCode: string | null; errorMessage: string | null }>,
-): void {
-  fs.mkdirSync(outputDir, { recursive: true });
-
-  const summaryPath = path.join(outputDir, 'phase-4-dry-run-summary.json');
-  const errorsPath = path.join(outputDir, 'phase-4-dry-run-errors.json');
-
-  // Summary never contains secrets (runId, counts, mode only)
-  fs.writeFileSync(
-    summaryPath,
-    JSON.stringify(
-      {
-        runId: summary.runId,
-        mode: summary.mode,
-        status: summary.status,
-        startedAt: summary.startedAt,
-        completedAt: summary.completedAt,
-        importers: summary.importers,
-        totals: summary.totals,
-      },
-      null,
-      2,
-    ),
-    'utf-8',
-  );
-
-  // Errors: source paths and codes only, no secret values
-  fs.writeFileSync(
-    errorsPath,
-    JSON.stringify(
-      errors.map((e) => ({
-        sourceKey: e.sourceKey,
-        errorCode: e.errorCode,
-        // errorMessage is truncated to 200 chars to avoid leaking paths
-        errorMessage: e.errorMessage ? e.errorMessage.slice(0, 200) : null,
-      })),
-      null,
-      2,
-    ),
-    'utf-8',
-  );
+  return {
+    mode,
+    organizationId,
+    actorUserId,
+    clients,
+    limit,
+    verbose,
+    resume,
+    rollback,
+    runId,
+    listRuns,
+    repositoryRoot,
+  };
 }
 
 // ─── Main ─────────────────────────────────────────────────────────────────────
@@ -166,14 +144,17 @@ async function main(): Promise<void> {
     config = loadConfig({
       mode: args.mode,
       organizationId: args.organizationId,
+      actorUserId: args.actorUserId,
       verbose: args.verbose,
       clients: args.clients,
       limit: args.limit,
+      repositoryRoot: args.repositoryRoot,
     });
   } catch (err: unknown) {
     const message = err instanceof Error ? err.message : String(err);
     logger.error('[CLI] Error de configuración', { message });
-    process.exit(1);
+    process.exitCode = 1;
+    return;
   }
 
   // Verify DB connection
@@ -183,7 +164,8 @@ async function main(): Promise<void> {
   } catch (err: unknown) {
     const message = err instanceof Error ? err.message : String(err);
     logger.error('[CLI] Error de conexión', { message });
-    process.exit(1);
+    process.exitCode = 1;
+    return;
   }
 
   // Build importer list
@@ -210,21 +192,13 @@ async function main(): Promise<void> {
   } catch (err: unknown) {
     const message = err instanceof Error ? err.message : String(err);
     logger.error('[CLI] Migración fallida', { message });
-    process.exit(1);
+    process.exitCode = 1;
+    return;
   }
-
-  // Collect errors for report
-  const errors = summary.importers
-    .filter((i) => i.errors > 0)
-    .map((i) => ({
-      sourceKey: i.entityType,
-      errorCode: 'IMPORTER_ERRORS',
-      errorMessage: `${i.errors} error(s) in ${i.entityType}`,
-    }));
 
   // Write output report (never logs secrets)
   const outputDir = path.join(config.projectRoot, 'migration-output');
-  writeSanitizedReport(outputDir, summary, errors);
+  writeRunReport(outputDir, summary, config.repositoryRoot);
 
   // Print summary table
   logger.info('[CLI] === RESUMEN DE MIGRACIÓN ===');
@@ -241,17 +215,19 @@ async function main(): Promise<void> {
   logger.info(`[CLI] Reporte guardado en: migration-output/`);
 
   if (summary.totals.errors > 0) {
+    const modeSlug = summary.mode === 'dry_run' ? 'dry-run' : 'execute';
     logger.warn(
-      `[CLI] ${summary.totals.errors} error(s) durante la migración. Revisar phase-4-dry-run-errors.json`,
+      `[CLI] ${summary.totals.errors} error(s) durante la migración. Revisar migration-output/phase-4-${modeSlug}-latest-errors.json`,
     );
-    process.exit(1);
+    process.exitCode = 1;
+    return;
   }
 
-  process.exit(0);
+  process.exitCode = 0;
 }
 
 main().catch((err: unknown) => {
   const message = err instanceof Error ? err.message : String(err);
   process.stderr.write(`[CLI] Error fatal: ${message}\n`);
-  process.exit(1);
+  process.exitCode = 1;
 });

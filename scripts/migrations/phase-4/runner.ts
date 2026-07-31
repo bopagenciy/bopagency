@@ -14,6 +14,7 @@ import type {
   ImporterContext,
   ImporterSummary,
   MigrationConfig,
+  MigrationContext,
   MigrationRecord,
   MigrationResult,
   MigrationRunStatus,
@@ -109,10 +110,21 @@ export class MigrationRunner {
     const runId = await this.createRun(client, startedAt);
     this.logger.info(`[RUNNER] migration_run creado`, { runId });
 
+    // Shared in-memory state for cross-importer dependency resolution
+    const migrationContext: MigrationContext = {
+      mode: this.config.mode,
+      organizationId: this.config.organizationId,
+      runId,
+      repositoryRoot: this.config.repositoryRoot,
+      projectedClients: new Map(),
+      excludedSlugs: new Set(),
+    };
+
     const ctx: ImporterContext = {
       runId,
       organizationId: this.config.organizationId,
       config: this.config,
+      migrationContext,
     };
 
     // 2. Update run status → running
@@ -158,16 +170,34 @@ export class MigrationRunner {
     // 5. Finalize run
     const totals = buildTotals(importerSummaries);
     const completedAt = new Date().toISOString();
-    const finalStatus: MigrationRunStatus = totals.errors > 0 ? 'completed' : 'completed';
+
+    // Determine final status.
+    // 'partial_failure' is local-only — it is mapped to 'failed' before any DB write.
+    let finalStatus: MigrationRunStatus;
+    if (totals.errors === 0) {
+      finalStatus = 'completed';
+    } else if (totals.inserted + totals.updated > 0) {
+      // Some records succeeded, some failed — partial outcome
+      finalStatus = 'partial_failure';
+    } else {
+      finalStatus = 'failed';
+    }
+
+    // Collect individual error records for the report (not written to DB)
+    const errorRecords = allResults
+      .filter((r) => r.record.action === 'error' || r.record.action === 'conflict')
+      .map((r) => r.record);
 
     await this.finalizeRun(client, runId, finalStatus, completedAt, {
       importers: importerSummaries,
       totals,
+      hasPartialWrites: finalStatus === 'partial_failure',
     });
 
     this.logger.info(`[RUNNER] Migración finalizada`, {
       runId,
       mode: this.config.mode,
+      status: finalStatus,
       ...totals,
     });
 
@@ -180,38 +210,25 @@ export class MigrationRunner {
       completedAt,
       importers: importerSummaries,
       totals,
+      errorRecords,
     };
   }
 
   // ─── Private DB methods ─────────────────────────────────────────────────────
 
-  private async createRun(client: SupabaseClient, startedAt: string): Promise<string> {
+  private async createRun(_client: SupabaseClient, _startedAt: string): Promise<string> {
     if (this.config.mode === 'dry_run') {
-      // In dry_run mode, create the run record but mark it clearly
-      const { data, error } = await client
-        .from('migration_runs')
-        .insert({
-          migration_name: 'phase-4-data-migration',
-          migration_version: '1.0.0',
-          organization_id: this.config.organizationId,
-          mode: 'dry_run',
-          status: 'pending',
-          started_at: startedAt,
-          source_summary: {},
-          result_summary: {},
-          error_summary: {},
-        })
-        .select('id')
-        .single();
-
-      if (error) {
-        throw new Error(`[RUNNER] Error creando migration_run: ${error.message}`);
-      }
-
-      return (data as MigrationRunRow).id;
+      // Dry run: generate a local run ID without any DB write.
+      // migration_runs is a control table — writes only happen in execute mode.
+      const { randomUUID } = await import('crypto');
+      const localRunId = randomUUID();
+      this.logger.info('[RUNNER] dry_run: run ID local generado (sin escritura en DB)', {
+        runId: localRunId,
+      });
+      return localRunId;
     }
 
-    const { data, error } = await client
+    const { data, error } = await _client
       .from('migration_runs')
       .insert({
         migration_name: 'phase-4-data-migration',
@@ -219,7 +236,7 @@ export class MigrationRunner {
         organization_id: this.config.organizationId,
         mode: 'execute',
         status: 'pending',
-        started_at: startedAt,
+        started_at: _startedAt,
         source_summary: {},
         result_summary: {},
         error_summary: {},
@@ -240,6 +257,13 @@ export class MigrationRunner {
     status: MigrationRunStatus,
     extra?: { errorMessage?: string },
   ): Promise<void> {
+    if (this.config.mode === 'dry_run') {
+      this.logger.info(`[RUNNER] dry_run: updateRunStatus omitido (sin escritura en DB)`, {
+        status,
+      });
+      return;
+    }
+
     const updateData: Record<string, unknown> = { status };
     if (extra?.errorMessage) {
       updateData['error_summary'] = { message: extra.errorMessage };
@@ -263,14 +287,34 @@ export class MigrationRunner {
     summary: {
       importers: ImporterSummary[];
       totals: RunSummary['totals'];
+      hasPartialWrites?: boolean;
     },
   ): Promise<void> {
+    if (this.config.mode === 'dry_run') {
+      this.logger.info(`[RUNNER] dry_run: finalizeRun omitido (sin escritura en DB)`, {
+        runId,
+        status,
+        completedAt,
+        importers: summary.importers.length,
+      });
+      return;
+    }
+
+    // 'partial_failure' is not a valid DB enum value — map to 'failed'
+    const dbStatus: Exclude<MigrationRunStatus, 'partial_failure'> =
+      status === 'partial_failure' ? 'failed' : status;
+
+    const resultSummary: Record<string, unknown> = { ...summary.totals };
+    if (summary.hasPartialWrites) {
+      resultSummary['partial_writes'] = true;
+    }
+
     const { error } = await client
       .from('migration_runs')
       .update({
-        status,
+        status: dbStatus,
         completed_at: completedAt,
-        result_summary: summary.totals,
+        result_summary: resultSummary,
         source_summary: { importers: summary.importers.length },
       })
       .eq('id', runId);

@@ -12,6 +12,8 @@ import { Logger } from '../logger';
 import { readJsonFile } from '../adapters/filesystem';
 import { detectSecrets } from '../adapters/secret-detector';
 import { getSupabaseClient } from '../adapters/supabase';
+import { resolveMigrationClient } from '../adapters/client-resolver';
+import { extractPostgrestExtra } from '../adapters/postgrest-error';
 import type {
   Importer,
   ImporterContext,
@@ -42,7 +44,7 @@ export class AutomationsImporter implements Importer {
     const { runId, organizationId, config } = ctx;
     const client = getSupabaseClient(config);
 
-    const rawData = readJsonFile<AutomationsFile>(config.dataRoot, AUTOMATIONS_SOURCE);
+    const rawData = readJsonFile<AutomationsFile>(config.repositoryRoot, AUTOMATIONS_SOURCE);
     if (!rawData) {
       this.logger.warn(`[automations-importer] ${AUTOMATIONS_SOURCE} no encontrado`);
       return results;
@@ -72,16 +74,19 @@ export class AutomationsImporter implements Importer {
       ? rawData
       : ((rawData as { automations: RawAutomation[] }).automations ?? []);
 
-    // Load client map for slug→id resolution
-    const { data: clientRows } = await client
-      .from('clients')
-      .select('id, slug')
-      .eq('organization_id', organizationId)
-      .is('deleted_at', null);
-
-    const clientMap = new Map<string, string>(
-      ((clientRows ?? []) as ClientRow[]).map((c) => [c.slug, c.id]),
-    );
+    // In execute mode, build a live DB client map for any automations that reference a client slug.
+    // In dry_run, use MigrationContext to avoid unnecessary DB queries.
+    let clientMap = new Map<string, string>();
+    if (config.mode === 'execute') {
+      const { data: clientRows } = await client
+        .from('clients')
+        .select('id, slug')
+        .eq('organization_id', organizationId)
+        .is('deleted_at', null);
+      clientMap = new Map<string, string>(
+        ((clientRows ?? []) as ClientRow[]).map((c) => [c.slug, c.id]),
+      );
+    }
 
     const limit = config.limit;
     let processed = 0;
@@ -94,7 +99,18 @@ export class AutomationsImporter implements Importer {
       const sourceHash = computeHash(entry);
       const start = Date.now();
 
-      const clientId = entry.clientSlug ? (clientMap.get(entry.clientSlug) ?? null) : null;
+      // Resolve clientId: prefer MigrationContext in dry_run, DB map in execute
+      let clientId: string | null = null;
+      if (entry.clientSlug) {
+        if (config.mode === 'dry_run') {
+          const resolution = resolveMigrationClient(entry.clientSlug, ctx.migrationContext);
+          if (resolution.kind === 'existing' || resolution.kind === 'projected') {
+            clientId = resolution.clientId;
+          }
+        } else {
+          clientId = clientMap.get(entry.clientSlug) ?? null;
+        }
+      }
 
       try {
         const r = await this.upsertAutomation(
@@ -208,18 +224,21 @@ export class AutomationsImporter implements Importer {
       .single();
 
     if (error) {
-      return this.makeRecord(
-        runId,
-        organizationId,
-        sourcePath,
-        sourceKey,
-        sourceHash,
-        'automations',
-        null,
-        'error',
-        'UPSERT_FAILED',
-        error.message,
-      );
+      return {
+        ...this.makeRecord(
+          runId,
+          organizationId,
+          sourcePath,
+          sourceKey,
+          sourceHash,
+          'automations',
+          null,
+          'error',
+          'UPSERT_FAILED',
+          error.message,
+        ),
+        ...extractPostgrestExtra(error),
+      };
     }
 
     return this.makeRecord(

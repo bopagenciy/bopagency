@@ -1,21 +1,30 @@
 /**
  * Phase 4 — Clients Importer
  *
- * Source:  .agencia-ai/clients/clients-index.json (schemaVersion: "1.0")
+ * Source:  shared-data/clients-index.json (schemaVersion: "1.0.0")
+ *          Per-client details: .agencia-ai/clients/{id}/client.json
  * Target:  public.clients
  * Key:     organization_id + slug (unique)
+ *
+ * NOTE: The index uses `id` as the slug (e.g. "legalink-col").
  *
  * APPROVED clients: legalink-col, magic-bungalow
  * EXCLUDED: _template-client, bop-soluciones, the-industrial-depot,
  *           cliente-prueba-automatizacion-marketing-digital
+ *
+ * IMPORTANT: public.clients has NO legacy_id column.
+ * Identity is established via organization_id + slug only.
  */
 
+import { randomUUID } from 'crypto';
 import type { SupabaseClient } from '@supabase/supabase-js';
 import { computeHash } from '../hash';
 import { Logger } from '../logger';
 import { readJsonFile } from '../adapters/filesystem';
 import { detectSecrets } from '../adapters/secret-detector';
 import { getSupabaseClient } from '../adapters/supabase';
+import { resolveSharedDataPath, sanitizeLogPath } from '../adapters/repository-root';
+import { extractPostgrestExtra } from '../adapters/postgrest-error';
 import type {
   Importer,
   ImporterContext,
@@ -24,6 +33,9 @@ import type {
   RawClientEntry,
   RawClientIndex,
 } from '../types';
+
+/** Relative path (from repo root) logged in output — never absolute. */
+const CLIENTS_INDEX_REL = 'shared-data/clients-index.json';
 
 // Clients approved for automatic migration in Phase 4
 const APPROVED_CLIENTS = new Set(['legalink-col', 'magic-bungalow']);
@@ -40,30 +52,18 @@ function mapIndustry(raw: string | undefined): string {
   return INDUSTRY_MAP[raw] ?? 'other';
 }
 
-function mapClientStatus(raw: string | undefined): string {
-  const map: Record<string, string> = {
+function mapClientStatus(
+  raw: string | undefined,
+): 'active' | 'inactive' | 'onboarding' | 'churned' {
+  const map: Record<string, 'active' | 'inactive' | 'onboarding' | 'churned'> = {
     active: 'active',
     inactive: 'inactive',
-    paused: 'paused',
-    archived: 'archived',
+    paused: 'inactive', // nearest equivalent in client_status enum
+    archived: 'churned', // nearest equivalent in client_status enum
+    onboarding: 'onboarding',
+    churned: 'churned',
   };
   return map[raw ?? 'active'] ?? 'active';
-}
-
-interface ClientRow {
-  id?: string;
-  organization_id: string;
-  slug: string;
-  name: string;
-  status: string;
-  industry: string;
-  currency: string;
-  timezone: string;
-  website: string | null;
-  notes: string | null;
-  legacy_id: string | null;
-  migrated_at: string;
-  migration_version: string;
 }
 
 export class ClientsImporter implements Importer {
@@ -79,28 +79,68 @@ export class ClientsImporter implements Importer {
     const { runId, organizationId, config } = ctx;
     const client = getSupabaseClient(config);
 
+    // En modo execute, actorUserId es obligatorio para crear/actualizar clientes.
+    // La RPC create_migrated_client / update_migrated_client lo usa para asignar
+    // created_by/updated_by cuando auth.uid() es NULL (service_role).
+    if (config.mode === 'execute' && !config.actorUserId) {
+      this.logger.error(
+        '[clients-importer] MIGRATION_ACTOR_USER_ID no configurado — ' +
+          'requerido en execute para insertar clientes (created_by/updated_by).',
+      );
+      results.push(
+        this.makeResult(
+          runId,
+          organizationId,
+          CLIENTS_INDEX_REL,
+          'clients-index',
+          null,
+          'error',
+          'ACTOR_MISSING',
+          'MIGRATION_ACTOR_USER_ID es obligatorio en modo execute. ' +
+            'Proporcionar --actor-user-id=<UUID> o env MIGRATION_ACTOR_USER_ID. ' +
+            'El actor debe ser miembro admin/owner de la organización.',
+        ),
+      );
+      return results;
+    }
+
     // Determine which clients to migrate
     const approvedSlugs =
       config.clients.length > 0
         ? config.clients.filter((c) => APPROVED_CLIENTS.has(c))
         : [...APPROVED_CLIENTS];
 
-    // Read source
-    const indexData = readJsonFile<RawClientIndex>(
-      config.dataRoot,
-      '.agencia-ai/clients/clients-index.json',
-    );
+    // Read source — file lives at shared-data/clients-index.json
+    const indexAbsPath = resolveSharedDataPath(config.repositoryRoot, 'clients-index.json');
+    const indexRelPath = sanitizeLogPath(indexAbsPath, config.repositoryRoot);
+    const indexData = readJsonFile<RawClientIndex>(config.repositoryRoot, CLIENTS_INDEX_REL);
 
     if (!indexData) {
-      this.logger.warn('[clients-importer] clients-index.json no encontrado');
+      this.logger.warn(`[clients-importer] ${indexRelPath} no encontrado — fuente bloqueante`);
+      results.push(
+        this.makeResult(
+          runId,
+          organizationId,
+          CLIENTS_INDEX_REL,
+          'clients-index',
+          null,
+          'error',
+          'SOURCE_NOT_FOUND',
+          `${CLIENTS_INDEX_REL} no encontrado`,
+        ),
+      );
       return results;
     }
+
+    this.logger.info(`[clients-importer] Leyendo ${indexRelPath}`, {
+      entries: indexData.clients?.length ?? 0,
+    });
 
     // Secret scan on the entire index
     const secretScan = detectSecrets(indexData);
     if (secretScan.hasSecrets) {
       this.logger.warn(
-        '[clients-importer] Secretos detectados en clients-index.json — archivo excluido',
+        `[clients-importer] Secretos detectados en ${indexRelPath} — archivo excluido`,
         {
           fields: secretScan.detectedFields,
         },
@@ -109,7 +149,7 @@ export class ClientsImporter implements Importer {
         this.makeResult(
           runId,
           organizationId,
-          '.agencia-ai/clients/clients-index.json',
+          CLIENTS_INDEX_REL,
           'clients-index',
           null,
           'excluded-secret',
@@ -127,11 +167,13 @@ export class ClientsImporter implements Importer {
     for (const entry of allClients) {
       if (limit !== null && processed >= limit) break;
 
-      const sourceKey = entry.slug;
-      const sourcePath = `.agencia-ai/clients/clients-index.json#${sourceKey}`;
+      // `id` is the slug in the real schema
+      const sourceKey = entry.id;
+      const sourcePath = `${CLIENTS_INDEX_REL}#${sourceKey}`;
 
       // Skip non-approved
-      if (!approvedSlugs.includes(entry.slug)) {
+      if (!approvedSlugs.includes(entry.id)) {
+        ctx.migrationContext.excludedSlugs.add(entry.id);
         this.logger.action('excluded', 'client', sourceKey, {
           reason: 'not in approved list',
         });
@@ -144,7 +186,7 @@ export class ClientsImporter implements Importer {
             null,
             'excluded',
             'NOT_APPROVED',
-            `Client slug "${entry.slug}" no está en la lista de aprobados`,
+            `Client id "${entry.id}" no está en la lista de aprobados`,
           ),
         );
         continue;
@@ -154,7 +196,7 @@ export class ClientsImporter implements Importer {
       const sourceHash = computeHash(entry);
 
       try {
-        const result = await this.upsertClient(
+        const result = await this.persistClient(
           client,
           runId,
           organizationId,
@@ -163,9 +205,27 @@ export class ClientsImporter implements Importer {
           sourceHash,
           entry,
           config.mode,
+          config.actorUserId,
         );
         results.push({ record: result, durationMs: Date.now() - start });
         processed++;
+
+        // Populate migrationContext so dependent importers can resolve this client
+        // without hitting the DB (critical for dry_run correctness).
+        const action = result.action;
+        if (action === 'insert' || action === 'update' || action === 'skip-preexisting') {
+          const projectedId = result.targetId ?? randomUUID();
+          ctx.migrationContext.projectedClients.set(entry.id, {
+            projectedId,
+            realId: result.targetId,
+            organizationId,
+            slug: entry.id,
+            name: entry.name,
+            action,
+            sourceHash: result.sourceHash ?? sourceHash,
+            existsInDatabase: result.targetId !== null,
+          });
+        }
       } catch (err: unknown) {
         const message = err instanceof Error ? err.message : String(err);
         this.logger.error(`[clients-importer] Error procesando cliente ${sourceKey}`, { message });
@@ -188,7 +248,17 @@ export class ClientsImporter implements Importer {
     return results;
   }
 
-  private async upsertClient(
+  /**
+   * Persiste un cliente usando flujo manual insert/update/skip.
+   *
+   * Flujo:
+   *  1. Buscar en public.clients por organization_id + slug.
+   *  2. No existe → insert (sin legacy_id).
+   *  3. Existe → comparar hash via migration_records.
+   *     - mismo hash  → skip-preexisting
+   *     - hash distinto → update por id
+   */
+  private async persistClient(
     client: SupabaseClient,
     runId: string,
     organizationId: string,
@@ -197,18 +267,117 @@ export class ClientsImporter implements Importer {
     sourceHash: string,
     entry: RawClientEntry,
     mode: string,
+    actorUserId: string | undefined,
   ): Promise<MigrationResult['record']> {
-    // Check if record already migrated with same hash
-    const { data: existing } = await client
+    // 1. Verificar en la tabla destino primero por clave natural
+    const { data: existingClient, error: selectError } = await client
+      .from('clients')
+      .select('id, deleted_at')
+      .eq('organization_id', organizationId)
+      .eq('slug', entry.id)
+      .maybeSingle();
+
+    if (selectError) {
+      return {
+        ...this.makeRecord(
+          runId,
+          organizationId,
+          sourcePath,
+          sourceKey,
+          sourceHash,
+          'clients',
+          null,
+          'error',
+          'SELECT_FAILED',
+          selectError.message,
+        ),
+        ...extractPostgrestExtra(selectError),
+      };
+    }
+
+    // 2. Cliente no existe → insert
+    if (!existingClient) {
+      if (mode === 'dry_run') {
+        this.logger.action('insert', 'client', sourceKey);
+        return this.makeRecord(
+          runId,
+          organizationId,
+          sourcePath,
+          sourceKey,
+          sourceHash,
+          'clients',
+          null,
+          'insert',
+          null,
+          null,
+        );
+      }
+
+      // INSERT via RPC create_migrated_client.
+      // La RPC valida el actor, inyecta auth.uid() vía set_config para que
+      // manage_client_write asigne created_by/updated_by correctamente,
+      // y retorna el UUID del nuevo cliente.
+      // actorUserId está garantizado non-null en execute (verificado en run()).
+      const { data: newClientId, error: insertError } = await client.rpc('create_migrated_client', {
+        p_organization_id: organizationId,
+        p_actor_user_id: actorUserId ?? null,
+        p_slug: entry.id,
+        p_name: entry.name,
+        p_status: mapClientStatus(entry.status),
+        p_industry: mapIndustry(entry.industry) || null,
+        p_currency: entry.currency ?? 'COP',
+        p_timezone: entry.timezone ?? 'America/Bogota',
+        p_website: entry.website ?? null,
+        p_notes: entry.notes ?? null,
+      });
+
+      if (insertError) {
+        return {
+          ...this.makeRecord(
+            runId,
+            organizationId,
+            sourcePath,
+            sourceKey,
+            sourceHash,
+            'clients',
+            null,
+            'error',
+            'INSERT_FAILED',
+            insertError.message,
+          ),
+          ...extractPostgrestExtra(insertError),
+        };
+      }
+
+      this.logger.action('insert', 'client', sourceKey);
+      return this.makeRecord(
+        runId,
+        organizationId,
+        sourcePath,
+        sourceKey,
+        sourceHash,
+        'clients',
+        newClientId as string,
+        'insert',
+        null,
+        null,
+      );
+    }
+
+    // 3. Cliente existe → comparar hash via migration_records
+    const ec = existingClient as { id: string; deleted_at: string | null };
+
+    const { data: migRecord } = await client
       .from('migration_records')
-      .select('id, source_hash, target_id, action')
+      .select('source_hash')
       .eq('organization_id', organizationId)
       .eq('source_key', sourceKey)
       .eq('target_table', 'clients')
-      .eq('action', 'insert')
       .maybeSingle();
 
-    if (existing && (existing as { source_hash: string }).source_hash === sourceHash) {
+    const storedHash = migRecord ? (migRecord as { source_hash: string }).source_hash : null;
+
+    if (storedHash === sourceHash) {
       this.logger.action('skip', 'client', sourceKey);
       return this.makeRecord(
         runId,
@@ -217,75 +386,15 @@ export class ClientsImporter implements Importer {
         sourceKey,
         sourceHash,
         'clients',
-        (existing as { target_id: string }).target_id,
+        ec.id,
         'skip-preexisting',
         null,
         null,
       );
     }
 
-    // Check if client exists by slug in target table
-    const { data: existingClient } = await client
-      .from('clients')
-      .select('id, deleted_at')
-      .eq('organization_id', organizationId)
-      .eq('slug', entry.slug)
-      .maybeSingle();
-
+    // Hash diferente → update
     if (mode === 'dry_run') {
-      const action: MigrationAction = existingClient ? 'update' : 'insert';
-      this.logger.action(action, 'client', sourceKey);
-      return this.makeRecord(
-        runId,
-        organizationId,
-        sourcePath,
-        sourceKey,
-        sourceHash,
-        'clients',
-        existingClient ? (existingClient as { id: string }).id : null,
-        action,
-        null,
-        null,
-      );
-    }
-
-    const row: ClientRow = {
-      organization_id: organizationId,
-      slug: entry.slug,
-      name: entry.name,
-      status: mapClientStatus(entry.status),
-      industry: mapIndustry(entry.industry),
-      currency: entry.currency ?? 'COP',
-      timezone: entry.timezone ?? 'America/Bogota',
-      website: entry.website ?? null,
-      notes: entry.notes ?? null,
-      legacy_id: entry.id ?? null,
-      migrated_at: new Date().toISOString(),
-      migration_version: '4.0.0',
-    };
-
-    if (existingClient) {
-      const ec = existingClient as { id: string; deleted_at: string | null };
-      const { error } = await client
-        .from('clients')
-        .update({ ...row, deleted_at: ec.deleted_at })
-        .eq('id', ec.id);
-
-      if (error) {
-        return this.makeRecord(
-          runId,
-          organizationId,
-          sourcePath,
-          sourceKey,
-          sourceHash,
-          'clients',
-          ec.id,
-          'error',
-          'UPDATE_FAILED',
-          error.message,
-        );
-      }
-
       this.logger.action('update', 'client', sourceKey);
       return this.makeRecord(
         runId,
@@ -301,28 +410,39 @@ export class ClientsImporter implements Importer {
       );
     }
 
-    const { data: inserted, error: insertError } = await client
-      .from('clients')
-      .insert(row)
-      .select('id')
-      .single();
+    // UPDATE via RPC update_migrated_client para que manage_client_write vea
+    // auth.uid() = actorUserId y asigne updated_by correctamente.
+    const { error: updateError } = await client.rpc('update_migrated_client', {
+      p_client_id: ec.id,
+      p_actor_user_id: actorUserId ?? null,
+      p_name: entry.name,
+      p_status: mapClientStatus(entry.status),
+      p_industry: mapIndustry(entry.industry) || null,
+      p_currency: entry.currency ?? 'COP',
+      p_timezone: entry.timezone ?? 'America/Bogota',
+      p_website: entry.website ?? null,
+      p_notes: entry.notes ?? null,
+    });
 
-    if (insertError) {
-      return this.makeRecord(
-        runId,
-        organizationId,
-        sourcePath,
-        sourceKey,
-        sourceHash,
-        'clients',
-        null,
-        'error',
-        'INSERT_FAILED',
-        insertError.message,
-      );
+    if (updateError) {
+      return {
+        ...this.makeRecord(
+          runId,
+          organizationId,
+          sourcePath,
+          sourceKey,
+          sourceHash,
+          'clients',
+          ec.id,
+          'error',
+          'UPDATE_FAILED',
+          updateError.message,
+        ),
+        ...extractPostgrestExtra(updateError),
+      };
     }
 
-    this.logger.action('insert', 'client', sourceKey);
+    this.logger.action('update', 'client', sourceKey);
     return this.makeRecord(
       runId,
       organizationId,
@@ -330,8 +450,8 @@ export class ClientsImporter implements Importer {
       sourceKey,
       sourceHash,
       'clients',
-      (inserted as { id: string }).id,
-      'insert',
+      ec.id,
+      'update',
       null,
       null,
     );

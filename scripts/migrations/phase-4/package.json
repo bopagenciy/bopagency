@@ -8,7 +8,7 @@
     "build": "tsc --noEmit && tsc --outDir dist",
     "typecheck": "tsc --noEmit",
     "migrate:phase4": "ts-node cli.ts",
-    "test": "vitest run --config scripts/migrations/phase-4/vitest.config.ts"
+    "test": "vitest run --config vitest.config.ts"
   },
   "dependencies": {
     "@supabase/supabase-js": "^2.45.0"

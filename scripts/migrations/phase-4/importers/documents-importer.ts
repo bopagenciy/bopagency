@@ -20,16 +20,14 @@ import {
   safeResolvePath,
 } from '../adapters/filesystem';
 import { getSupabaseClient } from '../adapters/supabase';
+import { resolveMigrationClient } from '../adapters/client-resolver';
+import { extractPostgrestExtra } from '../adapters/postgrest-error';
 import type { Importer, ImporterContext, MigrationAction, MigrationResult } from '../types';
 
 const APPROVED_CLIENTS = ['legalink-col', 'magic-bungalow'];
 
 // Files to skip even if not in quarantine path
 const EXCLUDED_FILENAMES = new Set(['README.md', 'TEMPLATE.md']);
-
-interface ClientRow {
-  id: string;
-}
 
 export class DocumentsImporter implements Importer {
   readonly entityType = 'document' as const;
@@ -44,6 +42,30 @@ export class DocumentsImporter implements Importer {
     const { runId, organizationId, config } = ctx;
     const client = getSupabaseClient(config);
 
+    // En execute, actorUserId es obligatorio: la RPC upsert_migrated_client_document
+    // necesita un actor válido para asignar created_by/updated_by.
+    if (config.mode === 'execute' && !config.actorUserId) {
+      this.logger.error(
+        '[documents-importer] MIGRATION_ACTOR_USER_ID no configurado — ' +
+          'requerido en execute para insertar documentos (created_by/updated_by).',
+      );
+      results.push(
+        this.makeResult(
+          runId,
+          organizationId,
+          'shared-data',
+          'documents-index',
+          '', // clientId no disponible en este punto
+          null,
+          'error',
+          'ACTOR_MISSING',
+          'MIGRATION_ACTOR_USER_ID es obligatorio en modo execute. ' +
+            'Proporcionar --actor-user-id=<UUID> o env MIGRATION_ACTOR_USER_ID.',
+        ),
+      );
+      return results;
+    }
+
     const slugsToProcess =
       config.clients.length > 0
         ? config.clients.filter((c) => APPROVED_CLIENTS.includes(c))
@@ -55,31 +77,28 @@ export class DocumentsImporter implements Importer {
     for (const clientSlug of slugsToProcess) {
       if (limit !== null && processed >= limit) break;
 
-      // Look up client in DB
-      const { data: clientRow } = await client
-        .from('clients')
-        .select('id')
-        .eq('organization_id', organizationId)
-        .eq('slug', clientSlug)
-        .is('deleted_at', null)
-        .maybeSingle();
-
-      if (!clientRow) {
+      // Resolve client via MigrationContext (no DB query needed — ClientsImporter ran first)
+      const resolution = resolveMigrationClient(clientSlug, ctx.migrationContext);
+      if (resolution.kind === 'excluded') {
+        this.logger.debug(`[documents-importer] Cliente "${clientSlug}" excluido — saltando`);
+        continue;
+      }
+      if (resolution.kind === 'missing') {
         this.logger.warn(
-          `[documents-importer] Cliente "${clientSlug}" no encontrado en BD — saltando`,
+          `[documents-importer] Cliente "${clientSlug}" no resuelto en contexto — saltando`,
         );
         continue;
       }
 
-      const clientId = (clientRow as ClientRow).id;
+      const clientId = resolution.clientId;
       const clientDir = `.agencia-ai/clients/${clientSlug}`;
 
-      if (!pathExists(config.dataRoot, clientDir)) {
+      if (!pathExists(config.repositoryRoot, clientDir)) {
         this.logger.warn(`[documents-importer] Directorio no encontrado: ${clientDir}`);
         continue;
       }
 
-      const mdFiles = listMarkdownFiles(config.dataRoot, clientDir);
+      const mdFiles = listMarkdownFiles(config.repositoryRoot, clientDir);
 
       for (const filename of mdFiles) {
         if (limit !== null && processed >= limit) break;
@@ -94,7 +113,7 @@ export class DocumentsImporter implements Importer {
         // SECURITY: verify path is safe before reading
         let resolvedPath: string;
         try {
-          resolvedPath = safeResolvePath(config.dataRoot, relativePath);
+          resolvedPath = safeResolvePath(config.repositoryRoot, relativePath);
         } catch (err: unknown) {
           const message = err instanceof Error ? err.message : String(err);
           this.logger.warn(`[documents-importer] Ruta bloqueada: ${relativePath}`, { message });
@@ -135,7 +154,7 @@ export class DocumentsImporter implements Importer {
           continue;
         }
 
-        const content = readTextFile(config.dataRoot, relativePath);
+        const content = readTextFile(config.repositoryRoot, relativePath);
         if (content === null) {
           this.logger.warn(`[documents-importer] No se pudo leer: ${relativePath}`);
           results.push(
@@ -172,6 +191,7 @@ export class DocumentsImporter implements Importer {
             title,
             content,
             config.mode,
+            config.actorUserId,
           );
           results.push({ record: result, durationMs: Date.now() - start });
           processed++;
@@ -211,6 +231,7 @@ export class DocumentsImporter implements Importer {
     title: string,
     content: string,
     mode: string,
+    actorUserId: string | undefined,
   ): Promise<MigrationResult['record']> {
     // Check if already migrated with same hash
     const { data: existing } = await client
@@ -254,31 +275,36 @@ export class DocumentsImporter implements Importer {
       );
     }
 
-    // Use RPC for upsert with optimistic concurrency
-    const { data, error } = await client.rpc('upsert_client_document', {
+    // Use migration-specific RPC that bypasses auth.uid() requirement.
+    // upsert_migrated_client_document: SECURITY DEFINER, solo service_role,
+    // inyecta actor vía set_config para que set_document_audit asigne created_by/updated_by.
+    // actorUserId garantizado non-null en execute (verificado en run()).
+    const { data: docId, error } = await client.rpc('upsert_migrated_client_document', {
       p_client_id: clientId,
+      p_actor_user_id: actorUserId ?? null,
       p_document_key: documentKey,
       p_title: title,
       p_content: content,
-      p_expected_version: null, // migration bypasses version check
     });
 
     if (error) {
-      return this.makeRecord(
-        runId,
-        organizationId,
-        sourcePath,
-        sourceKey,
-        sourceHash,
-        'client_documents',
-        null,
-        'error',
-        'RPC_ERROR',
-        error.message,
-      );
+      return {
+        ...this.makeRecord(
+          runId,
+          organizationId,
+          sourcePath,
+          sourceKey,
+          sourceHash,
+          'client_documents',
+          null,
+          'error',
+          'RPC_ERROR',
+          error.message,
+        ),
+        ...extractPostgrestExtra(error),
+      };
     }
 
-    const docId = (data as { document_id?: string })?.document_id ?? null;
     this.logger.action('insert', 'document', sourceKey);
     return this.makeRecord(
       runId,
@@ -287,7 +313,7 @@ export class DocumentsImporter implements Importer {
       sourceKey,
       sourceHash,
       'client_documents',
-      docId,
+      typeof docId === 'string' ? docId : null,
       'insert',
       null,
       null,
