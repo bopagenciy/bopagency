@@ -20,3 +20,5 @@ docs/audit/
 docs/security/
 docs/architecture/
 supabase/.temp/
+
+migration-output/

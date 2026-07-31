@@ -124,3 +124,8 @@ backups/
 
 # Datos operativos y reportes reales
 shared-data/
+
+# Phase 4 — Output de migración (nunca en Git, puede contener paths internos)
+migration-output/
+
+migration-output/

@@ -1,0 +1,23 @@
+{
+  "name": "@bop-agency/migration-phase4",
+  "version": "1.0.0",
+  "private": true,
+  "description": "Phase 4 data migration scripts for BopIAgency",
+  "main": "dist/cli.js",
+  "scripts": {
+    "build": "tsc --noEmit && tsc --outDir dist",
+    "typecheck": "tsc --noEmit",
+    "migrate:phase4": "ts-node cli.ts",
+    "test": "vitest run --config scripts/migrations/phase-4/vitest.config.ts"
+  },
+  "dependencies": {
+    "@supabase/supabase-js": "^2.45.0"
+  },
+  "devDependencies": {
+    "@types/node": "^20.14.0",
+    "ts-node": "^10.9.2",
+    "typescript": "^5.5.2",
+    "vitest": "^2.0.0",
+    "zod": "^3.23.8"
+  }
+}

@@ -8,6 +8,245 @@ export type Database = {
   };
   public: {
     Tables: {
+      agents: {
+        Row: {
+          agent_type: Database['public']['Enums']['agent_type'];
+          content: string;
+          created_at: string;
+          description: string | null;
+          id: string;
+          is_active: boolean;
+          is_global: boolean;
+          legacy_path: string | null;
+          migrated_at: string | null;
+          migration_version: string | null;
+          name: string;
+          organization_id: string | null;
+          slug: string;
+          source_hash: string | null;
+          updated_at: string;
+        };
+        Insert: {
+          agent_type?: Database['public']['Enums']['agent_type'];
+          content?: string;
+          created_at?: string;
+          description?: string | null;
+          id?: string;
+          is_active?: boolean;
+          is_global?: boolean;
+          legacy_path?: string | null;
+          migrated_at?: string | null;
+          migration_version?: string | null;
+          name: string;
+          organization_id?: string | null;
+          slug: string;
+          source_hash?: string | null;
+          updated_at?: string;
+        };
+        Update: {
+          agent_type?: Database['public']['Enums']['agent_type'];
+          content?: string;
+          created_at?: string;
+          description?: string | null;
+          id?: string;
+          is_active?: boolean;
+          is_global?: boolean;
+          legacy_path?: string | null;
+          migrated_at?: string | null;
+          migration_version?: string | null;
+          name?: string;
+          organization_id?: string | null;
+          slug?: string;
+          source_hash?: string | null;
+          updated_at?: string;
+        };
+        Relationships: [
+          {
+            foreignKeyName: 'agents_organization_id_fkey';
+            columns: ['organization_id'];
+            isOneToOne: false;
+            referencedRelation: 'organizations';
+            referencedColumns: ['id'];
+          },
+        ];
+      };
+      alerts: {
+        Row: {
+          account_id: string | null;
+          acknowledged_at: string | null;
+          acknowledged_by: string | null;
+          alert_key: string;
+          alert_type: string;
+          client_id: string | null;
+          created_at: string;
+          description: string | null;
+          detected_at: string | null;
+          id: string;
+          legacy_path: string | null;
+          metadata: Json;
+          migrated_at: string | null;
+          migration_version: string | null;
+          organization_id: string;
+          platform: string | null;
+          resolved_at: string | null;
+          resolved_by: string | null;
+          severity: Database['public']['Enums']['alert_severity'];
+          snoozed_until: string | null;
+          source_hash: string | null;
+          status: Database['public']['Enums']['alert_status'];
+          title: string | null;
+          updated_at: string;
+        };
+        Insert: {
+          account_id?: string | null;
+          acknowledged_at?: string | null;
+          acknowledged_by?: string | null;
+          alert_key: string;
+          alert_type: string;
+          client_id?: string | null;
+          created_at?: string;
+          description?: string | null;
+          detected_at?: string | null;
+          id?: string;
+          legacy_path?: string | null;
+          metadata?: Json;
+          migrated_at?: string | null;
+          migration_version?: string | null;
+          organization_id: string;
+          platform?: string | null;
+          resolved_at?: string | null;
+          resolved_by?: string | null;
+          severity?: Database['public']['Enums']['alert_severity'];
+          snoozed_until?: string | null;
+          source_hash?: string | null;
+          status?: Database['public']['Enums']['alert_status'];
+          title?: string | null;
+          updated_at?: string;
+        };
+        Update: {
+          account_id?: string | null;
+          acknowledged_at?: string | null;
+          acknowledged_by?: string | null;
+          alert_key?: string;
+          alert_type?: string;
+          client_id?: string | null;
+          created_at?: string;
+          description?: string | null;
+          detected_at?: string | null;
+          id?: string;
+          legacy_path?: string | null;
+          metadata?: Json;
+          migrated_at?: string | null;
+          migration_version?: string | null;
+          organization_id?: string;
+          platform?: string | null;
+          resolved_at?: string | null;
+          resolved_by?: string | null;
+          severity?: Database['public']['Enums']['alert_severity'];
+          snoozed_until?: string | null;
+          source_hash?: string | null;
+          status?: Database['public']['Enums']['alert_status'];
+          title?: string | null;
+          updated_at?: string;
+        };
+        Relationships: [
+          {
+            foreignKeyName: 'alerts_client_id_fkey';
+            columns: ['client_id'];
+            isOneToOne: false;
+            referencedRelation: 'clients';
+            referencedColumns: ['id'];
+          },
+          {
+            foreignKeyName: 'alerts_organization_id_fkey';
+            columns: ['organization_id'];
+            isOneToOne: false;
+            referencedRelation: 'organizations';
+            referencedColumns: ['id'];
+          },
+        ];
+      };
+      automations: {
+        Row: {
+          category: string | null;
+          client_id: string | null;
+          created_at: string;
+          description: string | null;
+          health: Json | null;
+          id: string;
+          legacy_id: string;
+          legacy_path: string | null;
+          links: Json | null;
+          migrated_at: string | null;
+          migration_version: string | null;
+          name: string;
+          organization_id: string;
+          provider: string;
+          schedule: Json;
+          source_hash: string | null;
+          status: Database['public']['Enums']['automation_status'];
+          updated_at: string;
+          workflow_id: string | null;
+        };
+        Insert: {
+          category?: string | null;
+          client_id?: string | null;
+          created_at?: string;
+          description?: string | null;
+          health?: Json | null;
+          id?: string;
+          legacy_id: string;
+          legacy_path?: string | null;
+          links?: Json | null;
+          migrated_at?: string | null;
+          migration_version?: string | null;
+          name: string;
+          organization_id: string;
+          provider?: string;
+          schedule?: Json;
+          source_hash?: string | null;
+          status?: Database['public']['Enums']['automation_status'];
+          updated_at?: string;
+          workflow_id?: string | null;
+        };
+        Update: {
+          category?: string | null;
+          client_id?: string | null;
+          created_at?: string;
+          description?: string | null;
+          health?: Json | null;
+          id?: string;
+          legacy_id?: string;
+          legacy_path?: string | null;
+          links?: Json | null;
+          migrated_at?: string | null;
+          migration_version?: string | null;
+          name?: string;
+          organization_id?: string;
+          provider?: string;
+          schedule?: Json;
+          source_hash?: string | null;
+          status?: Database['public']['Enums']['automation_status'];
+          updated_at?: string;
+          workflow_id?: string | null;
+        };
+        Relationships: [
+          {
+            foreignKeyName: 'automations_client_id_fkey';
+            columns: ['client_id'];
+            isOneToOne: false;
+            referencedRelation: 'clients';
+            referencedColumns: ['id'];
+          },
+          {
+            foreignKeyName: 'automations_organization_id_fkey';
+            columns: ['organization_id'];
+            isOneToOne: false;
+            referencedRelation: 'organizations';
+            referencedColumns: ['id'];
+          },
+        ];
+      };
       client_contacts: {
         Row: {
           client_id: string;
@@ -185,6 +424,84 @@ export type Database = {
           },
         ];
       };
+      client_metrics: {
+        Row: {
+          account_id: string;
+          account_name: string | null;
+          campaigns: Json;
+          client_id: string;
+          created_at: string;
+          currency: string;
+          data_quality: Json | null;
+          id: string;
+          legacy_path: string | null;
+          metrics: Json;
+          migrated_at: string | null;
+          migration_version: string | null;
+          organization_id: string;
+          period_end: string;
+          period_start: string;
+          platform: string;
+          source_hash: string | null;
+          updated_at: string;
+        };
+        Insert: {
+          account_id: string;
+          account_name?: string | null;
+          campaigns?: Json;
+          client_id: string;
+          created_at?: string;
+          currency?: string;
+          data_quality?: Json | null;
+          id?: string;
+          legacy_path?: string | null;
+          metrics?: Json;
+          migrated_at?: string | null;
+          migration_version?: string | null;
+          organization_id: string;
+          period_end: string;
+          period_start: string;
+          platform: string;
+          source_hash?: string | null;
+          updated_at?: string;
+        };
+        Update: {
+          account_id?: string;
+          account_name?: string | null;
+          campaigns?: Json;
+          client_id?: string;
+          created_at?: string;
+          currency?: string;
+          data_quality?: Json | null;
+          id?: string;
+          legacy_path?: string | null;
+          metrics?: Json;
+          migrated_at?: string | null;
+          migration_version?: string | null;
+          organization_id?: string;
+          period_end?: string;
+          period_start?: string;
+          platform?: string;
+          source_hash?: string | null;
+          updated_at?: string;
+        };
+        Relationships: [
+          {
+            foreignKeyName: 'client_metrics_client_id_fkey';
+            columns: ['client_id'];
+            isOneToOne: false;
+            referencedRelation: 'clients';
+            referencedColumns: ['id'];
+          },
+          {
+            foreignKeyName: 'client_metrics_organization_id_fkey';
+            columns: ['organization_id'];
+            isOneToOne: false;
+            referencedRelation: 'organizations';
+            referencedColumns: ['id'];
+          },
+        ];
+      };
       clients: {
         Row: {
           created_at: string;
@@ -255,6 +572,128 @@ export type Database = {
         Relationships: [
           {
             foreignKeyName: 'clients_organization_id_fkey';
+            columns: ['organization_id'];
+            isOneToOne: false;
+            referencedRelation: 'organizations';
+            referencedColumns: ['id'];
+          },
+        ];
+      };
+      migration_records: {
+        Row: {
+          action: Database['public']['Enums']['migration_action'];
+          created_at: string;
+          entity_type: string;
+          error_code: string | null;
+          error_message: string | null;
+          id: string;
+          organization_id: string;
+          run_id: string;
+          source_hash: string | null;
+          source_key: string;
+          source_path: string;
+          target_id: string | null;
+          target_table: string;
+        };
+        Insert: {
+          action: Database['public']['Enums']['migration_action'];
+          created_at?: string;
+          entity_type: string;
+          error_code?: string | null;
+          error_message?: string | null;
+          id?: string;
+          organization_id: string;
+          run_id: string;
+          source_hash?: string | null;
+          source_key: string;
+          source_path: string;
+          target_id?: string | null;
+          target_table: string;
+        };
+        Update: {
+          action?: Database['public']['Enums']['migration_action'];
+          created_at?: string;
+          entity_type?: string;
+          error_code?: string | null;
+          error_message?: string | null;
+          id?: string;
+          organization_id?: string;
+          run_id?: string;
+          source_hash?: string | null;
+          source_key?: string;
+          source_path?: string;
+          target_id?: string | null;
+          target_table?: string;
+        };
+        Relationships: [
+          {
+            foreignKeyName: 'migration_records_organization_id_fkey';
+            columns: ['organization_id'];
+            isOneToOne: false;
+            referencedRelation: 'organizations';
+            referencedColumns: ['id'];
+          },
+          {
+            foreignKeyName: 'migration_records_run_id_fkey';
+            columns: ['run_id'];
+            isOneToOne: false;
+            referencedRelation: 'migration_runs';
+            referencedColumns: ['id'];
+          },
+        ];
+      };
+      migration_runs: {
+        Row: {
+          completed_at: string | null;
+          created_at: string;
+          created_by: string | null;
+          error_summary: Json;
+          id: string;
+          migration_name: string;
+          migration_version: string;
+          mode: Database['public']['Enums']['migration_mode'];
+          organization_id: string;
+          result_summary: Json;
+          source_summary: Json;
+          started_at: string;
+          status: Database['public']['Enums']['migration_run_status'];
+          updated_at: string;
+        };
+        Insert: {
+          completed_at?: string | null;
+          created_at?: string;
+          created_by?: string | null;
+          error_summary?: Json;
+          id?: string;
+          migration_name: string;
+          migration_version: string;
+          mode?: Database['public']['Enums']['migration_mode'];
+          organization_id: string;
+          result_summary?: Json;
+          source_summary?: Json;
+          started_at?: string;
+          status?: Database['public']['Enums']['migration_run_status'];
+          updated_at?: string;
+        };
+        Update: {
+          completed_at?: string | null;
+          created_at?: string;
+          created_by?: string | null;
+          error_summary?: Json;
+          id?: string;
+          migration_name?: string;
+          migration_version?: string;
+          mode?: Database['public']['Enums']['migration_mode'];
+          organization_id?: string;
+          result_summary?: Json;
+          source_summary?: Json;
+          started_at?: string;
+          status?: Database['public']['Enums']['migration_run_status'];
+          updated_at?: string;
+        };
+        Relationships: [
+          {
+            foreignKeyName: 'migration_runs_organization_id_fkey';
             columns: ['organization_id'];
             isOneToOne: false;
             referencedRelation: 'organizations';
@@ -415,6 +854,343 @@ export type Database = {
           },
         ];
       };
+      report_recipients: {
+        Row: {
+          client_id: string | null;
+          created_at: string;
+          email: string;
+          id: string;
+          is_active: boolean;
+          migrated_at: string | null;
+          migration_version: string | null;
+          organization_id: string;
+          report_types: Database['public']['Enums']['report_type'][];
+          updated_at: string;
+        };
+        Insert: {
+          client_id?: string | null;
+          created_at?: string;
+          email: string;
+          id?: string;
+          is_active?: boolean;
+          migrated_at?: string | null;
+          migration_version?: string | null;
+          organization_id: string;
+          report_types?: Database['public']['Enums']['report_type'][];
+          updated_at?: string;
+        };
+        Update: {
+          client_id?: string | null;
+          created_at?: string;
+          email?: string;
+          id?: string;
+          is_active?: boolean;
+          migrated_at?: string | null;
+          migration_version?: string | null;
+          organization_id?: string;
+          report_types?: Database['public']['Enums']['report_type'][];
+          updated_at?: string;
+        };
+        Relationships: [
+          {
+            foreignKeyName: 'report_recipients_client_id_fkey';
+            columns: ['client_id'];
+            isOneToOne: false;
+            referencedRelation: 'clients';
+            referencedColumns: ['id'];
+          },
+          {
+            foreignKeyName: 'report_recipients_organization_id_fkey';
+            columns: ['organization_id'];
+            isOneToOne: false;
+            referencedRelation: 'organizations';
+            referencedColumns: ['id'];
+          },
+        ];
+      };
+      reports: {
+        Row: {
+          client_id: string;
+          created_at: string;
+          currency: string;
+          generated_at: string | null;
+          id: string;
+          legacy_id: string | null;
+          legacy_path: string | null;
+          migrated_at: string | null;
+          migration_version: string | null;
+          organization_id: string;
+          payload: Json | null;
+          period_end: string;
+          period_label: string | null;
+          period_start: string;
+          report_type: Database['public']['Enums']['report_type'];
+          source_hash: string | null;
+          status: Database['public']['Enums']['report_status'];
+          summary: Json;
+          updated_at: string;
+        };
+        Insert: {
+          client_id: string;
+          created_at?: string;
+          currency?: string;
+          generated_at?: string | null;
+          id?: string;
+          legacy_id?: string | null;
+          legacy_path?: string | null;
+          migrated_at?: string | null;
+          migration_version?: string | null;
+          organization_id: string;
+          payload?: Json | null;
+          period_end: string;
+          period_label?: string | null;
+          period_start: string;
+          report_type: Database['public']['Enums']['report_type'];
+          source_hash?: string | null;
+          status?: Database['public']['Enums']['report_status'];
+          summary?: Json;
+          updated_at?: string;
+        };
+        Update: {
+          client_id?: string;
+          created_at?: string;
+          currency?: string;
+          generated_at?: string | null;
+          id?: string;
+          legacy_id?: string | null;
+          legacy_path?: string | null;
+          migrated_at?: string | null;
+          migration_version?: string | null;
+          organization_id?: string;
+          payload?: Json | null;
+          period_end?: string;
+          period_label?: string | null;
+          period_start?: string;
+          report_type?: Database['public']['Enums']['report_type'];
+          source_hash?: string | null;
+          status?: Database['public']['Enums']['report_status'];
+          summary?: Json;
+          updated_at?: string;
+        };
+        Relationships: [
+          {
+            foreignKeyName: 'reports_client_id_fkey';
+            columns: ['client_id'];
+            isOneToOne: false;
+            referencedRelation: 'clients';
+            referencedColumns: ['id'];
+          },
+          {
+            foreignKeyName: 'reports_organization_id_fkey';
+            columns: ['organization_id'];
+            isOneToOne: false;
+            referencedRelation: 'organizations';
+            referencedColumns: ['id'];
+          },
+        ];
+      };
+      skills: {
+        Row: {
+          content: string;
+          created_at: string;
+          description: string | null;
+          id: string;
+          is_active: boolean;
+          is_global: boolean;
+          legacy_path: string | null;
+          migrated_at: string | null;
+          migration_version: string | null;
+          name: string;
+          organization_id: string | null;
+          slug: string;
+          source_hash: string | null;
+          updated_at: string;
+        };
+        Insert: {
+          content?: string;
+          created_at?: string;
+          description?: string | null;
+          id?: string;
+          is_active?: boolean;
+          is_global?: boolean;
+          legacy_path?: string | null;
+          migrated_at?: string | null;
+          migration_version?: string | null;
+          name: string;
+          organization_id?: string | null;
+          slug: string;
+          source_hash?: string | null;
+          updated_at?: string;
+        };
+        Update: {
+          content?: string;
+          created_at?: string;
+          description?: string | null;
+          id?: string;
+          is_active?: boolean;
+          is_global?: boolean;
+          legacy_path?: string | null;
+          migrated_at?: string | null;
+          migration_version?: string | null;
+          name?: string;
+          organization_id?: string | null;
+          slug?: string;
+          source_hash?: string | null;
+          updated_at?: string;
+        };
+        Relationships: [
+          {
+            foreignKeyName: 'skills_organization_id_fkey';
+            columns: ['organization_id'];
+            isOneToOne: false;
+            referencedRelation: 'organizations';
+            referencedColumns: ['id'];
+          },
+        ];
+      };
+      tasks: {
+        Row: {
+          client_id: string | null;
+          created_at: string;
+          created_by: string | null;
+          deleted_at: string | null;
+          description: string | null;
+          due_date: string | null;
+          id: string;
+          legacy_id: string | null;
+          legacy_path: string | null;
+          legacy_source: string | null;
+          migrated_at: string | null;
+          migration_version: string | null;
+          organization_id: string;
+          priority: Database['public']['Enums']['task_priority'];
+          status: Database['public']['Enums']['task_status'];
+          tags: string[];
+          title: string;
+          updated_at: string;
+          updated_by: string | null;
+        };
+        Insert: {
+          client_id?: string | null;
+          created_at?: string;
+          created_by?: string | null;
+          deleted_at?: string | null;
+          description?: string | null;
+          due_date?: string | null;
+          id?: string;
+          legacy_id?: string | null;
+          legacy_path?: string | null;
+          legacy_source?: string | null;
+          migrated_at?: string | null;
+          migration_version?: string | null;
+          organization_id: string;
+          priority?: Database['public']['Enums']['task_priority'];
+          status?: Database['public']['Enums']['task_status'];
+          tags?: string[];
+          title: string;
+          updated_at?: string;
+          updated_by?: string | null;
+        };
+        Update: {
+          client_id?: string | null;
+          created_at?: string;
+          created_by?: string | null;
+          deleted_at?: string | null;
+          description?: string | null;
+          due_date?: string | null;
+          id?: string;
+          legacy_id?: string | null;
+          legacy_path?: string | null;
+          legacy_source?: string | null;
+          migrated_at?: string | null;
+          migration_version?: string | null;
+          organization_id?: string;
+          priority?: Database['public']['Enums']['task_priority'];
+          status?: Database['public']['Enums']['task_status'];
+          tags?: string[];
+          title?: string;
+          updated_at?: string;
+          updated_by?: string | null;
+        };
+        Relationships: [
+          {
+            foreignKeyName: 'tasks_client_id_fkey';
+            columns: ['client_id'];
+            isOneToOne: false;
+            referencedRelation: 'clients';
+            referencedColumns: ['id'];
+          },
+          {
+            foreignKeyName: 'tasks_organization_id_fkey';
+            columns: ['organization_id'];
+            isOneToOne: false;
+            referencedRelation: 'organizations';
+            referencedColumns: ['id'];
+          },
+        ];
+      };
+      templates: {
+        Row: {
+          content: string;
+          created_at: string;
+          description: string | null;
+          id: string;
+          is_active: boolean;
+          is_global: boolean;
+          legacy_path: string | null;
+          migrated_at: string | null;
+          migration_version: string | null;
+          name: string;
+          organization_id: string | null;
+          slug: string;
+          source_hash: string | null;
+          template_type: string;
+          updated_at: string;
+        };
+        Insert: {
+          content?: string;
+          created_at?: string;
+          description?: string | null;
+          id?: string;
+          is_active?: boolean;
+          is_global?: boolean;
+          legacy_path?: string | null;
+          migrated_at?: string | null;
+          migration_version?: string | null;
+          name: string;
+          organization_id?: string | null;
+          slug: string;
+          source_hash?: string | null;
+          template_type?: string;
+          updated_at?: string;
+        };
+        Update: {
+          content?: string;
+          created_at?: string;
+          description?: string | null;
+          id?: string;
+          is_active?: boolean;
+          is_global?: boolean;
+          legacy_path?: string | null;
+          migrated_at?: string | null;
+          migration_version?: string | null;
+          name?: string;
+          organization_id?: string | null;
+          slug?: string;
+          source_hash?: string | null;
+          template_type?: string;
+          updated_at?: string;
+        };
+        Relationships: [
+          {
+            foreignKeyName: 'templates_organization_id_fkey';
+            columns: ['organization_id'];
+            isOneToOne: false;
+            referencedRelation: 'organizations';
+            referencedColumns: ['id'];
+          },
+        ];
+      };
       user_preferences: {
         Row: {
           active_organization_id: string | null;
@@ -461,6 +1237,7 @@ export type Database = {
       [_ in never]: never;
     };
     Functions: {
+      acknowledge_alert: { Args: { p_alert_id: string }; Returns: undefined };
       can_manage_organization: { Args: { p_org_id: string }; Returns: boolean };
       create_organization_with_owner: {
         Args: { organization_name: string; organization_slug: string };
@@ -472,6 +1249,7 @@ export type Database = {
         Returns: boolean;
       };
       is_organization_member: { Args: { p_org_id: string }; Returns: boolean };
+      resolve_alert: { Args: { p_alert_id: string }; Returns: undefined };
       soft_delete_client: {
         Args: { p_client_id: string };
         Returns: {
@@ -537,10 +1315,30 @@ export type Database = {
       };
     };
     Enums: {
+      agent_type: 'specialist' | 'strategist' | 'analyst' | 'creative' | 'manager' | 'custom';
+      alert_severity: 'info' | 'warning' | 'critical';
+      alert_status: 'active' | 'acknowledged' | 'snoozed' | 'resolved';
+      automation_status: 'active' | 'paused' | 'error' | 'disabled' | 'inactive';
       client_status: 'active' | 'inactive' | 'onboarding' | 'churned';
       document_status: 'draft' | 'published' | 'archived';
       integration_status: 'active' | 'inactive' | 'error';
       membership_status: 'active' | 'invited' | 'suspended' | 'removed';
+      migration_action:
+        | 'insert'
+        | 'update'
+        | 'skip'
+        | 'skip-preexisting'
+        | 'conflict'
+        | 'error'
+        | 'excluded'
+        | 'excluded-secret'
+        | 'excluded-contaminated';
+      migration_mode: 'dry_run' | 'execute';
+      migration_run_status: 'pending' | 'running' | 'completed' | 'failed' | 'rolled_back';
+      report_status: 'draft' | 'generated' | 'sent' | 'failed';
+      report_type: 'weekly' | 'monthly' | 'custom';
+      task_priority: 'low' | 'medium' | 'high' | 'urgent';
+      task_status: 'pending' | 'in_progress' | 'done' | 'cancelled' | 'blocked';
     };
     CompositeTypes: {
       [_ in never]: never;
@@ -662,10 +1460,31 @@ export type CompositeTypes<
 export const Constants = {
   public: {
     Enums: {
+      agent_type: ['specialist', 'strategist', 'analyst', 'creative', 'manager', 'custom'],
+      alert_severity: ['info', 'warning', 'critical'],
+      alert_status: ['active', 'acknowledged', 'snoozed', 'resolved'],
+      automation_status: ['active', 'paused', 'error', 'disabled', 'inactive'],
       client_status: ['active', 'inactive', 'onboarding', 'churned'],
       document_status: ['draft', 'published', 'archived'],
       integration_status: ['active', 'inactive', 'error'],
       membership_status: ['active', 'invited', 'suspended', 'removed'],
+      migration_action: [
+        'insert',
+        'update',
+        'skip',
+        'skip-preexisting',
+        'conflict',
+        'error',
+        'excluded',
+        'excluded-secret',
+        'excluded-contaminated',
+      ],
+      migration_mode: ['dry_run', 'execute'],
+      migration_run_status: ['pending', 'running', 'completed', 'failed', 'rolled_back'],
+      report_status: ['draft', 'generated', 'sent', 'failed'],
+      report_type: ['weekly', 'monthly', 'custom'],
+      task_priority: ['low', 'medium', 'high', 'urgent'],
+      task_status: ['pending', 'in_progress', 'done', 'cancelled', 'blocked'],
     },
   },
 } as const;
