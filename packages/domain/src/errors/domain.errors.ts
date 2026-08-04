@@ -25,11 +25,26 @@ export const campaignInvalidStatus = (from: string, to: string): AppError =>
 // Alert errors
 export const alertNotFound = (id: string): AppError => notFound(`Alert not found: ${id}`);
 
+export const alertInvalidTransition = (from: string, to: string): AppError =>
+  createError('VALIDATION_ERROR', `No se puede transicionar alerta de "${from}" a "${to}"`);
+
+export const alertAlreadyResolved = (id: string): AppError =>
+  createError('VALIDATION_ERROR', `La alerta ${id} ya está resuelta`);
+
+// Metric errors
+export const metricNotFound = (id: string): AppError => notFound(`Metric not found: ${id}`);
+
 // Report errors
 export const reportNotFound = (id: string): AppError => notFound(`Report not found: ${id}`);
 
 // Task errors
 export const taskNotFound = (id: string): AppError => notFound(`Task not found: ${id}`);
+
+export const taskInvalidTransition = (from: string, to: string): AppError =>
+  createError('VALIDATION_ERROR', `No se puede transicionar tarea de "${from}" a "${to}"`);
+
+export const taskDeleted = (id: string): AppError =>
+  createError('VALIDATION_ERROR', `La tarea ${id} fue eliminada`);
 
 // Agent/Skill/Template
 export const agentNotFound = (id: string): AppError => notFound(`Agent not found: ${id}`);

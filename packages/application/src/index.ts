@@ -50,6 +50,21 @@ export type { ListAlertsInput, ListAlertsDeps } from './use-cases/alerts/list-al
 export { listTasks } from './use-cases/tasks/list-tasks.use-case';
 export type { ListTasksInput, ListTasksDeps } from './use-cases/tasks/list-tasks.use-case';
 
+// Use cases — Metrics (Phase 5A)
+export { listClientMetrics } from './use-cases/metrics/list-client-metrics.use-case';
+export type {
+  ListClientMetricsInput,
+  ListClientMetricsDeps,
+} from './use-cases/metrics/list-client-metrics.use-case';
+
+// Use cases — Dashboard (Phase 5A)
+export { getAgencyDashboardSummary } from './use-cases/dashboard/get-agency-dashboard-summary.use-case';
+export type {
+  GetAgencyDashboardSummaryInput,
+  GetAgencyDashboardSummaryDeps,
+  AgencyDashboardSummary,
+} from './use-cases/dashboard/get-agency-dashboard-summary.use-case';
+
 // Use cases — Reports
 export { listReports } from './use-cases/reports/list-reports.use-case';
 export type { ListReportsInput, ListReportsDeps } from './use-cases/reports/list-reports.use-case';

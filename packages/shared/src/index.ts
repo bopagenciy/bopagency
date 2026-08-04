@@ -9,8 +9,13 @@ export type { PaginatedResult, PaginationParams } from './types/pagination';
 export { paginate } from './types/pagination';
 
 // Constants
-export { AD_PLATFORMS, PLATFORM_LABELS } from './constants/platforms';
-export type { AdPlatform } from './constants/platforms';
+export {
+  AD_PLATFORMS,
+  PLATFORM_LABELS,
+  METRIC_PLATFORMS,
+  METRIC_PLATFORM_LABELS,
+} from './constants/platforms';
+export type { AdPlatform, MetricPlatform } from './constants/platforms';
 export {
   TASK_STATUSES,
   CAMPAIGN_STATUSES,

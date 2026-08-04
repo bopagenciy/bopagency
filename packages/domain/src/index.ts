@@ -33,8 +33,24 @@ export type {
   CreateClientContactInput,
 } from './entities/client';
 export type { CampaignId, CampaignObjective, Campaign, CampaignFilter } from './entities/campaign';
-export type { TaskId, TaskPriority, Task } from './entities/task';
-export type { AlertId, AlertRuleType, Alert } from './entities/alert';
+export type { TaskId, TaskPriority, Task, TaskFilter } from './entities/task';
+export { canTransitionTask, getTaskNextStates, isTaskOverdue } from './entities/task';
+export type { AlertId, Alert, AlertFilter } from './entities/alert';
+export { canTransitionAlert, getAlertNextStates } from './entities/alert';
+export type {
+  MetricId,
+  Metric,
+  MetricSummary,
+  MetricFilter,
+  MetricValues,
+  MetricTraffic,
+  MetricEngagement,
+  MetricConversations,
+  CampaignMetric,
+  DataQuality,
+  DataQualityStatus,
+} from './entities/metric';
+export { validateMetricValues, validateMetricPeriod } from './entities/metric';
 export type { ReportId, ReportType, ReportStatus, Report } from './entities/report';
 export type { AutomationId, AutomationStatus, Automation } from './entities/automation';
 export type { AgentId, AgentType, Agent } from './entities/agent';
@@ -44,10 +60,14 @@ export type { TemplateId, TemplateType, Template } from './entities/template';
 // Repositories
 export type { ClientRepository } from './repositories/client.repository';
 export type { CampaignRepository } from './repositories/campaign.repository';
-export type { AlertRepository } from './repositories/alert.repository';
+export type { AlertRepository, AlertCountBySeverity } from './repositories/alert.repository';
 export type { ReportRepository } from './repositories/report.repository';
-export type { TaskRepository } from './repositories/task.repository';
-export type { MetricsRepository, MetricsPeriod } from './repositories/metrics.repository';
+export type { TaskRepository, TaskCountByStatus } from './repositories/task.repository';
+export type {
+  MetricsRepository,
+  AvailablePeriod,
+  MetricOrganizationSummary,
+} from './repositories/metrics.repository';
 export type { AgentRepository } from './repositories/agent.repository';
 export type { SkillRepository } from './repositories/skill.repository';
 export type { TemplateRepository } from './repositories/template.repository';

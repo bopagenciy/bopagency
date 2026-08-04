@@ -22,3 +22,11 @@ export {
   rowToClientDocument,
   rowToClientIntegration,
 } from './supabase/mappers/client.mapper';
+
+// Phase 5A mappers
+export { rowToMetric, rowToMetricSummary } from './supabase/mappers/metric.mapper';
+export type { MetricRow, MetricSummaryRow } from './supabase/mappers/metric.mapper';
+export { rowToAlert } from './supabase/mappers/alert.mapper';
+export type { AlertRow } from './supabase/mappers/alert.mapper';
+export { rowToTask } from './supabase/mappers/task.mapper';
+export type { TaskRow } from './supabase/mappers/task.mapper';
