@@ -1,164 +1,153 @@
 import Link from 'next/link';
 import type { Metadata } from 'next';
 import { Header } from '@/components/layout/Header';
-import { DemoBanner } from '@/components/common/DemoBanner';
-import {
-  demoClients,
-  demoCampaigns,
-  demoAlerts,
-  demoAutomations,
-  demoMetrics,
-} from '@/lib/placeholder-data';
+import { AgencySummaryCards } from '@/components/dashboard/AgencySummaryCards';
+import { ActiveAlertsSidebar } from '@/components/dashboard/ActiveAlertsSidebar';
+import { RepositoryErrorState } from '@/components/common/RepositoryErrorState';
+import { requireOrganization } from '@/lib/auth/server';
+import { createServerSupabaseClient } from '@/lib/supabase/server';
+import { createDashboardComposition } from '@/lib/composition/dashboard.composition';
+import type { OrganizationId } from '@bop-agency/domain';
+import type { Alert } from '@bop-agency/domain';
 
 export const metadata: Metadata = { title: 'Dashboard' };
 
-function StatCard({ label, value, change }: { label: string; value: string; change: number }) {
-  return (
-    <div className="bg-white rounded-lg border border-gray-200 p-5">
-      <p className="text-sm text-gray-500 mb-1">{label}</p>
-      <p className="text-2xl font-bold text-gray-900">{value}</p>
-      {change !== 0 && (
-        <p className={`text-xs mt-1 ${change > 0 ? 'text-green-600' : 'text-red-600'}`}>
-          {change > 0 ? '▲' : '▼'} {Math.abs(change)} vs. período anterior
-        </p>
-      )}
-    </div>
-  );
-}
-
-const severityColors = {
-  critical: 'text-red-700 bg-red-50 border-red-200',
-  warning: 'text-amber-700 bg-amber-50 border-amber-200',
-  info: 'text-blue-700 bg-blue-50 border-blue-200',
+const TASK_STATUS_LABELS: Record<string, string> = {
+  pending: 'Pendiente',
+  in_progress: 'En progreso',
+  done: 'Completada',
+  cancelled: 'Cancelada',
+  blocked: 'Bloqueada',
 };
 
-const statusColors = {
-  draft: 'bg-gray-100 text-gray-700',
-  review: 'bg-yellow-100 text-yellow-800',
-  approved: 'bg-green-100 text-green-800',
-  paused: 'bg-slate-100 text-slate-700',
-  active: 'bg-green-100 text-green-800',
-  error: 'bg-red-100 text-red-800',
-  onboarding: 'bg-blue-100 text-blue-800',
-  inactive: 'bg-gray-100 text-gray-600',
+const TASK_STATUS_COLORS: Record<string, string> = {
+  pending: 'bg-gray-100 text-gray-700',
+  in_progress: 'bg-blue-100 text-blue-800',
+  done: 'bg-green-100 text-green-800',
+  cancelled: 'bg-red-100 text-red-700',
+  blocked: 'bg-amber-100 text-amber-800',
 };
 
-export default function DashboardPage() {
+const PRIORITY_LABELS: Record<string, string> = {
+  low: 'Baja',
+  medium: 'Media',
+  high: 'Alta',
+  urgent: 'Urgente',
+};
+
+export default async function DashboardPage() {
+  const { organization } = await requireOrganization();
+  const supabase = await createServerSupabaseClient();
+  const { useCases } = createDashboardComposition(supabase);
+  const orgId = organization.id as OrganizationId;
+
+  // Fetch summary and recent data in parallel
+  const [summaryResult, alertsResult, tasksResult] = await Promise.all([
+    useCases.getAgencyDashboardSummary({ organizationId: orgId }),
+    useCases.listAlerts({
+      organizationId: orgId,
+      status: 'active',
+      pagination: { page: 1, pageSize: 5 },
+    }),
+    useCases.listTasks({
+      organizationId: orgId,
+      pagination: { page: 1, pageSize: 5 },
+    }),
+  ]);
+
+  const summaryError = !summaryResult.success;
+  const summary = summaryResult.success ? summaryResult.value : null;
+
+  const recentAlerts: Alert[] = alertsResult.success ? alertsResult.value.data : [];
+
+  const recentTasks = tasksResult.success ? tasksResult.value.data : [];
+
   return (
     <>
       <Header breadcrumbs={[{ label: 'Dashboard' }]} />
-      <div className="p-6 space-y-6">
-        <DemoBanner />
-
-        {/* Metrics row */}
-        <div className="grid grid-cols-2 lg:grid-cols-4 gap-4">
-          {demoMetrics.map((m, i) => (
-            <StatCard key={i} label={m.label} value={m.value} change={m.change} />
-          ))}
-        </div>
+      <main className="p-6 space-y-6">
+        {/* KPI Cards */}
+        {summaryError && (
+          <RepositoryErrorState message="No se pudo cargar el resumen del dashboard." />
+        )}
+        {summary && <AgencySummaryCards summary={summary} />}
 
         <div className="grid lg:grid-cols-2 gap-6">
-          {/* Clientes activos */}
+          {/* Alertas activas */}
+          <ActiveAlertsSidebar alerts={recentAlerts} />
+
+          {/* Tareas recientes */}
           <div className="bg-white rounded-lg border border-gray-200">
             <div className="px-5 py-4 border-b border-gray-100 flex items-center justify-between">
-              <h2 className="font-semibold text-gray-900">Clientes activos</h2>
-              <Link href="/clients" className="text-xs text-red-600 hover:text-red-700">
-                Ver todos →
+              <h2 className="font-semibold text-gray-900">Tareas recientes</h2>
+              <Link
+                href="/tasks"
+                className="text-xs text-red-600 hover:text-red-700 transition-colors"
+              >
+                Ver todas →
               </Link>
             </div>
-            <ul className="divide-y divide-gray-100">
-              {demoClients.map((client) => (
-                <li key={client.id} className="px-5 py-3 flex items-center justify-between">
-                  <div>
-                    <p className="text-sm font-medium text-gray-900">{client.name}</p>
-                    <p className="text-xs text-gray-500">{client.industry}</p>
-                  </div>
-                  <div className="flex items-center gap-2">
-                    <span className="text-xs text-gray-400">{client.activeCampaigns} campañas</span>
-                    <span
-                      className={`px-2 py-0.5 rounded-full text-xs font-medium ${statusColors[client.status]}`}
-                    >
-                      {client.status}
-                    </span>
-                  </div>
-                </li>
-              ))}
-            </ul>
+            {recentTasks.length === 0 ? (
+              <div className="px-5 py-10 text-center text-gray-400">
+                <div className="text-3xl mb-2" aria-hidden="true">
+                  📋
+                </div>
+                <p className="text-sm font-medium text-gray-600">Sin tareas recientes</p>
+              </div>
+            ) : (
+              <ul className="divide-y divide-gray-100" aria-label="Tareas recientes">
+                {recentTasks.map((task: (typeof recentTasks)[number]) => (
+                  <li key={task.id} className="px-5 py-3 flex items-center justify-between gap-3">
+                    <div className="min-w-0">
+                      <p className="text-sm font-medium text-gray-900 truncate">{task.title}</p>
+                      {task.dueDate && (
+                        <p className="text-xs text-gray-400 mt-0.5">
+                          Vence:{' '}
+                          {new Date(task.dueDate).toLocaleDateString('es-CO', {
+                            day: '2-digit',
+                            month: 'short',
+                          })}
+                        </p>
+                      )}
+                    </div>
+                    <div className="flex items-center gap-2 flex-shrink-0">
+                      <span className="text-xs text-gray-400">
+                        {PRIORITY_LABELS[task.priority] ?? task.priority}
+                      </span>
+                      <span
+                        className={`px-2 py-0.5 rounded text-xs font-medium ${TASK_STATUS_COLORS[task.status] ?? 'bg-gray-100 text-gray-700'}`}
+                      >
+                        {TASK_STATUS_LABELS[task.status] ?? task.status}
+                      </span>
+                    </div>
+                  </li>
+                ))}
+              </ul>
+            )}
           </div>
 
-          {/* Campañas en borrador */}
-          <div className="bg-white rounded-lg border border-gray-200">
-            <div className="px-5 py-4 border-b border-gray-100 flex items-center justify-between">
-              <h2 className="font-semibold text-gray-900">Campañas recientes</h2>
-              <a href="/campaigns" className="text-xs text-red-600 hover:text-red-700">
-                Ver todas →
-              </a>
-            </div>
-            <ul className="divide-y divide-gray-100">
-              {demoCampaigns.map((camp) => (
-                <li key={camp.id} className="px-5 py-3 flex items-center justify-between">
-                  <div>
-                    <p className="text-sm font-medium text-gray-900">{camp.name}</p>
-                    <p className="text-xs text-gray-500 uppercase">{camp.platform}</p>
-                  </div>
-                  <span
-                    className={`px-2 py-0.5 rounded-full text-xs font-medium ${statusColors[camp.status]}`}
-                  >
-                    {camp.status}
-                  </span>
-                </li>
-              ))}
-            </ul>
-          </div>
-
-          {/* Alertas demo */}
-          <div className="bg-white rounded-lg border border-gray-200">
-            <div className="px-5 py-4 border-b border-gray-100 flex items-center justify-between">
-              <h2 className="font-semibold text-gray-900">Alertas recientes</h2>
-              <a href="/alerts" className="text-xs text-red-600 hover:text-red-700">
-                Ver todas →
-              </a>
-            </div>
-            <ul className="divide-y divide-gray-100">
-              {demoAlerts.map((alert) => (
-                <li
-                  key={alert.id}
-                  className={`px-5 py-3 border-l-4 ${severityColors[alert.severity]}`}
-                >
-                  <p className="text-sm font-medium">{alert.title}</p>
-                  <p className="text-xs mt-0.5 opacity-75">
-                    {new Date(alert.createdAt).toLocaleDateString('es-CO')}
-                  </p>
-                </li>
-              ))}
-            </ul>
-          </div>
-
-          {/* Automatizaciones */}
-          <div className="bg-white rounded-lg border border-gray-200">
-            <div className="px-5 py-4 border-b border-gray-100 flex items-center justify-between">
-              <h2 className="font-semibold text-gray-900">Automatizaciones</h2>
-              <a href="/automations" className="text-xs text-red-600 hover:text-red-700">
-                Ver todas →
-              </a>
-            </div>
-            <ul className="divide-y divide-gray-100">
-              {demoAutomations.map((auto) => (
-                <li key={auto.id} className="px-5 py-3 flex items-center justify-between">
-                  <p className="text-sm font-medium text-gray-900 truncate flex-1 mr-3">
-                    {auto.name}
-                  </p>
-                  <span
-                    className={`flex-shrink-0 px-2 py-0.5 rounded-full text-xs font-medium ${statusColors[auto.status]}`}
-                  >
-                    {auto.status}
-                  </span>
-                </li>
-              ))}
-            </ul>
+          {/* Accesos rápidos */}
+          <div className="lg:col-span-2 grid grid-cols-2 sm:grid-cols-4 gap-4">
+            {[
+              { href: '/clients', label: 'Clientes', icon: '👥' },
+              { href: '/alerts', label: 'Alertas', icon: '🔔' },
+              { href: '/tasks', label: 'Tareas', icon: '📋' },
+              { href: '/metrics', label: 'Métricas', icon: '📊' },
+            ].map(({ href, label, icon }) => (
+              <Link
+                key={href}
+                href={href}
+                className="bg-white rounded-lg border border-gray-200 p-4 flex flex-col items-center gap-2 hover:border-red-300 hover:shadow-sm transition-all"
+              >
+                <span className="text-2xl" aria-hidden="true">
+                  {icon}
+                </span>
+                <span className="text-sm font-medium text-gray-700">{label}</span>
+              </Link>
+            ))}
           </div>
         </div>
-      </div>
+      </main>
     </>
   );
 }

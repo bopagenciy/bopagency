@@ -13,6 +13,7 @@ const navItems = [
   { href: '/campaigns', label: 'Campañas', icon: '📢' },
   { href: '/automations', label: 'Automatizaciones', icon: '⚙️' },
   { href: '/reports', label: 'Reportes', icon: '📄' },
+  { href: '/metrics', label: 'Métricas', icon: '📈' },
   { href: '/alerts', label: 'Alertas', icon: '🔔' },
   { href: '/tasks', label: 'Tareas', icon: '✅' },
   { href: '/settings', label: 'Configuración', icon: '🔧' },
