@@ -8,6 +8,7 @@
 ## ✅ Qué está hecho (Phase 5A)
 
 ### Validación final (todo limpio)
+
 - `packages/shared` typecheck ✅
 - `packages/domain` typecheck ✅
 - `packages/application` typecheck ✅
@@ -18,6 +19,7 @@
 - 492/492 tests pasando (domain 67, application 42, infrastructure 66, phase-4 317) ✅
 
 ### Archivos nuevos creados
+
 ```
 packages/domain/src/entities/metric.ts
 packages/domain/src/__tests__/alert-transitions.test.ts
@@ -38,6 +40,7 @@ docs/implementation/phase-5/PHASE_5A_QUALITY_REPORT.md
 ```
 
 ### Archivos modificados
+
 ```
 packages/shared/src/constants/status.ts        ← TaskStatus y AlertStatus alineados con DB
 packages/shared/src/constants/platforms.ts     ← MetricPlatform añadido
@@ -90,6 +93,7 @@ apps/web/src/app/(dashboard)/actions/metrics.actions.ts
 ## 🔑 Contexto técnico esencial
 
 ### Enums reales de DB (NO los de versiones anteriores)
+
 ```
 task_status:   pending | in_progress | done | cancelled | blocked
 alert_status:  active | acknowledged | snoozed | resolved
@@ -98,12 +102,14 @@ metric platform CHECK: meta | google | tiktok | linkedin | twitter | other
 ```
 
 ### Restricciones de código
+
 - `exactOptionalPropertyTypes: true` — usar spread condicional: `...(val !== undefined && { key: val })`
 - `noUncheckedIndexedAccess: true` — usar `.at(0)?.` en lugar de `[0]`
 - `Result<T>` monad: `ok(value)` / `err(error)` de `@bop-agency/shared`
 - `LoggerPort.error(message, error?, context?)` — 3 args en ese orden
 
 ### Restricciones de datos (NUNCA VIOLAR)
+
 - NO modificar migraciones ya aplicadas
 - NO borrar los 2 clientes existentes (magic-bungalow, otro)
 - NO borrar agentes, skills, templates, automations ni alertas

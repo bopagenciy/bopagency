@@ -9,36 +9,36 @@
 
 ### Typecheck (`tsc --noEmit`)
 
-| Paquete | Estado | Notas |
-|---|---|---|
-| `packages/shared` | ✅ CLEAN | — |
-| `packages/domain` | ✅ CLEAN | Fix en `repositories/index.ts` (export `AvailablePeriod` en lugar de `MetricsPeriod`) |
-| `packages/application` | ✅ CLEAN | Fix spread condicional `exactOptionalPropertyTypes` en 3 use cases |
-| `packages/infrastructure` | ✅ CLEAN | Fix spread condicional en `MetricValues`, `CampaignMetric`, `DataQuality` |
-| `apps/web` | ✅ CLEAN | Sin cambios en la app |
+| Paquete                   | Estado   | Notas                                                                                 |
+| ------------------------- | -------- | ------------------------------------------------------------------------------------- |
+| `packages/shared`         | ✅ CLEAN | —                                                                                     |
+| `packages/domain`         | ✅ CLEAN | Fix en `repositories/index.ts` (export `AvailablePeriod` en lugar de `MetricsPeriod`) |
+| `packages/application`    | ✅ CLEAN | Fix spread condicional `exactOptionalPropertyTypes` en 3 use cases                    |
+| `packages/infrastructure` | ✅ CLEAN | Fix spread condicional en `MetricValues`, `CampaignMetric`, `DataQuality`             |
+| `apps/web`                | ✅ CLEAN | Sin cambios en la app                                                                 |
 
 ### Lint (`eslint --max-warnings 0`)
 
-| Scope | Estado |
-|---|---|
+| Scope                                 | Estado                          |
+| ------------------------------------- | ------------------------------- |
 | Todos los paquetes (`packages/*/src`) | ✅ CLEAN — 0 warnings, 0 errors |
 
 ### Tests
 
-| Suite | Archivos | Tests | Estado |
-|---|---|---|---|
-| `packages/domain` | 5 | 67 | ✅ PASSED |
-| `packages/application` | 6 | 42 | ✅ PASSED |
-| `packages/infrastructure` | 6 | 66 | ✅ PASSED |
-| `scripts/migrations/phase-4` | 11 | 317 | ✅ PASSED |
-| **Total** | **28** | **492** | **✅ 492/492** |
+| Suite                        | Archivos | Tests   | Estado         |
+| ---------------------------- | -------- | ------- | -------------- |
+| `packages/domain`            | 5        | 67      | ✅ PASSED      |
+| `packages/application`       | 6        | 42      | ✅ PASSED      |
+| `packages/infrastructure`    | 6        | 66      | ✅ PASSED      |
+| `scripts/migrations/phase-4` | 11       | 317     | ✅ PASSED      |
+| **Total**                    | **28**   | **492** | **✅ 492/492** |
 
 > Phase 4: esbuild binario Linux instalado en sandbox (`@esbuild/linux-x64@0.21.5`) para compatibilidad de entorno. No afecta al código de producción.
 
 ### Formato (`prettier --check`)
 
-| Estado |
-|---|
+| Estado                                                                     |
+| -------------------------------------------------------------------------- |
 | ✅ CLEAN — 14 archivos formateados con `--write`, verificado con `--check` |
 
 ---
@@ -80,9 +80,11 @@
 **Severidad:** MEDIA — type error en compilación  
 **Síntoma:** Asignar `undefined` a propiedades opcionales en objetos literales con `exactOptionalPropertyTypes: true`.  
 **Fix:** Spread condicional en todos los sitios:
+
 ```typescript
 ...(value !== undefined && { key: value })
 ```
+
 Afectó: `list-alerts.use-case`, `list-tasks.use-case`, `list-client-metrics.use-case`, `metric.mapper.ts` (×3 objetos).
 
 ### P7 — `noUncheckedIndexedAccess` violations (TS2532)
@@ -101,28 +103,28 @@ Afectó: `list-alerts.use-case`, `list-tasks.use-case`, `list-client-metrics.use
 
 ## 3. Decisiones técnicas
 
-| Decisión | Razón |
-|---|---|
-| `MetricSummary = Omit<Metric, 'campaigns'>` | `campaigns` puede tener 55+ items (magic-bungalow); excluirlo en listas evita cargar JSONB pesado innecesariamente |
-| Parsers JSONB lanzan en campo inválido (no silent fallback) | Datos silenciosamente incorrectos son más peligrosos que un error en runtime; el caller puede capturar y reportar |
-| `overdueTasks = 0` en dashboard (diferido) | Requiere query con filtro `due_date < now AND status NOT IN (done, cancelled)`; mejor con índice dedicado en Phase 5B |
-| `acknowledge`/`resolve` en `AlertRepository` → RPC | La tabla `alerts` tiene trigger `trg_alerts_70_audit_fields` que protege campos de auditoría; solo las RPCs `acknowledge_alert`/`resolve_alert` pueden actualizar `acknowledged_at`/`resolved_at` correctamente |
-| `OrganizationId` siempre del servidor | Alineado con el modelo de seguridad: ningún filtro de organización acepta input del cliente |
+| Decisión                                                    | Razón                                                                                                                                                                                                           |
+| ----------------------------------------------------------- | --------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------- |
+| `MetricSummary = Omit<Metric, 'campaigns'>`                 | `campaigns` puede tener 55+ items (magic-bungalow); excluirlo en listas evita cargar JSONB pesado innecesariamente                                                                                              |
+| Parsers JSONB lanzan en campo inválido (no silent fallback) | Datos silenciosamente incorrectos son más peligrosos que un error en runtime; el caller puede capturar y reportar                                                                                               |
+| `overdueTasks = 0` en dashboard (diferido)                  | Requiere query con filtro `due_date < now AND status NOT IN (done, cancelled)`; mejor con índice dedicado en Phase 5B                                                                                           |
+| `acknowledge`/`resolve` en `AlertRepository` → RPC          | La tabla `alerts` tiene trigger `trg_alerts_70_audit_fields` que protege campos de auditoría; solo las RPCs `acknowledge_alert`/`resolve_alert` pueden actualizar `acknowledged_at`/`resolved_at` correctamente |
+| `OrganizationId` siempre del servidor                       | Alineado con el modelo de seguridad: ningún filtro de organización acepta input del cliente                                                                                                                     |
 
 ---
 
 ## 4. Cobertura de tests Phase 5A
 
-| Área | Tests | Casos cubiertos |
-|---|---|---|
-| Alert transitions | 15 | Todos los estados válidos, transiciones inválidas, `canTransitionAlert`, `getAlertNextStates` |
-| Task transitions | 24 | Estados válidos, transiciones inválidas, `isTaskOverdue` con/sin fecha, `canTransitionTask` |
-| Metric validation | 8 | `validateMetricValues` (valores negativos, NaN, Infinity), `validateMetricPeriod` |
-| Metric mapper | 17 | Campos básicos, traffic/engagement/conversations, null handling, plataforma inválida, 55+ campaigns |
-| Alert mapper | 15 | Status válidos, severity, platform, campos opcionales null, status inválido lanza |
-| Task mapper | 13 | Todos los campos, `deletedAt`, status válidos e inválidos, tags array |
-| listAlerts use case | 7 | Filtro por org, status, severity, paginación, error propagation |
-| listTasks use case | 6 | Filtro por org, status, soft-delete, paginación, error propagation |
+| Área                | Tests | Casos cubiertos                                                                                     |
+| ------------------- | ----- | --------------------------------------------------------------------------------------------------- |
+| Alert transitions   | 15    | Todos los estados válidos, transiciones inválidas, `canTransitionAlert`, `getAlertNextStates`       |
+| Task transitions    | 24    | Estados válidos, transiciones inválidas, `isTaskOverdue` con/sin fecha, `canTransitionTask`         |
+| Metric validation   | 8     | `validateMetricValues` (valores negativos, NaN, Infinity), `validateMetricPeriod`                   |
+| Metric mapper       | 17    | Campos básicos, traffic/engagement/conversations, null handling, plataforma inválida, 55+ campaigns |
+| Alert mapper        | 15    | Status válidos, severity, platform, campos opcionales null, status inválido lanza                   |
+| Task mapper         | 13    | Todos los campos, `deletedAt`, status válidos e inválidos, tags array                               |
+| listAlerts use case | 7     | Filtro por org, status, severity, paginación, error propagation                                     |
+| listTasks use case  | 6     | Filtro por org, status, soft-delete, paginación, error propagation                                  |
 
 ---
 

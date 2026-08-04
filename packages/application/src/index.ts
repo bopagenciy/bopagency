@@ -45,10 +45,25 @@ export type { CreateCampaignDraftInput } from './use-cases/campaigns/create-camp
 // Use cases — Alerts
 export { listAlerts } from './use-cases/alerts/list-alerts.use-case';
 export type { ListAlertsInput, ListAlertsDeps } from './use-cases/alerts/list-alerts.use-case';
+export { acknowledgeAlert } from './use-cases/alerts/acknowledge-alert.use-case';
+export type {
+  AcknowledgeAlertInput,
+  AcknowledgeAlertDeps,
+} from './use-cases/alerts/acknowledge-alert.use-case';
+export { resolveAlert } from './use-cases/alerts/resolve-alert.use-case';
+export type {
+  ResolveAlertInput,
+  ResolveAlertDeps,
+} from './use-cases/alerts/resolve-alert.use-case';
 
 // Use cases — Tasks
 export { listTasks } from './use-cases/tasks/list-tasks.use-case';
 export type { ListTasksInput, ListTasksDeps } from './use-cases/tasks/list-tasks.use-case';
+export { updateTaskStatus } from './use-cases/tasks/update-task-status.use-case';
+export type {
+  UpdateTaskStatusInput,
+  UpdateTaskStatusDeps,
+} from './use-cases/tasks/update-task-status.use-case';
 
 // Use cases — Metrics (Phase 5A)
 export { listClientMetrics } from './use-cases/metrics/list-client-metrics.use-case';

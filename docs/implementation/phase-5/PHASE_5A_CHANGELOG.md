@@ -20,6 +20,7 @@ Bloque 5A implementa la capa de dominio, aplicación e infraestructura (mappers)
 **Problema:** `TASK_STATUSES` usaba `'completed'` y `'on_hold'` que no existen en el enum `task_status` de la DB. `ALERT_STATUSES` usaba `'open'` y `'suppressed'` que tampoco existen en `alert_status`.
 
 **Cambios:**
+
 - `TASK_STATUSES`: `'completed'` → `'done'`; `'on_hold'` → `'blocked'` (alineado con DB enum `task_status`)
 - `ALERT_STATUSES`: `'open'` → `'active'`; `'suppressed'` eliminado; añadido `'snoozed'` (alineado con DB enum `alert_status`)
 
@@ -28,6 +29,7 @@ Bloque 5A implementa la capa de dominio, aplicación e infraestructura (mappers)
 **Problema:** `MetricPlatform` no existía — la DB tiene CHECK constraint `(meta, google, tiktok, linkedin, twitter, other)`, distinto de `AdPlatform` (14 valores).
 
 **Añadido:**
+
 ```typescript
 export const METRIC_PLATFORMS = ['meta','google','tiktok','linkedin','twitter','other'] as const;
 export type MetricPlatform = (typeof METRIC_PLATFORMS)[number];
@@ -55,12 +57,14 @@ Entidad completa para `client_metrics`. Tipos exportados:
 - `MetricSummary = Omit<Metric, 'campaigns'>` — para listas (evita cargar JSONB pesado)
 
 Funciones de dominio exportadas:
+
 - `validateMetricValues(m: MetricValues): string[]`
 - `validateMetricPeriod(start: Date, end: Date): boolean`
 
 ### `src/entities/alert.ts` — REEMPLAZADO
 
 **Cambios críticos vs. versión anterior:**
+
 - Añadidos: `organizationId`, `alertKey`, `alertType`, `accountId`, `description` (no `message`), `snoozedUntil`, `acknowledgedBy`, `resolvedBy`, `detectedAt`
 - `clientId` ahora `ClientId | null`
 - Eliminado: `AlertRuleType` (no existe en DB)
@@ -74,6 +78,7 @@ Funciones de dominio exportadas:
 ### `src/entities/task.ts` — REEMPLAZADO
 
 **Cambios críticos vs. versión anterior:**
+
 - Añadidos: `organizationId`, `tags`, `createdBy`, `updatedBy`, `deletedAt`
 - `clientId` ahora `ClientId | null`
 - Eliminados: `requiresApproval`, `assigneeId` (no existen en DB)
@@ -88,6 +93,7 @@ Funciones de dominio exportadas:
 ### `src/repositories/metrics.repository.ts` — REEMPLAZADO
 
 Interfaz `MetricsRepository` con filtros tipados (`MetricFilter`) y métodos:
+
 - `findById`, `findByOrganization`, `findByClient`, `findLatestByClient`
 - `getAvailablePeriods`, `getOrganizationSummary`
 
@@ -96,6 +102,7 @@ Tipos auxiliares: `AvailablePeriod`, `MetricOrganizationSummary`, `MetricFilter`
 ### `src/repositories/alert.repository.ts` — REEMPLAZADO
 
 Interfaz `AlertRepository` con filtros tipados y métodos:
+
 - `findById`, `findByOrganization`, `findActiveByOrganization`, `findByClient`
 - `countBySeverity`, `acknowledge` (→ RPC), `resolve` (→ RPC)
 
@@ -104,6 +111,7 @@ Tipo auxiliar: `AlertCountBySeverity`, `AlertFilter`.
 ### `src/repositories/task.repository.ts` — REEMPLAZADO
 
 Interfaz `TaskRepository` con filtros tipados y métodos:
+
 - `findById`, `findByOrganization`, `findByClient`, `findUpcoming`
 - `countByStatus`, `updateStatus`
 
@@ -119,11 +127,11 @@ Exporta todas las nuevas entidades, funciones de dominio, contratos de repositor
 
 ### Tests nuevos
 
-| Archivo | Tests |
-|---|---|
-| `src/__tests__/alert-transitions.test.ts` | 15 |
-| `src/__tests__/task-transitions.test.ts` | 24 |
-| `src/__tests__/metric-validation.test.ts` | 8 |
+| Archivo                                   | Tests |
+| ----------------------------------------- | ----- |
+| `src/__tests__/alert-transitions.test.ts` | 15    |
+| `src/__tests__/task-transitions.test.ts`  | 24    |
+| `src/__tests__/metric-validation.test.ts` | 8     |
 
 ---
 
@@ -144,6 +152,7 @@ Exporta todas las nuevas entidades, funciones de dominio, contratos de repositor
 ### `src/use-cases/metrics/list-client-metrics.use-case.ts` — NUEVO
 
 Use case de lectura de métricas por organización/cliente:
+
 - Input: `{ organizationId, clientId?, platform?, periodStart?, periodEnd?, pagination }`
 - Output: `Result<PaginatedResult<MetricSummary>>`
 - Fix `exactOptionalPropertyTypes` en todos los campos opcionales del filtro
@@ -151,6 +160,7 @@ Use case de lectura de métricas por organización/cliente:
 ### `src/use-cases/dashboard/get-agency-dashboard-summary.use-case.ts` — NUEVO
 
 Use case central del dashboard:
+
 - Output: `AgencyDashboardSummary { activeClients, activeAlerts, alertsBySeverity, pendingTasks, overdueTasks, inProgressTasks, totalSpend, avgRoas }`
 - Ejecuta 3 queries en paralelo (`Promise.all`) con fallback a ceros en error
 - `overdueTasks = 0` (diferido a Phase 5B — requiere query dedicada con índice)
@@ -161,10 +171,10 @@ Exporta `listClientMetrics`, `getAgencyDashboardSummary`, `AgencyDashboardSummar
 
 ### Tests nuevos
 
-| Archivo | Tests |
-|---|---|
-| `src/__tests__/list-alerts-phase5.test.ts` | 7 |
-| `src/__tests__/list-tasks-phase5.test.ts` | 6 |
+| Archivo                                    | Tests |
+| ------------------------------------------ | ----- |
+| `src/__tests__/list-alerts-phase5.test.ts` | 7     |
+| `src/__tests__/list-tasks-phase5.test.ts`  | 6     |
 
 ---
 
@@ -173,6 +183,7 @@ Exporta `listClientMetrics`, `getAgencyDashboardSummary`, `AgencyDashboardSummar
 ### `src/supabase/mappers/metric.mapper.ts` — NUEVO
 
 Mapper DB → dominio para `client_metrics`:
+
 - `MetricRow` / `MetricSummaryRow` — tipos de fila Supabase
 - `rowToMetricSummary(row)` — excluye campaigns (para listas)
 - `rowToMetric(row)` — incluye campaigns (para detalle)
@@ -196,21 +207,21 @@ Exporta los 3 mapper functions y sus tipos de fila.
 
 ### Tests nuevos
 
-| Archivo | Tests |
-|---|---|
-| `src/supabase/mappers/__tests__/metric.mapper.test.ts` | 17 |
-| `src/supabase/mappers/__tests__/alert.mapper.test.ts` | 15 |
-| `src/supabase/mappers/__tests__/task.mapper.test.ts` | 13 |
+| Archivo                                                | Tests |
+| ------------------------------------------------------ | ----- |
+| `src/supabase/mappers/__tests__/metric.mapper.test.ts` | 17    |
+| `src/supabase/mappers/__tests__/alert.mapper.test.ts`  | 15    |
+| `src/supabase/mappers/__tests__/task.mapper.test.ts`   | 13    |
 
 ---
 
 ## Resumen de archivos
 
-| Tipo | Cantidad |
-|---|---|
-| Archivos nuevos | 16 |
-| Archivos modificados | 14 |
-| Archivos de test nuevos | 10 |
+| Tipo                    | Cantidad |
+| ----------------------- | -------- |
+| Archivos nuevos         | 16       |
+| Archivos modificados    | 14       |
+| Archivos de test nuevos | 10       |
 
 ---
 

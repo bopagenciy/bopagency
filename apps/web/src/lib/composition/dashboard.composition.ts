@@ -1,5 +1,5 @@
 /**
- * Dashboard Composition Root — Phase 5B
+ * Dashboard Composition Root — Phase 5C
  *
  * Instancia los repositorios y casos de uso necesarios para el dashboard,
  * recibiendo el Supabase client desde el servidor.
@@ -37,13 +37,19 @@ import {
 import {
   getAgencyDashboardSummary,
   listAlerts,
+  acknowledgeAlert,
+  resolveAlert,
   listTasks,
+  updateTaskStatus,
   listClientMetrics,
 } from '@bop-agency/application';
 import type {
   GetAgencyDashboardSummaryInput,
   ListAlertsInput,
+  AcknowledgeAlertInput,
+  ResolveAlertInput,
   ListTasksInput,
+  UpdateTaskStatusInput,
   ListClientMetricsInput,
 } from '@bop-agency/application';
 
@@ -69,13 +75,27 @@ export function createDashboardComposition(supabase: SupabaseClient) {
 
   // ── Use cases pre-enlazados ─────────────────────────────────────────────────
   const useCases = {
+    // Dashboard
     getAgencyDashboardSummary: (input: GetAgencyDashboardSummaryInput) =>
       getAgencyDashboardSummary(input, dashboardDeps),
 
+    // Alerts — read
     listAlerts: (input: ListAlertsInput) => listAlerts(input, { alertRepository, logger }),
 
+    // Alerts — mutations (Phase 5C)
+    acknowledgeAlert: (input: AcknowledgeAlertInput) =>
+      acknowledgeAlert(input, { alertRepository, logger }),
+
+    resolveAlert: (input: ResolveAlertInput) => resolveAlert(input, { alertRepository, logger }),
+
+    // Tasks — read
     listTasks: (input: ListTasksInput) => listTasks(input, { taskRepository, logger }),
 
+    // Tasks — mutations (Phase 5C)
+    updateTaskStatus: (input: UpdateTaskStatusInput) =>
+      updateTaskStatus(input, { taskRepository, logger }),
+
+    // Metrics
     listClientMetrics: (input: ListClientMetricsInput) =>
       listClientMetrics(input, { metricsRepository, logger }),
   };

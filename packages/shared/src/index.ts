@@ -53,3 +53,11 @@ export type {
   ClientFilterValues,
   UpsertClientDocumentFormValues,
 } from './schemas/client.schema';
+
+// Schemas — Alerts (Phase 5C)
+export { acknowledgeAlertSchema, resolveAlertSchema } from './schemas/alert.schema';
+export type { AcknowledgeAlertFormValues, ResolveAlertFormValues } from './schemas/alert.schema';
+
+// Schemas — Tasks (Phase 5C)
+export { taskStatusSchema, updateTaskStatusSchema } from './schemas/task.schema';
+export type { UpdateTaskStatusFormValues } from './schemas/task.schema';

@@ -15,24 +15,24 @@ Bloque 5B implementa la capa de infraestructura y composición para el Dashboard
 
 ## 1. Archivos creados
 
-| Archivo | Descripción |
-|---|---|
-| `packages/infrastructure/src/supabase/repositories/supabase-metrics.repository.ts` | SupabaseMetricsRepository — lectura de client_metrics |
-| `packages/infrastructure/src/supabase/repositories/supabase-alert.repository.ts` | SupabaseAlertRepository — lectura y mutación (RPC) de alerts |
-| `packages/infrastructure/src/supabase/repositories/supabase-task.repository.ts` | SupabaseTaskRepository — lectura y updateStatus de tasks |
-| `packages/infrastructure/src/supabase/repositories/__tests__/supabase-metrics.repository.test.ts` | 20 tests unitarios para MetricsRepository |
-| `packages/infrastructure/src/supabase/repositories/__tests__/supabase-alert.repository.test.ts` | 19 tests unitarios para AlertRepository |
-| `packages/infrastructure/src/supabase/repositories/__tests__/supabase-task.repository.test.ts` | 23 tests unitarios para TaskRepository |
-| `apps/web/src/lib/composition/dashboard.composition.ts` | Composition root — factory de repos y use cases |
-| `apps/web/src/lib/composition/__tests__/dashboard.composition.test.ts` | 6 tests unitarios para el composition root |
+| Archivo                                                                                           | Descripción                                                  |
+| ------------------------------------------------------------------------------------------------- | ------------------------------------------------------------ |
+| `packages/infrastructure/src/supabase/repositories/supabase-metrics.repository.ts`                | SupabaseMetricsRepository — lectura de client_metrics        |
+| `packages/infrastructure/src/supabase/repositories/supabase-alert.repository.ts`                  | SupabaseAlertRepository — lectura y mutación (RPC) de alerts |
+| `packages/infrastructure/src/supabase/repositories/supabase-task.repository.ts`                   | SupabaseTaskRepository — lectura y updateStatus de tasks     |
+| `packages/infrastructure/src/supabase/repositories/__tests__/supabase-metrics.repository.test.ts` | 20 tests unitarios para MetricsRepository                    |
+| `packages/infrastructure/src/supabase/repositories/__tests__/supabase-alert.repository.test.ts`   | 19 tests unitarios para AlertRepository                      |
+| `packages/infrastructure/src/supabase/repositories/__tests__/supabase-task.repository.test.ts`    | 23 tests unitarios para TaskRepository                       |
+| `apps/web/src/lib/composition/dashboard.composition.ts`                                           | Composition root — factory de repos y use cases              |
+| `apps/web/src/lib/composition/__tests__/dashboard.composition.test.ts`                            | 6 tests unitarios para el composition root                   |
 
 ---
 
 ## 2. Archivos modificados
 
-| Archivo | Cambio |
-|---|---|
-| `packages/infrastructure/src/index.ts` | Exporta los 3 repositorios nuevos |
+| Archivo                                                                                 | Cambio                                                                                           |
+| --------------------------------------------------------------------------------------- | ------------------------------------------------------------------------------------------------ |
+| `packages/infrastructure/src/index.ts`                                                  | Exporta los 3 repositorios nuevos                                                                |
 | `packages/application/src/use-cases/dashboard/get-agency-dashboard-summary.use-case.ts` | Calcula `overdueTasks` con query real vía `taskRepository.findByOrganization({ overdue: true })` |
 
 ---
@@ -65,37 +65,37 @@ Implementa `TaskRepository` completo incluyendo `updateStatus`.
 
 ### MetricsRepository
 
-| Método | Query | Devuelve |
-|---|---|---|
-| `findById` | `SELECT * WHERE id = ? AND org = ?` | `Result<Metric>` (con campaigns) |
-| `findByOrganization` | `SELECT summary_fields WHERE org = ? [+ filtros]` | `PaginatedResult<MetricSummary>` |
-| `findByClient` | Delega a `findByOrganization` con clientId | `PaginatedResult<MetricSummary>` |
-| `findLatestByClient` | `SELECT summary_fields WHERE client = ? AND org = ? ORDER BY period_start DESC LIMIT 1` | `Result<MetricSummary \| null>` |
-| `getAvailablePeriods` | `SELECT period_start, period_end WHERE org = ? ORDER BY period_start DESC` | `Result<AvailablePeriod[]>` |
-| `getOrganizationSummary` | `SELECT summary_fields WHERE org = ? LIMIT 500` + agregación TS | `Result<MetricOrganizationSummary>` |
+| Método                   | Query                                                                                   | Devuelve                            |
+| ------------------------ | --------------------------------------------------------------------------------------- | ----------------------------------- |
+| `findById`               | `SELECT * WHERE id = ? AND org = ?`                                                     | `Result<Metric>` (con campaigns)    |
+| `findByOrganization`     | `SELECT summary_fields WHERE org = ? [+ filtros]`                                       | `PaginatedResult<MetricSummary>`    |
+| `findByClient`           | Delega a `findByOrganization` con clientId                                              | `PaginatedResult<MetricSummary>`    |
+| `findLatestByClient`     | `SELECT summary_fields WHERE client = ? AND org = ? ORDER BY period_start DESC LIMIT 1` | `Result<MetricSummary \| null>`     |
+| `getAvailablePeriods`    | `SELECT period_start, period_end WHERE org = ? ORDER BY period_start DESC`              | `Result<AvailablePeriod[]>`         |
+| `getOrganizationSummary` | `SELECT summary_fields WHERE org = ? LIMIT 500` + agregación TS                         | `Result<MetricOrganizationSummary>` |
 
 ### AlertRepository
 
-| Método | Query | Devuelve |
-|---|---|---|
-| `findById` | `SELECT * WHERE id = ? AND org = ?` | `Result<Alert>` |
-| `findByOrganization` | `SELECT * WHERE org = ? [+ filtros] ORDER BY detected_at DESC` | `PaginatedResult<Alert>` |
-| `findActiveByOrganization` | `findByOrganization` con `status='active'` | `PaginatedResult<Alert>` |
-| `findByClient` | `findByOrganization` con `clientId` | `PaginatedResult<Alert>` |
-| `countBySeverity` | `SELECT severity WHERE org = ? AND status='active'` + conteo TS | `Result<AlertCountBySeverity>` |
-| `acknowledge` | Verificar org → RPC `acknowledge_alert(p_alert_id)` | `Result<void>` |
-| `resolve` | Verificar org → RPC `resolve_alert(p_alert_id)` | `Result<void>` |
+| Método                     | Query                                                           | Devuelve                       |
+| -------------------------- | --------------------------------------------------------------- | ------------------------------ |
+| `findById`                 | `SELECT * WHERE id = ? AND org = ?`                             | `Result<Alert>`                |
+| `findByOrganization`       | `SELECT * WHERE org = ? [+ filtros] ORDER BY detected_at DESC`  | `PaginatedResult<Alert>`       |
+| `findActiveByOrganization` | `findByOrganization` con `status='active'`                      | `PaginatedResult<Alert>`       |
+| `findByClient`             | `findByOrganization` con `clientId`                             | `PaginatedResult<Alert>`       |
+| `countBySeverity`          | `SELECT severity WHERE org = ? AND status='active'` + conteo TS | `Result<AlertCountBySeverity>` |
+| `acknowledge`              | Verificar org → RPC `acknowledge_alert(p_alert_id)`             | `Result<void>`                 |
+| `resolve`                  | Verificar org → RPC `resolve_alert(p_alert_id)`                 | `Result<void>`                 |
 
 ### TaskRepository
 
-| Método | Query | Devuelve |
-|---|---|---|
-| `findById` | `SELECT * WHERE id = ? AND org = ?` | `Result<Task>` |
-| `findByOrganization` | `SELECT * WHERE org = ? [+ filtros] ORDER BY due_date ASC` | `PaginatedResult<Task>` |
-| `findByClient` | `findByOrganization` con `clientId` | `PaginatedResult<Task>` |
-| `findUpcoming` | `SELECT * WHERE org = ? AND due_date <= future AND status NOT IN final` | `Result<Task[]>` |
-| `countByStatus` | `SELECT status WHERE org = ? AND deleted_at IS NULL` + conteo TS | `Result<TaskCountByStatus>` |
-| `updateStatus` | `UPDATE tasks SET status = ?, updated_by = ?, updated_at = ?` | `Result<Task>` |
+| Método               | Query                                                                   | Devuelve                    |
+| -------------------- | ----------------------------------------------------------------------- | --------------------------- |
+| `findById`           | `SELECT * WHERE id = ? AND org = ?`                                     | `Result<Task>`              |
+| `findByOrganization` | `SELECT * WHERE org = ? [+ filtros] ORDER BY due_date ASC`              | `PaginatedResult<Task>`     |
+| `findByClient`       | `findByOrganization` con `clientId`                                     | `PaginatedResult<Task>`     |
+| `findUpcoming`       | `SELECT * WHERE org = ? AND due_date <= future AND status NOT IN final` | `Result<Task[]>`            |
+| `countByStatus`      | `SELECT status WHERE org = ? AND deleted_at IS NULL` + conteo TS        | `Result<TaskCountByStatus>` |
+| `updateStatus`       | `UPDATE tasks SET status = ?, updated_by = ?, updated_at = ?`           | `Result<Task>`              |
 
 ---
 
@@ -116,7 +116,7 @@ const METRIC_SUMMARY_FIELDS =
 query
   .lt('due_date', now.toISOString())
   .not('due_date', 'is', null)
-  .in('status', ['pending', 'in_progress', 'blocked'])
+  .in('status', ['pending', 'in_progress', 'blocked']);
 ```
 
 ### Upcoming tasks
@@ -127,7 +127,7 @@ query
   .not('due_date', 'is', null)
   .not('status', 'in', '("done","cancelled")')
   .lte('due_date', future.toISOString())
-  .order('due_date', { ascending: true })
+  .order('due_date', { ascending: true });
 ```
 
 ### Dashboard Summary — queries paralelas (Promise.all)
@@ -154,12 +154,12 @@ Total: **5 queries paralelas**, sin N+1.
 
 ## 7. Estrategia de errores
 
-| Tipo de error | Código | Cuándo |
-|---|---|---|
-| Recurso no encontrado | `NOT_FOUND` | `findById` cuando `data === null` o `error` de Supabase |
+| Tipo de error          | Código           | Cuándo                                                      |
+| ---------------------- | ---------------- | ----------------------------------------------------------- |
+| Recurso no encontrado  | `NOT_FOUND`      | `findById` cuando `data === null` o `error` de Supabase     |
 | Error de base de datos | `INTERNAL_ERROR` | Cualquier error de Supabase en queries de lectura/escritura |
-| Acceso denegado (RPC) | `FORBIDDEN` | RPC retorna mensaje con 'permission' o 'role' |
-| Error de mapping | `INTERNAL_ERROR` | JSONB inválido al mapear entidad |
+| Acceso denegado (RPC)  | `FORBIDDEN`      | RPC retorna mensaje con 'permission' o 'role'               |
+| Error de mapping       | `INTERNAL_ERROR` | JSONB inválido al mapear entidad                            |
 
 **Comportamiento en listas:** `findByOrganization` y similares retornan `PaginatedResult` vacío (no `Result`) — ante error, devuelven `{ data: [], total: 0, ... }`. Esto evita que un error de BD rompa el dashboard completo.
 
@@ -174,11 +174,13 @@ Los errores de Supabase no se exponen directamente — se envuelven en mensajes 
 **Ubicación:** `apps/web/src/lib/composition/dashboard.composition.ts`
 
 **Patrón:** Factory function `createDashboardComposition(supabase: SupabaseClient)` que:
+
 - Instancia los 4 repositorios con el client recibido
 - Pre-enlaza los 4 use cases con sus dependencias
 - Retorna `{ repositories, useCases }` tipado
 
 **Uso desde Server Component:**
+
 ```typescript
 const supabase = await createServerSupabaseClient();
 const { useCases } = createDashboardComposition(supabase);
@@ -186,6 +188,7 @@ const result = await useCases.getAgencyDashboardSummary({ organizationId });
 ```
 
 **Use cases pre-enlazados:**
+
 - `getAgencyDashboardSummary`
 - `listAlerts`
 - `listTasks`
@@ -195,46 +198,46 @@ const result = await useCases.getAgencyDashboardSummary({ organizationId });
 
 ## 9. Tests agregados
 
-| Suite | Archivo | Tests nuevos |
-|---|---|---|
-| MetricsRepository | `supabase-metrics.repository.test.ts` | 20 |
-| AlertRepository | `supabase-alert.repository.test.ts` | 19 |
-| TaskRepository | `supabase-task.repository.test.ts` | 23 |
-| Composition root | `dashboard.composition.test.ts` | 6 |
-| **Total Phase 5B** | | **68** |
+| Suite              | Archivo                               | Tests nuevos |
+| ------------------ | ------------------------------------- | ------------ |
+| MetricsRepository  | `supabase-metrics.repository.test.ts` | 20           |
+| AlertRepository    | `supabase-alert.repository.test.ts`   | 19           |
+| TaskRepository     | `supabase-task.repository.test.ts`    | 23           |
+| Composition root   | `dashboard.composition.test.ts`       | 6            |
+| **Total Phase 5B** |                                       | **68**       |
 
 ---
 
 ## 10. Resultados de validación
 
-| Check | Resultado |
-|---|---|
-| `typecheck` — packages/shared | ✅ CLEAN |
-| `typecheck` — packages/domain | ✅ CLEAN |
-| `typecheck` — packages/application | ✅ CLEAN |
-| `typecheck` — packages/infrastructure | ✅ CLEAN |
-| `typecheck` — apps/web | ✅ CLEAN |
-| `lint` — repositorios nuevos | ✅ 0 errors, 0 warnings |
-| `lint` — composition root | ✅ 0 errors, 0 warnings |
-| `format:check` — archivos modificados | ✅ CLEAN |
-| `test` — packages/domain | ✅ 67/67 |
-| `test` — packages/application | ✅ 42/42 |
-| `test` — packages/infrastructure | ✅ 128/128 |
-| `test` — apps/web (composition) | ✅ 6/6 |
-| `test` — scripts/migrations/phase-4 | ✅ 317/317 |
+| Check                                 | Resultado               |
+| ------------------------------------- | ----------------------- |
+| `typecheck` — packages/shared         | ✅ CLEAN                |
+| `typecheck` — packages/domain         | ✅ CLEAN                |
+| `typecheck` — packages/application    | ✅ CLEAN                |
+| `typecheck` — packages/infrastructure | ✅ CLEAN                |
+| `typecheck` — apps/web                | ✅ CLEAN                |
+| `lint` — repositorios nuevos          | ✅ 0 errors, 0 warnings |
+| `lint` — composition root             | ✅ 0 errors, 0 warnings |
+| `format:check` — archivos modificados | ✅ CLEAN                |
+| `test` — packages/domain              | ✅ 67/67                |
+| `test` — packages/application         | ✅ 42/42                |
+| `test` — packages/infrastructure      | ✅ 128/128              |
+| `test` — apps/web (composition)       | ✅ 6/6                  |
+| `test` — scripts/migrations/phase-4   | ✅ 317/317              |
 
 ---
 
 ## 11. Total de tests
 
-| Paquete | Tests Phase 5A | Tests Phase 5B | Total |
-|---|---|---|---|
-| packages/domain | 67 | 0 | 67 |
-| packages/application | 42 | 0 | 42 |
-| packages/infrastructure | 66 | 62 | 128 |
-| apps/web | — | 6 | 6 |
-| scripts/migrations/phase-4 | 317 | 0 | 317 |
-| **TOTAL** | **492** | **68** | **560** |
+| Paquete                    | Tests Phase 5A | Tests Phase 5B | Total   |
+| -------------------------- | -------------- | -------------- | ------- |
+| packages/domain            | 67             | 0              | 67      |
+| packages/application       | 42             | 0              | 42      |
+| packages/infrastructure    | 66             | 62             | 128     |
+| apps/web                   | —              | 6              | 6       |
+| scripts/migrations/phase-4 | 317            | 0              | 317     |
+| **TOTAL**                  | **492**        | **68**         | **560** |
 
 > Phase 4 sigue en **317 passed** — sin regresiones.  
 > Phase 5A sigue estable — **175 passed** en domain + application + infrastructure (mappers).
@@ -243,13 +246,13 @@ const result = await useCases.getAgencyDashboardSummary({ organizationId });
 
 ## 12. Riesgos
 
-| Riesgo | Probabilidad | Impacto | Estado |
-|---|---|---|---|
-| `getOrganizationSummary` carga > 500 filas | Baja (actual: 4) | Medio | Mitigado con límite documentado |
-| `countBySeverity` / `countByStatus` lentos con muchos registros | Baja | Bajo | Candidatos a RPC |
-| `now` en overdue no inyectable externamente | Media | Bajo | Documentado como deuda técnica |
-| RPC `acknowledge_alert` falla por RLS | Baja | Medio | Manejo de error tipado en repositorio |
-| `mapSafe` oculta errores de JSONB corrupto | Media | Bajo | Loguear a través del use case en producción |
+| Riesgo                                                          | Probabilidad     | Impacto | Estado                                      |
+| --------------------------------------------------------------- | ---------------- | ------- | ------------------------------------------- |
+| `getOrganizationSummary` carga > 500 filas                      | Baja (actual: 4) | Medio   | Mitigado con límite documentado             |
+| `countBySeverity` / `countByStatus` lentos con muchos registros | Baja             | Bajo    | Candidatos a RPC                            |
+| `now` en overdue no inyectable externamente                     | Media            | Bajo    | Documentado como deuda técnica              |
+| RPC `acknowledge_alert` falla por RLS                           | Baja             | Medio   | Manejo de error tipado en repositorio       |
+| `mapSafe` oculta errores de JSONB corrupto                      | Media            | Bajo    | Loguear a través del use case en producción |
 
 ---
 
