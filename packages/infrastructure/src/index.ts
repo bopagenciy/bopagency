@@ -9,6 +9,11 @@ export { SupabaseOrganizationRepository } from './supabase/supabase-organization
 export { SupabaseUserProfileRepository } from './supabase/supabase-user-profile.repository';
 export { SupabaseClientRepository } from './supabase/supabase-client.repository';
 
+// Phase 5B repositories
+export { SupabaseMetricsRepository } from './supabase/repositories/supabase-metrics.repository';
+export { SupabaseAlertRepository } from './supabase/repositories/supabase-alert.repository';
+export { SupabaseTaskRepository } from './supabase/repositories/supabase-task.repository';
+
 // Mappers
 export {
   rowToOrganization,

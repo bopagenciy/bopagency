@@ -71,16 +71,25 @@ export async function getAgencyDashboardSummary(
 
   try {
     // Ejecutar consultas en paralelo para minimizar latencia
-    const [clientsResult, alertSeverityResult, taskCountResult, metricSummaryResult] =
-      await Promise.all([
-        clientRepository.findAll(
-          { organizationId, status: 'active', includeDeleted: false },
-          { pageSize: 1 }, // Solo necesitamos el total
-        ),
-        alertRepository.countBySeverity(organizationId),
-        taskRepository.countByStatus(organizationId),
-        metricsRepository.getOrganizationSummary(organizationId),
-      ]);
+    const [
+      clientsResult,
+      alertSeverityResult,
+      taskCountResult,
+      overdueTasksResult,
+      metricSummaryResult,
+    ] = await Promise.all([
+      clientRepository.findAll(
+        { organizationId, status: 'active', includeDeleted: false },
+        { pageSize: 1 }, // Solo necesitamos el total (count)
+      ),
+      alertRepository.countBySeverity(organizationId),
+      taskRepository.countByStatus(organizationId),
+      taskRepository.findByOrganization(
+        { organizationId, overdue: true },
+        { pageSize: 1 }, // Solo necesitamos el total (count)
+      ),
+      metricsRepository.getOrganizationSummary(organizationId),
+    ]);
 
     // Manejar errores de repositorios opcionales con fallbacks seguros
     const alertSeverity = alertSeverityResult.success
@@ -104,7 +113,8 @@ export async function getAgencyDashboardSummary(
         };
 
     const activeAlerts = alertSeverity.critical + alertSeverity.warning + alertSeverity.info;
-    const overdueTasks = 0; // Requiere findUpcoming — se implementa en Phase 5B con query dedicada
+    // overdueTasksResult es PaginatedResult (no Result), siempre tiene .total
+    const overdueTasks = overdueTasksResult.total;
 
     const summary: AgencyDashboardSummary = {
       activeClients: clientsResult.total,
