@@ -83,7 +83,7 @@ export default async function MetricsPage({ searchParams }: Props) {
   return (
     <>
       <Header breadcrumbs={[{ label: 'Métricas' }]} />
-      <main className="p-6 max-w-7xl mx-auto space-y-4">
+      <div className="p-6 max-w-7xl mx-auto space-y-4">
         <div className="flex flex-col sm:flex-row sm:items-center sm:justify-between gap-3">
           <div>
             <h1 className="text-lg font-semibold text-gray-900">Métricas</h1>
@@ -117,7 +117,7 @@ export default async function MetricsPage({ searchParams }: Props) {
             />
           </>
         )}
-      </main>
+      </div>
     </>
   );
 }

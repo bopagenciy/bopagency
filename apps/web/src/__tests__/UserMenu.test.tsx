@@ -18,6 +18,33 @@ vi.mock('next/image', () => ({
   ),
 }));
 
+// next/link → <a> con preventDefault para evitar "Not implemented: navigation" en jsdom.
+// Preserva href y el onClick original del componente.
+vi.mock('next/link', () => ({
+  default: ({
+    href,
+    children,
+    onClick,
+    ...props
+  }: {
+    href: string;
+    children: React.ReactNode;
+    onClick?: React.MouseEventHandler<HTMLAnchorElement>;
+    [key: string]: unknown;
+  }) => (
+    <a
+      href={href}
+      onClick={(e) => {
+        e.preventDefault();
+        onClick?.(e);
+      }}
+      {...props}
+    >
+      {children}
+    </a>
+  ),
+}));
+
 // ── Fixtures ─────────────────────────────────────────────────────────────────
 
 const user = {

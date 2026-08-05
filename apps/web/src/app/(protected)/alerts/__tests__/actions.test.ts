@@ -31,32 +31,43 @@
 import { describe, it, expect, vi, beforeEach } from 'vitest';
 import { ok, err } from '@bop-agency/shared';
 
-// ─── Mocks (hoisted por vitest) ────────────────────────────────────────────────
+// ─── Mocks hoisted (vi.hoisted garantiza inicialización antes que vi.mock) ────
 
-const mockRevalidatePath = vi.fn();
+const {
+  mockRevalidatePath,
+  mockRequireOrganization,
+  mockRequireOrganizationRole,
+  mockCreateServerSupabaseClient,
+  mockAcknowledgeAlert,
+  mockResolveAlert,
+  MockAlertRepository,
+} = vi.hoisted(() => ({
+  mockRevalidatePath: vi.fn(),
+  mockRequireOrganization: vi.fn(),
+  mockRequireOrganizationRole: vi.fn(),
+  mockCreateServerSupabaseClient: vi.fn(),
+  mockAcknowledgeAlert: vi.fn(),
+  mockResolveAlert: vi.fn(),
+  MockAlertRepository: vi.fn().mockImplementation(() => ({})),
+}));
+
 vi.mock('next/cache', () => ({ revalidatePath: mockRevalidatePath }));
 
-const mockRequireOrganization = vi.fn();
-const mockRequireOrganizationRole = vi.fn();
 vi.mock('@/lib/auth/server', () => ({
   requireOrganization: mockRequireOrganization,
   requireOrganizationRole: mockRequireOrganizationRole,
 }));
 
-const mockCreateServerSupabaseClient = vi.fn();
 vi.mock('@/lib/supabase/server', () => ({
   createServerSupabaseClient: mockCreateServerSupabaseClient,
 }));
 
-const mockAcknowledgeAlert = vi.fn();
-const mockResolveAlert = vi.fn();
 vi.mock('@bop-agency/application', () => ({
   acknowledgeAlert: mockAcknowledgeAlert,
   resolveAlert: mockResolveAlert,
   updateTaskStatus: vi.fn(),
 }));
 
-const MockAlertRepository = vi.fn().mockImplementation(() => ({}));
 vi.mock('@bop-agency/infrastructure', () => ({
   SupabaseAlertRepository: MockAlertRepository,
   SupabaseTaskRepository: vi.fn().mockImplementation(() => ({})),

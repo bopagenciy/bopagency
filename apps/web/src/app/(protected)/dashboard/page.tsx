@@ -65,7 +65,8 @@ export default async function DashboardPage() {
   return (
     <>
       <Header breadcrumbs={[{ label: 'Dashboard' }]} />
-      <main className="p-6 space-y-6">
+      <div className="p-6 space-y-6">
+        <h1 className="sr-only">Dashboard</h1>
         {/* KPI Cards */}
         {summaryError && (
           <RepositoryErrorState message="No se pudo cargar el resumen del dashboard." />
@@ -147,7 +148,7 @@ export default async function DashboardPage() {
             ))}
           </div>
         </div>
-      </main>
+      </div>
     </>
   );
 }

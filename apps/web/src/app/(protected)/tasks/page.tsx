@@ -56,7 +56,7 @@ export default async function TasksPage({ searchParams }: Props) {
   return (
     <>
       <Header breadcrumbs={[{ label: 'Tareas' }]} />
-      <main className="p-6 max-w-7xl mx-auto space-y-4">
+      <div className="p-6 max-w-7xl mx-auto space-y-4">
         <div className="flex flex-col sm:flex-row sm:items-center sm:justify-between gap-3">
           <div>
             <h1 className="text-lg font-semibold text-gray-900">Tareas</h1>
@@ -83,7 +83,7 @@ export default async function TasksPage({ searchParams }: Props) {
             />
           </>
         )}
-      </main>
+      </div>
     </>
   );
 }
