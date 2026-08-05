@@ -112,3 +112,95 @@ describe('AlertsTable', () => {
     expect(screen.getByRole('table', { name: /Lista de alertas/i })).toBeInTheDocument();
   });
 });
+
+// ─── Phase 6F: Automation alerts ──────────────────────────────────────────────
+
+describe('AlertsTable — Phase 6F automation source', () => {
+  const makeAutomationAlert = (overrides: Partial<Alert> = {}): Alert =>
+    makeAlert({
+      alertType: 'automation.dispatch_failed',
+      platform: null,
+      metadata: {
+        automationId: 'auto-uuid-abc',
+        executionId: 'exec-uuid-xyz',
+      },
+      title: 'Dispatch de automatización fallido',
+      ...overrides,
+    });
+
+  it('muestra badge ⚙️ Auto para alertas de automatización', () => {
+    render(<AlertsTable alerts={[makeAutomationAlert()]} userRole="viewer" />);
+    expect(screen.getByLabelText(/Alerta generada por automatización/i)).toBeInTheDocument();
+  });
+
+  it('NO muestra badge ⚙️ Auto para alertas no-automation', () => {
+    render(<AlertsTable alerts={[makeAlert({ alertType: 'ctr_drop' })]} userRole="viewer" />);
+    expect(screen.queryByLabelText(/Alerta generada por automatización/i)).not.toBeInTheDocument();
+  });
+
+  it('muestra "Automatización" en columna de plataforma para alertas de automation', () => {
+    render(<AlertsTable alerts={[makeAutomationAlert()]} userRole="viewer" />);
+    expect(screen.getByText('Automatización')).toBeInTheDocument();
+  });
+
+  it('no muestra plataforma de ads (Meta/Google) para alertas de automation', () => {
+    render(<AlertsTable alerts={[makeAutomationAlert()]} userRole="viewer" />);
+    expect(screen.queryByText('Meta')).not.toBeInTheDocument();
+    expect(screen.queryByText('Google')).not.toBeInTheDocument();
+  });
+
+  it('muestra enlace a la automatización cuando metadata.automationId está presente', () => {
+    render(<AlertsTable alerts={[makeAutomationAlert()]} userRole="viewer" />);
+    expect(screen.getByRole('link', { name: /Ver automatización relacionada/i })).toBeInTheDocument();
+  });
+
+  it('el enlace de automatización apunta a /automations/{id}', () => {
+    render(<AlertsTable alerts={[makeAutomationAlert()]} userRole="viewer" />);
+    const link = screen.getByRole('link', { name: /Ver automatización relacionada/i });
+    expect(link.getAttribute('href')).toBe('/automations/auto-uuid-abc');
+  });
+
+  it('muestra enlace de ejecución cuando metadata.executionId está presente', () => {
+    render(<AlertsTable alerts={[makeAutomationAlert()]} userRole="viewer" />);
+    expect(screen.getByRole('link', { name: /Ver ejecución relacionada/i })).toBeInTheDocument();
+  });
+
+  it('no muestra links de automatización cuando metadata no tiene automationId', () => {
+    render(
+      <AlertsTable
+        alerts={[makeAutomationAlert({ metadata: {} })]}
+        userRole="viewer"
+      />,
+    );
+    expect(screen.queryByRole('link', { name: /Ver automatización relacionada/i })).not.toBeInTheDocument();
+  });
+
+  it('no expone datos técnicos sensibles (stack trace, token) en el título visible', () => {
+    render(
+      <AlertsTable
+        alerts={[
+          makeAutomationAlert({
+            title: 'Dispatch de automatización fallido',
+            description: 'La automatización no pudo ser enviada al motor de workflows.',
+          }),
+        ]}
+        userRole="viewer"
+      />,
+    );
+    const content = document.body.textContent ?? '';
+    expect(content).not.toMatch(/Bearer/i);
+    expect(content).not.toMatch(/sk-[a-zA-Z0-9]/);
+    expect(content).not.toMatch(/Error\s*at\s+/);
+  });
+
+  it('alertas de automation y no-automation conviven sin conflicto en la misma tabla', () => {
+    const alerts = [
+      makeAutomationAlert({ id: 'a1' as AlertId, title: 'Alerta de automatización' }),
+      makeAlert({ id: 'a2' as AlertId, title: 'CTR bajo en Meta', alertType: 'ctr_drop' }),
+    ];
+    render(<AlertsTable alerts={alerts} userRole="viewer" />);
+    expect(screen.getByText('Alerta de automatización')).toBeInTheDocument();
+    expect(screen.getByText('CTR bajo en Meta')).toBeInTheDocument();
+    expect(screen.getAllByLabelText(/Alerta generada por automatización/i)).toHaveLength(1);
+  });
+});

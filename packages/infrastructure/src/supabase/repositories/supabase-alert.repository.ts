@@ -25,6 +25,8 @@ import type {
   AlertId,
   AlertRepository,
   AlertCountBySeverity,
+  CreateAlertInput,
+  UpsertAlertResult,
 } from '@bop-agency/domain';
 import type { ClientId, OrganizationId } from '@bop-agency/domain';
 import type { SupabaseClient } from '@supabase/supabase-js';
@@ -266,6 +268,147 @@ export class SupabaseAlertRepository implements AlertRepository {
 
     return ok(undefined);
   }
+  // ── Phase 6F: upsertByAlertKey ────────────────────────────────────────────────
+  //
+  // Usa INSERT ... ON CONFLICT (organization_id, alert_key) DO UPDATE.
+  // El trigger trg_alerts_70_audit_fields permite INSERTs y UPDATEs desde
+  // service_role (auth.uid() IS NULL) sin restricciones en audit fields.
+  // Para operaciones de automatización, siempre usar adminClient.
+
+  async upsertByAlertKey(input: CreateAlertInput): Promise<Result<UpsertAlertResult>> {
+    const now = new Date().toISOString();
+
+    // Intentar INSERT primero; en conflicto, el DO UPDATE actualiza campos editables.
+    const { data, error } = await this.supabase
+      .from('alerts')
+      .upsert(
+        {
+          organization_id: String(input.organizationId),
+          client_id: input.clientId ? String(input.clientId) : null,
+          alert_key: input.alertKey,
+          alert_type: input.alertType,
+          severity: input.severity,
+          status: 'active',
+          title: input.title,
+          description: input.description,
+          metadata: (input.metadata ?? {}) as Record<string, unknown>,
+          detected_at: now,
+          updated_at: now,
+        },
+        {
+          onConflict: 'organization_id,alert_key',
+          ignoreDuplicates: false,
+        },
+      )
+      .select('*')
+      .single();
+
+    if (error || !data) {
+      return err({
+        code: 'INTERNAL_ERROR' as const,
+        message: 'Error al crear o actualizar la alerta de automatización',
+        details: error?.code,
+      });
+    }
+
+    let alert: Alert;
+    try {
+      alert = rowToAlert(data as unknown as AlertRow);
+    } catch (mappingError) {
+      return err({
+        code: 'INTERNAL_ERROR' as const,
+        message: 'Error al procesar datos de alerta',
+        details: mappingError,
+      });
+    }
+
+    // Determinar si fue creación o actualización basándonos en created_at vs updated_at
+    const isNew = data.created_at === data.updated_at || !data.updated_at;
+
+    return ok({ alert, created: isNew });
+  }
+
+  // ── Phase 6F: findActiveByAlertKey ────────────────────────────────────────────
+
+  async findActiveByAlertKey(
+    alertKey: string,
+    organizationId: OrganizationId,
+  ): Promise<Result<Alert | null>> {
+    const { data, error } = await this.supabase
+      .from('alerts')
+      .select('*')
+      .eq('organization_id', String(organizationId))
+      .eq('alert_key', alertKey)
+      .eq('status', 'active')
+      .maybeSingle();
+
+    if (error) {
+      return err({
+        code: 'INTERNAL_ERROR' as const,
+        message: 'Error al buscar alerta por clave',
+        details: error.code,
+      });
+    }
+
+    if (!data) return ok(null);
+
+    try {
+      return ok(rowToAlert(data as unknown as AlertRow));
+    } catch (mappingError) {
+      return err({
+        code: 'INTERNAL_ERROR' as const,
+        message: 'Error al procesar datos de alerta',
+        details: mappingError,
+      });
+    }
+  }
+
+  // ── Phase 6F: resolveActiveByAlertKeyPrefixes ────────────────────────────────
+  //
+  // Resuelve alertas activas cuyo alert_key empiece con alguno de los prefijos.
+  // Requiere service_role (adminClient) para que auth.uid() IS NULL y el trigger
+  // permita actualizar resolved_at directamente.
+
+  async resolveActiveByAlertKeyPrefixes(
+    prefixes: string[],
+    organizationId: OrganizationId,
+    resolvedByLabel: string,
+  ): Promise<Result<number>> {
+    if (prefixes.length === 0) return ok(0);
+
+    const now = new Date().toISOString();
+    const safeLabel = resolvedByLabel.slice(0, 200).replace(/['"]/g, '');
+
+    // Construir filtro OR para los prefijos
+    // Supabase no tiene LIKE OR nativo, usamos .or() con múltiples condiciones
+    const likeConditions = prefixes
+      .map((p) => `alert_key.like.${p.replace(/[%_]/g, '')}%`)
+      .join(',');
+
+    const { data, error } = await this.supabase
+      .from('alerts')
+      .update({
+        status: 'resolved',
+        resolved_at: now,
+        resolved_by: safeLabel,
+        updated_at: now,
+      })
+      .eq('organization_id', String(organizationId))
+      .eq('status', 'active')
+      .or(likeConditions)
+      .select('id');
+
+    if (error) {
+      return err({
+        code: 'INTERNAL_ERROR' as const,
+        message: 'Error al resolver alertas por prefijo de clave',
+        details: error.code,
+      });
+    }
+
+    return ok(data?.length ?? 0);
+  }
+
 }
 
 // ─── Helpers ──────────────────────────────────────────────────────────────────

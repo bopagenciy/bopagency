@@ -99,3 +99,76 @@ describe('TasksTable', () => {
     expect(screen.getByRole('table', { name: /Lista de tareas/i })).toBeInTheDocument();
   });
 });
+
+// ─── Phase 6F: Automation tasks ───────────────────────────────────────────────
+
+describe('TasksTable — Phase 6F automation source', () => {
+  const makeAutomationTask = (overrides: Partial<Task> = {}): Task =>
+    makeTask({
+      tags: [
+        'automation',
+        'org:org-1',
+        'automation-id:auto-uuid-abc',
+        'incident:dispatch_failed',
+        'sig:org-1:auto-uuid-abc:dispatch_failed',
+      ],
+      title: 'Revisar conexión con motor de workflows',
+      priority: 'high',
+      ...overrides,
+    });
+
+  it('muestra badge ⚙️ Auto para tareas con tag automation', () => {
+    render(<TasksTable tasks={[makeAutomationTask()]} canMutate={false} />);
+    expect(screen.getByLabelText(/Tarea generada por automatización/i)).toBeInTheDocument();
+  });
+
+  it('NO muestra badge ⚙️ Auto para tareas sin tag automation', () => {
+    render(<TasksTable tasks={[makeTask({ tags: [] })]} canMutate={false} />);
+    expect(screen.queryByLabelText(/Tarea generada por automatización/i)).not.toBeInTheDocument();
+  });
+
+  it('muestra enlace a la automatización cuando tags contiene automation-id:{uuid}', () => {
+    render(<TasksTable tasks={[makeAutomationTask()]} canMutate={false} />);
+    expect(screen.getByRole('link', { name: /Ver automatización relacionada/i })).toBeInTheDocument();
+  });
+
+  it('el enlace de automatización apunta a /automations/{id}', () => {
+    render(<TasksTable tasks={[makeAutomationTask()]} canMutate={false} />);
+    const link = screen.getByRole('link', { name: /Ver automatización relacionada/i });
+    expect(link.getAttribute('href')).toBe('/automations/auto-uuid-abc');
+  });
+
+  it('no muestra enlace de automatización si no hay tag automation-id', () => {
+    render(
+      <TasksTable
+        tasks={[makeAutomationTask({ tags: ['automation'] })]}
+        canMutate={false}
+      />,
+    );
+    expect(screen.queryByRole('link', { name: /Ver automatización relacionada/i })).not.toBeInTheDocument();
+  });
+
+  it('tarea de automatización con canMutate=true muestra selector de estado', () => {
+    render(<TasksTable tasks={[makeAutomationTask({ status: 'pending' })]} canMutate={true} />);
+    expect(screen.getByRole('combobox')).toBeInTheDocument();
+  });
+
+  it('tarea de automatización y tarea normal conviven sin conflicto', () => {
+    const tasks = [
+      makeAutomationTask({ id: 't1' as TaskId, title: 'Tarea de auto' }),
+      makeTask({ id: 't2' as TaskId, title: 'Tarea manual', tags: [] }),
+    ];
+    render(<TasksTable tasks={tasks} canMutate={false} />);
+    expect(screen.getByText('Tarea de auto')).toBeInTheDocument();
+    expect(screen.getByText('Tarea manual')).toBeInTheDocument();
+    expect(screen.getAllByLabelText(/Tarea generada por automatización/i)).toHaveLength(1);
+  });
+
+  it('no expone datos técnicos (signatureTag, orgId) en el contenido visible', () => {
+    render(<TasksTable tasks={[makeAutomationTask()]} canMutate={false} />);
+    const content = document.body.textContent ?? '';
+    expect(content).not.toContain('sig:org-1:auto-uuid-abc');
+    expect(content).not.toContain('automation-id:');
+    expect(content).not.toContain('org:org-1');
+  });
+});

@@ -32,6 +32,8 @@ import {
   SupabaseAlertRepository,
   SupabaseTaskRepository,
   SupabaseMetricsRepository,
+  SupabaseAutomationRepository,
+  SupabaseAutomationExecutionRepository,
   consoleLogger,
 } from '@bop-agency/infrastructure';
 import {
@@ -42,6 +44,8 @@ import {
   listTasks,
   updateTaskStatus,
   listClientMetrics,
+  listAutomations,
+  listAutomationExecutions,
 } from '@bop-agency/application';
 import type {
   GetAgencyDashboardSummaryInput,
@@ -51,16 +55,20 @@ import type {
   ListTasksInput,
   UpdateTaskStatusInput,
   ListClientMetricsInput,
+  ListAutomationsInput,
+  ListAutomationExecutionsInput,
 } from '@bop-agency/application';
 
 // ─── Factory ──────────────────────────────────────────────────────────────────
 
 export function createDashboardComposition(supabase: SupabaseClient) {
   // ── Repositorios ────────────────────────────────────────────────────────────
-  const clientRepository = new SupabaseClientRepository(supabase);
-  const alertRepository = new SupabaseAlertRepository(supabase);
-  const taskRepository = new SupabaseTaskRepository(supabase);
-  const metricsRepository = new SupabaseMetricsRepository(supabase);
+  const clientRepository     = new SupabaseClientRepository(supabase);
+  const alertRepository      = new SupabaseAlertRepository(supabase);
+  const taskRepository       = new SupabaseTaskRepository(supabase);
+  const metricsRepository    = new SupabaseMetricsRepository(supabase);
+  const automationRepository = new SupabaseAutomationRepository(supabase);
+  const executionRepository  = new SupabaseAutomationExecutionRepository(supabase);
 
   const logger = consoleLogger;
 
@@ -98,6 +106,16 @@ export function createDashboardComposition(supabase: SupabaseClient) {
     // Metrics
     listClientMetrics: (input: ListClientMetricsInput) =>
       listClientMetrics(input, { metricsRepository, logger }),
+
+    // Phase 6F: Automation signals for dashboard
+    listAutomations: (input: ListAutomationsInput) =>
+      listAutomations(input, { automationRepository, logger }),
+
+    listAutomationExecutions: (input: ListAutomationExecutionsInput) =>
+      listAutomationExecutions(input, { executionRepository, logger }),
+
+    countAutomationExecutionsByStatus: (organizationId: string) =>
+      executionRepository.countByStatus(organizationId as Parameters<typeof executionRepository.countByStatus>[0]),
   };
 
   return {
@@ -106,6 +124,8 @@ export function createDashboardComposition(supabase: SupabaseClient) {
       alertRepository,
       taskRepository,
       metricsRepository,
+      automationRepository,
+      executionRepository,
     },
     useCases,
   };

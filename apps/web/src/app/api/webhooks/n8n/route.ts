@@ -42,6 +42,10 @@ import { createAdminClient } from '@/lib/supabase/server';
 import { parseCallbackPayload, EVENT_TYPE_TO_STATUS } from './payload.schema';
 import { canTransitionExecution } from '@bop-agency/domain';
 import type { AutomationExecutionStatus } from '@bop-agency/domain';
+import { evaluateAutomationIncident } from '@bop-agency/application';
+import type { IncidentEventType } from '@bop-agency/application';
+import type { OrganizationId, AutomationId, AutomationExecutionId, ClientId } from '@bop-agency/domain';
+import { SupabaseAlertRepository, SupabaseTaskRepository } from '@bop-agency/infrastructure';
 
 // ─── Response helpers ─────────────────────────────────────────────────────────
 
@@ -307,6 +311,17 @@ export async function POST(request: NextRequest): Promise<Response> {
     });
   // No fallar si el log falla — la actualización de estado ya fue exitosa
 
+  // ── PASO 11b: Phase 6F — Evaluación de incidentes (best-effort) ─────────────
+  // Solo para failed o succeeded — no para running/queued intermedios.
+  if (newStatus === 'failed' || newStatus === 'succeeded') {
+    await evaluateWebhookIncidentSilently({
+      newStatus,
+      payload,
+      clientId: null, // best-effort: clientId lookup skipped to avoid Supabase TS SelectQueryError
+      adminClient,
+    });
+  }
+
   // ── PASO 12: Marcar webhook_event como processed ───────────────────────────
   await markWebhookProcessed(adminClient, webhookEventId, payload.eventType);
 
@@ -314,9 +329,77 @@ export async function POST(request: NextRequest): Promise<Response> {
   return ok();
 }
 
-// ─── Helpers ──────────────────────────────────────────────────────────────────
+// ─── Phase 6F: Incident evaluation ───────────────────────────────────────────
 
 type AdminClient = ReturnType<typeof createAdminClient>;
+
+/**
+ * Evalúa el incidente de automatización en modo best-effort.
+ * Nunca bloquea el flujo principal del webhook.
+ * Usa adminClient para que auth.uid() IS NULL y el trigger permita
+ * INSERTs/UPDATEs directos en alerts y tasks.
+ */
+async function evaluateWebhookIncidentSilently(params: {
+  newStatus: AutomationExecutionStatus;
+  payload: {
+    executionId: string;
+    organizationId: string;
+    automationId: string;
+    errorCode?: string | null | undefined;
+    errorMessage?: string | null | undefined;
+    attempt: number;
+  };
+  clientId: string | null;
+  adminClient: AdminClient;
+}): Promise<void> {
+  const { newStatus, payload, clientId, adminClient } = params;
+  try {
+    // clientId ya resuelto por el caller desde el fetch de PASO 9.
+    // Crear repos usando el adminClient (service_role).
+    // auth.uid() IS NULL en service_role → trigger permite UPDATE de audit fields.
+    // eslint-disable-next-line @typescript-eslint/no-explicit-any
+    const alertRepository = new SupabaseAlertRepository(adminClient as any);
+    // eslint-disable-next-line @typescript-eslint/no-explicit-any
+    const taskRepository  = new SupabaseTaskRepository(adminClient as any);
+
+    const eventType: IncidentEventType = newStatus === 'succeeded' ? 'execution_succeeded' : 'execution_failed';
+
+    await evaluateAutomationIncident(
+      {
+        organizationId: payload.organizationId as OrganizationId,
+        automationId:   payload.automationId   as AutomationId,
+        executionId:    payload.executionId     as AutomationExecutionId,
+        clientId:       clientId as ClientId | null,
+        eventType,
+        errorCode:      payload.errorCode ?? null,
+        safeErrorMessage: payload.errorMessage
+          ? payload.errorMessage.slice(0, 200)
+          : null,
+        occurredAt: new Date(),
+      },
+      {
+        alertRepository,
+        taskRepository,
+        logger: {
+          debug: () => { /* no-op in webhook context */ },
+          info:  () => { /* no-op in webhook context */ },
+          warn:  (msg, ctx) => console.warn('[webhook/n8n/6F]', msg, ctx ?? {}),
+          error: (msg, ctx) => console.error('[webhook/n8n/6F]', msg, ctx ?? {}),
+        },
+      },
+    );
+  } catch (e) {
+    // Best-effort: no propagar error al caller
+    console.warn('[webhook/n8n/6F] incident evaluation failed silently', {
+      executionId: params.payload.executionId,
+      error: String(e),
+    });
+  }
+}
+
+// ─── Helpers ──────────────────────────────────────────────────────────────────
+
+
 
 async function markWebhookProcessed(
   client: AdminClient,

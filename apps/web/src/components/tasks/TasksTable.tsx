@@ -7,6 +7,22 @@ import { EmptyState } from '@/components/common/EmptyState';
 import type { Task } from '@bop-agency/domain';
 import { isTaskOverdue } from '@bop-agency/domain';
 
+// ─── Phase 6F: Automation task helpers ────────────────────────────────────────
+
+/** Retorna true si la tarea fue creada por el evaluador de automatizaciones. */
+function isAutomationTask(tags: string[]): boolean {
+  return tags.includes('automation');
+}
+
+/**
+ * Extrae el automationId de los tags de la tarea.
+ * Tags con formato 'automation-id:{uuid}'.
+ */
+function getAutomationTaskLink(tags: string[]): string | null {
+  const tag = tags.find((t) => t.startsWith('automation-id:'));
+  return tag ? tag.replace('automation-id:', '') : null;
+}
+
 type TasksTableProps = {
   tasks: Task[];
   /** Si el usuario puede cambiar estados (operador+). */
@@ -51,11 +67,30 @@ export function TasksTable({ tasks, canMutate }: TasksTableProps) {
               <tr key={task.id} className="hover:bg-gray-50 transition-colors">
                 <td className="px-4 py-3">
                   <div>
-                    <p className="font-medium text-gray-900">{task.title}</p>
+                    <div className="flex items-center gap-2">
+                      <p className="font-medium text-gray-900">{task.title}</p>
+                      {isAutomationTask(task.tags) && (
+                        <span
+                          className="inline-flex items-center px-1.5 py-0.5 rounded text-xs font-medium bg-purple-100 text-purple-700"
+                          aria-label="Tarea generada por automatización"
+                        >
+                          ⚙️ Auto
+                        </span>
+                      )}
+                    </div>
                     {task.description && (
                       <p className="text-xs text-gray-400 mt-0.5 truncate max-w-xs">
                         {task.description}
                       </p>
+                    )}
+                    {isAutomationTask(task.tags) && getAutomationTaskLink(task.tags) && (
+                      <a
+                        href={`/automations/${getAutomationTaskLink(task.tags)}`}
+                        className="text-xs text-purple-600 hover:text-purple-800 underline mt-0.5 block"
+                        aria-label="Ver automatización relacionada"
+                      >
+                        Ver automatización →
+                      </a>
                     )}
                   </div>
                 </td>

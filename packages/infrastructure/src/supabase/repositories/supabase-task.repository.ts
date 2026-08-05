@@ -29,6 +29,7 @@ import type {
   TaskId,
   TaskRepository,
   TaskCountByStatus,
+  CreateTaskInput,
 } from '@bop-agency/domain';
 import type { ClientId, OrganizationId } from '@bop-agency/domain';
 import type { SupabaseClient } from '@supabase/supabase-js';
@@ -287,6 +288,79 @@ export class SupabaseTaskRepository implements TaskRepository {
       });
     }
   }
+  // ── Phase 6F: create ──────────────────────────────────────────────────────────
+
+  async create(input: CreateTaskInput): Promise<Result<Task>> {
+    const now = new Date().toISOString();
+
+    const { data, error } = await this.supabase
+      .from('tasks')
+      .insert({
+        organization_id: String(input.organizationId),
+        client_id: input.clientId ?? null,
+        title: input.title,
+        description: input.description ?? null,
+        status: 'pending',
+        priority: input.priority ?? 'medium',
+        tags: input.tags ?? [],
+        due_date: input.dueDate ? input.dueDate.toISOString() : null,
+        created_by: input.createdBy ?? null,
+        created_at: now,
+        updated_at: now,
+      })
+      .select('*')
+      .single();
+
+    if (error || !data) {
+      return err({
+        code: 'INTERNAL_ERROR' as const,
+        message: 'Error al crear la tarea operativa',
+        details: error?.code,
+      });
+    }
+
+    try {
+      return ok(rowToTask(data as unknown as TaskRow));
+    } catch (mappingError) {
+      return err({
+        code: 'INTERNAL_ERROR' as const,
+        message: 'Error al procesar datos de tarea',
+        details: mappingError,
+      });
+    }
+  }
+
+  // ── Phase 6F: findActiveBySignatureTag ────────────────────────────────────────
+  //
+  // Busca tareas activas (pending/in_progress/blocked) que contengan
+  // el tag de firma exacto. Usado para deduplicar tareas automáticas.
+
+  async findActiveBySignatureTag(
+    signatureTag: string,
+    organizationId: OrganizationId,
+  ): Promise<Result<Task[]>> {
+    const activeStatuses = ['pending', 'in_progress', 'blocked'];
+
+    const { data, error } = await this.supabase
+      .from('tasks')
+      .select('*')
+      .eq('organization_id', String(organizationId))
+      .in('status', activeStatuses)
+      .is('deleted_at', null)
+      .contains('tags', [signatureTag]);
+
+    if (error) {
+      return err({
+        code: 'INTERNAL_ERROR' as const,
+        message: 'Error al buscar tareas por tag de firma',
+        details: error.code,
+      });
+    }
+
+    const tasks = mapSafe(data ?? [], (row) => rowToTask(row as unknown as TaskRow));
+    return ok(tasks);
+  }
+
 }
 
 // ─── Helpers ──────────────────────────────────────────────────────────────────

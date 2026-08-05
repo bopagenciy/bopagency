@@ -194,3 +194,29 @@ export type {
   DispatchResult,
   DispatchPayload,
 } from './ports/workflow-dispatcher.port';
+
+// Phase 6F — Automation incident evaluation
+export { evaluateAutomationIncident } from './use-cases/automations/evaluate-automation-incident.use-case';
+export type {
+  EvaluateAutomationIncidentInput,
+  EvaluateAutomationIncidentOutput,
+  EvaluateAutomationIncidentDeps,
+  IncidentEventType,
+} from './use-cases/automations/evaluate-automation-incident.use-case';
+
+export { evaluateStuckAutomationExecutions, systemClock } from './use-cases/automations/evaluate-stuck-automation-executions.use-case';
+export type {
+  EvaluateStuckAutomationExecutionsInput,
+  EvaluateStuckAutomationExecutionsDeps,
+  StuckExecutionSummary,
+  ClockPort,
+} from './use-cases/automations/evaluate-stuck-automation-executions.use-case';
+
+// Phase 6F — Incident severity and signatures (re-exported for consumers)
+export {
+  classifyErrorCode,
+  getAlertSeverityForIncident,
+  getTaskPriorityForIncident,
+  isRecoverableIncident,
+} from './use-cases/automations/automation-incident-severity';
+export type { AutomationIncidentType } from './use-cases/automations/automation-incident-severity';

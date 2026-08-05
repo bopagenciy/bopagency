@@ -5,7 +5,7 @@
 import { describe, it, expect, beforeEach } from 'vitest';
 import { listAlerts } from '../use-cases/alerts/list-alerts.use-case';
 import type { ListAlertsInput, ListAlertsDeps } from '../use-cases/alerts/list-alerts.use-case';
-import type { AlertRepository } from '@bop-agency/domain';
+import type { AlertRepository, UpsertAlertResult, CreateAlertInput } from '@bop-agency/domain';
 import type { Alert, AlertFilter, AlertId } from '@bop-agency/domain';
 import type { PaginatedResult, PaginationParams, Result } from '@bop-agency/shared';
 import type { AlertCountBySeverity } from '@bop-agency/domain';
@@ -102,6 +102,18 @@ class FakeAlertRepository implements AlertRepository {
 
   async resolve(_id: AlertId, _orgId: Alert['organizationId']): Promise<Result<void>> {
     return ok(undefined);
+  }
+
+  async upsertByAlertKey(_input: CreateAlertInput): Promise<Result<UpsertAlertResult>> {
+    return ok({ alert: makeAlert(), created: true });
+  }
+
+  async findActiveByAlertKey(_key: string, _orgId: Alert['organizationId']): Promise<Result<Alert | null>> {
+    return ok(null);
+  }
+
+  async resolveActiveByAlertKeyPrefixes(_prefixes: string[], _orgId: Alert['organizationId'], _resolvedBy: string): Promise<Result<number>> {
+    return ok(0);
   }
 }
 

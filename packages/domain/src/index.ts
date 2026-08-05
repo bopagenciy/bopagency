@@ -162,3 +162,11 @@ export type {
   CreateExecutionLogInput,
   ExecutionLog,
 } from './repositories/execution-log.repository';
+
+// Phase 6F — Extended repository types
+export type {
+  CreateAlertInput,
+  UpsertAlertResult,
+  CreateTaskForAutomationInput,
+} from './repositories/alert.repository';
+export type { CreateTaskInput } from './repositories/task.repository';

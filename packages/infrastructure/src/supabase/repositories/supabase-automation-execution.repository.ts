@@ -352,6 +352,58 @@ export class SupabaseAutomationExecutionRepository implements AutomationExecutio
 
     return ok(mutable);
   }
+  // ── Phase 6F: listStuckCandidates ─────────────────────────────────────────────
+  //
+  // Devuelve ejecuciones en estado queued/running cuya fecha de inicio o encolado
+  // sea anterior a `olderThan`. Usado por EvaluateStuckAutomationExecutionsUseCase.
+
+  async listStuckCandidates(
+    organizationId: OrganizationId,
+    statuses: ('queued' | 'running')[],
+    olderThan: Date,
+    pageSize: number,
+    page: number = 1,
+  ): Promise<PaginatedResult<AutomationExecution>> {
+    const from = (page - 1) * pageSize;
+    const to   = from + pageSize - 1;
+
+    let query = this.supabase
+      .from('automation_executions')
+      .select('*', { count: 'exact' })
+      .eq('organization_id', String(organizationId))
+      .in('status', statuses);
+
+    // Para queued: queuedAt < olderThan
+    // Para running: startedAt < olderThan (fallback a queuedAt)
+    // Supabase no soporta OR condicional por fila fácilmente, usamos queued_at
+    // como proxy seguro (siempre está definido)
+    query = query.lt('queued_at', olderThan.toISOString());
+
+    const { data, error, count } = await query
+      .order('queued_at', { ascending: true })
+      .range(from, to);
+
+    if (error) {
+      return emptyPaginatedResult(page, pageSize);
+    }
+
+    const total = count ?? 0;
+    const totalPages = pageSize > 0 ? Math.ceil(total / pageSize) : 0;
+    const items = mapSafe(data ?? [], (row) =>
+      rowToAutomationExecution(row as unknown as AutomationExecutionRow),
+    );
+
+    return {
+      data: items,
+      total,
+      page,
+      pageSize,
+      totalPages,
+      hasNextPage: page < totalPages,
+      hasPreviousPage: page > 1,
+    };
+  }
+
 }
 
 // ─── Helpers ──────────────────────────────────────────────────────────────────

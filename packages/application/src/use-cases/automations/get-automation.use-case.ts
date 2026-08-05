@@ -5,7 +5,6 @@
  * Requiere organizationId para garantizar aislamiento multi-tenant.
  */
 
-import { ok } from '@bop-agency/shared';
 import type { Result } from '@bop-agency/shared';
 import type { Automation, AutomationId } from '@bop-agency/domain';
 import type { OrganizationId } from '@bop-agency/domain';

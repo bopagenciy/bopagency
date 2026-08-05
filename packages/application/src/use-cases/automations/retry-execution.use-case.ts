@@ -46,6 +46,8 @@ import {
   maxAttemptsReached,
 } from '@bop-agency/domain';
 import type { WorkflowDispatcherPort } from '../../ports/workflow-dispatcher.port';
+import type { AlertRepository, TaskRepository } from '@bop-agency/domain';
+import { evaluateAutomationIncident } from './evaluate-automation-incident.use-case';
 import type { LoggerPort } from '../../ports/logger.port';
 
 // ─── Constants ────────────────────────────────────────────────────────────────
@@ -101,6 +103,9 @@ export type RetryAutomationExecutionDeps = {
   executionLogRepository: ExecutionLogRepository;
   dispatcher: WorkflowDispatcherPort;
   logger: LoggerPort;
+  /** Phase 6F: opcional. Si se provee, se evalúan incidentes best-effort. */
+  alertRepository?: AlertRepository;
+  taskRepository?: TaskRepository;
 };
 
 // ─── Use case ─────────────────────────────────────────────────────────────────
@@ -142,6 +147,22 @@ export async function retryAutomationExecution(
   const maxAttempts = automation.retryPolicy.maxAttempts;
 
   if (!canRetryExecution(previous, maxAttempts)) {
+    // ── Phase 6F: MAX_ATTEMPTS_REACHED — evaluar incidente best-effort ──────────
+    if (deps.alertRepository && deps.taskRepository) {
+      await evalRetryIncidentSilently({
+        organizationId,
+        automationId: previous.automationId,
+        executionId,
+        clientId: previous.clientId,
+        eventType: 'max_attempts_reached',
+        errorCode: 'MAX_ATTEMPTS_REACHED',
+        safeErrorMessage: `Max retry attempts reached (attempt ${previous.attempt} of ${maxAttempts}).`,
+        occurredAt: new Date(),
+        alertRepository: deps.alertRepository,
+        taskRepository: deps.taskRepository,
+        logger: deps.logger,
+      });
+    }
     return err(maxAttemptsReached(previous.attempt, maxAttempts));
   }
 
@@ -413,5 +434,31 @@ async function logSilently(
     await repo.log(input);
   } catch (e) {
     logger.warn('retryAutomationExecution: log failed silently', { error: String(e) });
+  }
+}
+
+// ─── Phase 6F: best-effort incident evaluation ────────────────────────────────
+
+async function evalRetryIncidentSilently(params: {
+  organizationId: Parameters<typeof evaluateAutomationIncident>[0]['organizationId'];
+  automationId: Parameters<typeof evaluateAutomationIncident>[0]['automationId'];
+  executionId: Parameters<typeof evaluateAutomationIncident>[0]['executionId'];
+  clientId: Parameters<typeof evaluateAutomationIncident>[0]['clientId'];
+  eventType: Parameters<typeof evaluateAutomationIncident>[0]['eventType'];
+  errorCode: string | null;
+  safeErrorMessage: string | null;
+  occurredAt: Date;
+  alertRepository: AlertRepository;
+  taskRepository: TaskRepository;
+  logger: LoggerPort;
+}): Promise<void> {
+  const { alertRepository, taskRepository, logger, ...incidentInput } = params;
+  try {
+    await evaluateAutomationIncident(incidentInput, { alertRepository, taskRepository, logger });
+  } catch (e) {
+    logger.warn('evalRetryIncidentSilently: incident evaluation threw', {
+      error: String(e),
+      automationId: String(params.automationId),
+    });
   }
 }

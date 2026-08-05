@@ -1,15 +1,16 @@
 /**
  * AutomationExecutionRepository — contrato de dominio para la tabla
- * `public.automation_executions` (a crear en Phase 6B).
+ * `public.automation_executions` (creada en Phase 6B).
  *
- * Phase 6A — nueva interfaz.
+ * Phase 6A: interfaz inicial.
+ * Phase 6F: añadido listStuckCandidates para evaluación de ejecuciones atascadas.
  *
  * Reglas de seguridad:
  * - organizationId requerido en todas las firmas.
  * - No se almacenan secretos ni payloads sin sanitizar.
  *   Los campos `inputMetadata`/`outputMetadata` del entity deben
  *   ser sanitizados por el adaptador antes de persistir.
- * - `getByIdempotencyKey` recibe organizationId para evitar
+ * - `findByIdempotencyKey` recibe organizationId para evitar
  *   cross-tenant key collision.
  */
 
@@ -60,17 +61,14 @@ export type UpdateExecutionStatusInput = {
 export interface AutomationExecutionRepository {
   /**
    * Crea una nueva ejecución con status inicial 'queued'.
-   * Falla si ya existe una ejecución con la misma idempotencyKey
+   * Falla con CONFLICT si ya existe una ejecución con la misma idempotencyKey
    * en la misma organización (deduplicación).
    */
-  create(
-    input: CreateExecutionInput,
-  ): Promise<Result<AutomationExecution>>;
+  create(input: CreateExecutionInput): Promise<Result<AutomationExecution>>;
 
   /**
    * Actualiza el status y campos de auditoría de una ejecución.
    * Verifica que pertenezca a organizationId antes de modificar.
-   * No valida transiciones — esa responsabilidad es del use case.
    */
   updateStatus(
     id: AutomationExecutionId,
@@ -81,7 +79,6 @@ export interface AutomationExecutionRepository {
   /**
    * Busca una ejecución por ID.
    * Requiere organizationId para aislamiento multi-tenant.
-   * Retorna NOT_FOUND si no existe o no pertenece a la organización.
    */
   findById(
     id: AutomationExecutionId,
@@ -91,7 +88,6 @@ export interface AutomationExecutionRepository {
   /**
    * Busca una ejecución por su clave de idempotencia.
    * Retorna null (no error) si no existe — usado para deduplicación.
-   * Requiere organizationId para no filtrar a través de tenants.
    */
   findByIdempotencyKey(
     key: IdempotencyKey,
@@ -100,8 +96,6 @@ export interface AutomationExecutionRepository {
 
   /**
    * Lista ejecuciones de una automatización específica.
-   * Requiere automationId + organizationId.
-   * Ordenadas por queuedAt DESC por defecto.
    */
   findByAutomation(
     automationId: AutomationId,
@@ -120,11 +114,28 @@ export interface AutomationExecutionRepository {
 
   /**
    * Cuenta ejecuciones agrupadas por status.
-   * Opcionalmente filtrado por automationId.
-   * Usado en KPIs de dashboard y health checks.
    */
   countByStatus(
     organizationId: OrganizationId,
     automationId?: AutomationId,
   ): Promise<Result<AutomationExecutionCountByStatus>>;
+
+  // ── Phase 6F: Stuck execution detection ──────────────────────────────────────
+
+  /**
+   * Lista ejecuciones en estado queued/running cuya fecha de inicio o encolado
+   * sea anterior a `olderThan`. Usado por EvaluateStuckAutomationExecutionsUseCase.
+   *
+   * - Para 'queued': compara queuedAt < olderThan.
+   * - Para 'running': compara startedAt < olderThan (fallback a queuedAt si null).
+   * - Requiere organizationId para aislamiento multi-tenant.
+   * - Soporta paginación para procesar grandes volúmenes sin N+1.
+   */
+  listStuckCandidates(
+    organizationId: OrganizationId,
+    statuses: ('queued' | 'running')[],
+    olderThan: Date,
+    pageSize: number,
+    page?: number,
+  ): Promise<PaginatedResult<AutomationExecution>>;
 }

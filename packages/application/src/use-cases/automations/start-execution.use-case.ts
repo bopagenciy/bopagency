@@ -54,6 +54,9 @@ import {
   dispatchFailed,
 } from '@bop-agency/domain';
 import type { WorkflowDispatcherPort } from '../../ports/workflow-dispatcher.port';
+import type { AlertRepository } from '@bop-agency/domain';
+import type { TaskRepository } from '@bop-agency/domain';
+import { evaluateAutomationIncident } from './evaluate-automation-incident.use-case';
 import type { LoggerPort } from '../../ports/logger.port';
 
 // ─── Input / Output ───────────────────────────────────────────────────────────
@@ -101,6 +104,9 @@ export type StartAutomationExecutionDeps = {
   executionLogRepository: ExecutionLogRepository;
   dispatcher: WorkflowDispatcherPort;
   logger: LoggerPort;
+  /** Phase 6F: opcional. Si se provee, se evalúan incidentes best-effort. */
+  alertRepository?: AlertRepository;
+  taskRepository?: TaskRepository;
 };
 
 // ─── Use case ─────────────────────────────────────────────────────────────────
@@ -321,6 +327,23 @@ export async function startAutomationExecution(
     ));
   }
 
+  // ── Phase 6F: Evaluar incidente best-effort ─────────────────────────────────
+  if (deps.alertRepository && deps.taskRepository) {
+    await evalIncidentSilently({
+      organizationId,
+      automationId,
+      executionId: execution.id,
+      clientId: input.clientId,
+      eventType: 'dispatch_failed',
+      errorCode: 'DISPATCH_FAILED',
+      safeErrorMessage: 'Dispatch to workflow engine failed.',
+      occurredAt: new Date(),
+      alertRepository: deps.alertRepository,
+      taskRepository: deps.taskRepository,
+      logger: deps.logger,
+    });
+  }
+
   // Devolver la ejecución como failed (permite retry posterior)
   return ok({
     execution: failResult.value,
@@ -369,5 +392,31 @@ async function logSilently(
     await repo.log(input);
   } catch (e) {
     logger.warn('startAutomationExecution: log failed silently', { error: String(e) });
+  }
+}
+
+// ─── Phase 6F: best-effort incident evaluation ────────────────────────────────
+
+async function evalIncidentSilently(params: {
+  organizationId: Parameters<typeof evaluateAutomationIncident>[0]['organizationId'];
+  automationId: Parameters<typeof evaluateAutomationIncident>[0]['automationId'];
+  executionId: Parameters<typeof evaluateAutomationIncident>[0]['executionId'];
+  clientId: Parameters<typeof evaluateAutomationIncident>[0]['clientId'];
+  eventType: Parameters<typeof evaluateAutomationIncident>[0]['eventType'];
+  errorCode: string | null;
+  safeErrorMessage: string | null;
+  occurredAt: Date;
+  alertRepository: AlertRepository;
+  taskRepository: TaskRepository;
+  logger: LoggerPort;
+}): Promise<void> {
+  const { alertRepository, taskRepository, logger, ...incidentInput } = params;
+  try {
+    await evaluateAutomationIncident(incidentInput, { alertRepository, taskRepository, logger });
+  } catch (e) {
+    logger.warn('evalIncidentSilently: incident evaluation threw unexpectedly', {
+      error: String(e),
+      automationId: String(params.automationId),
+    });
   }
 }

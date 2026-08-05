@@ -93,6 +93,14 @@ class FakeTaskRepository implements TaskRepository {
     const updated = { ...task, status, updatedBy };
     return ok(updated);
   }
+
+  async create(_input: unknown): Promise<Result<Task>> {
+    return ok(makeTask());
+  }
+
+  async findActiveBySignatureTag(_tag: string, _orgId: Task['organizationId']): Promise<Result<Task[]>> {
+    return ok([]);
+  }
 }
 
 const silentLogger: LoggerPort = {

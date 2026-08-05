@@ -303,6 +303,13 @@ export function createAutomationCompositionRoot(supabase: SupabaseClient) {
 }
 ```
 
+
+| `evaluateAutomationIncident()` en capa application (no infrastructure) | El evaluador es puro dominio: recibe repositorios por inyección, sin Supabase/Next.js. Determinístico y testeable en aislamiento. |
+| Best-effort para alertas/tareas: nunca bloquean el flujo principal | Un fallo al crear una alerta no debe romper dispatch/retry/webhook. Usa try/catch en el caller. Consistencia eventual. |
+| `alert_key` determinístico sin timestamps ni executionId | La clave de deduplicación debe ser idempotente para el mismo tipo de incidente de una automation. executionId varía en cada intento — no pertenece a la clave. |
+| `ClockPort` inyectable en EvaluateStuckAutomationExecutions | Permite tests determinísticos sin mocks de Date.now(). El clock se inyecta como interfaz, no como dependencia global. |
+| Phase 6G como responsable del scheduler | El evaluador de ejecuciones atascadas existe pero no tiene scheduler en 6F. Phase 6G lo conectará a un cron o task runner. |
+
 ---
 
 ## 7. Decisiones de Arquitectura

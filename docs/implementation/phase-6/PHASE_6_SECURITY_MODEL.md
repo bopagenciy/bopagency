@@ -321,8 +321,13 @@ if (execution.data?.organization_id !== payload.organizationId) {
 - [ ] Server Actions con `requireOrganizationRole` antes de toda mutación
 - [ ] Errores de n8n no expuestos en respuestas de Server Actions
 
-### Phase 6F (Alertas/Tareas)
-- [ ] Alertas de `AUTOMATION_FAILED` no exponen URL de n8n ni stack trace
+### Phase 6F (Alertas/Tareas) ✅ COMPLETE 2026-08-05
+- [x] Alertas de `AUTOMATION_FAILED` no exponen URL de n8n ni stack trace — `buildSafeAlertContent()` usa textos fijos por tipo de incidente
+- [x] `safeErrorMessage` truncada a 200 chars antes de persistir — sin tokens, HMAC, stack traces
+- [x] `alert_key` no contiene PII ni datos variables — solo orgId + automationId + tipo de incidente
+- [x] `service_role` (adminClient) usado únicamente en webhook route para bypass de trigger `trg_alerts_70_audit_fields` — `auth.uid() IS NULL` permite INSERT/UPDATE de campos de auditoría
+- [x] Deduplicación por `alert_key` UNIQUE en DB — sin race conditions por upsert atómico
+- [x] Tarea no expone signatureTag ni orgId en UI — sólo título y descripción seguros
 
 ### Phase 6G (Tests y Cierre)
 - [ ] Test de HMAC: firma inválida → 403

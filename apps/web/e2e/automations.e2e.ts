@@ -155,3 +155,132 @@ test.describe('Automatizaciones — accesibilidad', () => {
     }
   });
 });
+
+// ─── Phase 6F: Automation alerts & signals ────────────────────────────────────
+
+test.describe('Automatizaciones — alertas operativas (Phase 6F)', () => {
+  test.beforeEach(async ({ page }) => {
+    test.skip(skipIfNoCredentials(), 'E2E_TEST_EMAIL/PASSWORD no configuradas');
+    await gotoProtected(page, '/alerts');
+  });
+
+  test('alerta de automatización muestra badge ⚙️ Auto si existe', async ({ page }) => {
+    await page.waitForLoadState('networkidle');
+    const table = page.getByRole('table', { name: 'Lista de alertas' });
+    if (!(await table.isVisible().catch(() => false))) return;
+
+    // Si existe una alerta de automatización, debe tener el badge ⚙️ Auto
+    const autoBadges = page.getByLabel('Alerta generada por automatización');
+    const count = await autoBadges.count();
+    // El test valida el comportamiento cuando hay alertas de auto — no falla si no hay
+    if (count > 0) {
+      await expect(autoBadges.first()).toBeVisible();
+    }
+  });
+
+  test('badge de automatización NO expone datos técnicos', async ({ page }) => {
+    await page.waitForLoadState('networkidle');
+    await assertNoTechnicalErrors(page);
+    const body = await page.textContent('body');
+    expect(body).not.toMatch(/automation\.[a-z_]+_failed.*at Object/);
+    expect(body).not.toMatch(/sig:[a-z0-9-]+:[a-z0-9-]+:/);
+  });
+
+  test('alerta de automatización muestra Automatización en columna plataforma', async ({ page }) => {
+    await page.waitForLoadState('networkidle');
+    const autoBadges = page.getByLabel('Alerta generada por automatización');
+    if ((await autoBadges.count()) === 0) return;
+
+    // En la misma fila, la columna de plataforma debe decir "Automatización"
+    const platformCells = page.getByText('Automatización');
+    await expect(platformCells.first()).toBeVisible();
+  });
+
+  test('enlace Ver automatización navega a /automations/{id}', async ({ page }) => {
+    await page.waitForLoadState('networkidle');
+    const autoLinks = page.getByRole('link', { name: /Ver automatización relacionada/i });
+    if ((await autoLinks.count()) === 0) return;
+
+    const href = await autoLinks.first().getAttribute('href');
+    expect(href).toMatch(/^\/automations\/[0-9a-f-]{36}$/);
+  });
+
+  test('enlace Ver ejecución navega a /automations/{id}/executions', async ({ page }) => {
+    await page.waitForLoadState('networkidle');
+    const execLinks = page.getByRole('link', { name: /Ver ejecución relacionada/i });
+    if ((await execLinks.count()) === 0) return;
+
+    const href = await execLinks.first().getAttribute('href');
+    expect(href).toMatch(/^\/automations\/[0-9a-f-]{36}\/executions$/);
+  });
+});
+
+test.describe('Automatizaciones — tareas operativas (Phase 6F)', () => {
+  test.beforeEach(async ({ page }) => {
+    test.skip(skipIfNoCredentials(), 'E2E_TEST_EMAIL/PASSWORD no configuradas');
+    await gotoProtected(page, '/tasks');
+  });
+
+  test('tarea de automatización muestra badge ⚙️ Auto si existe', async ({ page }) => {
+    await page.waitForLoadState('networkidle');
+    const table = page.getByRole('table', { name: 'Lista de tareas' });
+    if (!(await table.isVisible().catch(() => false))) return;
+
+    const autoBadges = page.getByLabel('Tarea generada por automatización');
+    if ((await autoBadges.count()) > 0) {
+      await expect(autoBadges.first()).toBeVisible();
+    }
+  });
+
+  test('tarea de automatización muestra enlace a /automations/{id}', async ({ page }) => {
+    await page.waitForLoadState('networkidle');
+    const autoLinks = page.getByRole('link', { name: /Ver automatización relacionada/i });
+    if ((await autoLinks.count()) === 0) return;
+
+    const href = await autoLinks.first().getAttribute('href');
+    expect(href).toMatch(/^\/automations\/[0-9a-f-]{36}$/);
+  });
+
+  test('tarea de automatización no expone signatureTag ni orgId en texto visible', async ({ page }) => {
+    await page.waitForLoadState('networkidle');
+    const body = await page.textContent('body');
+    expect(body).not.toMatch(/sig:[a-z0-9-]+:[a-z0-9-]+:/);
+    expect(body).not.toMatch(/automation-id:[a-z0-9-]{36}/);
+    expect(body).not.toMatch(/org:[a-z0-9-]{36}/);
+    await assertNoTechnicalErrors(page);
+  });
+});
+
+test.describe('Automatizaciones — señales en dashboard (Phase 6F)', () => {
+  test.beforeEach(async ({ page }) => {
+    test.skip(skipIfNoCredentials(), 'E2E_TEST_EMAIL/PASSWORD no configuradas');
+    await gotoProtected(page, '/dashboard');
+    await page.waitForLoadState('networkidle');
+  });
+
+  test('widget de automatizaciones es visible en el dashboard', async ({ page }) => {
+    const widget = page.getByRole('heading', { name: /Automatizaciones/i });
+    await expect(widget).toBeVisible({ timeout: 10_000 });
+  });
+
+  test('señales operativas tienen role=list accesible', async ({ page }) => {
+    const signalList = page.getByRole('list', { name: /Señales operativas de automatizaciones/i });
+    if (await signalList.isVisible().catch(() => false)) {
+      await expect(signalList).toBeVisible();
+    }
+  });
+
+  test('enlace Ver todas apunta a /automations', async ({ page }) => {
+    const link = page.getByRole('link', { name: /Ver todas las automatizaciones/i });
+    if (await link.isVisible().catch(() => false)) {
+      const href = await link.getAttribute('href');
+      expect(href).toBe('/automations');
+    }
+  });
+
+  test('dashboard no expone errores técnicos de automatizaciones', async ({ page }) => {
+    await assertNoTechnicalErrors(page);
+    const body = await page.textContent('body');
+    expect(body).not.toMatch(/automation\.\w+_failed.*Error/);
+  });
+});

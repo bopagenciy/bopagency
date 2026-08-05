@@ -9,6 +9,8 @@ import { createServerSupabaseClient } from '@/lib/supabase/server';
 import { createDashboardComposition } from '@/lib/composition/dashboard.composition';
 import type { OrganizationId } from '@bop-agency/domain';
 import type { Alert } from '@bop-agency/domain';
+import { AutomationSignalsWidget } from '@/components/dashboard/AutomationSignalsWidget';
+import type { AutomationSignalData } from '@/components/dashboard/AutomationSignalsWidget';
 
 export const metadata: Metadata = { title: 'Dashboard' };
 
@@ -41,8 +43,8 @@ export default async function DashboardPage() {
   const { useCases } = createDashboardComposition(supabase);
   const orgId = organization.id as OrganizationId;
 
-  // Fetch summary and recent data in parallel
-  const [summaryResult, alertsResult, tasksResult] = await Promise.all([
+  // Fetch summary and recent data in parallel — no N+1
+  const [summaryResult, alertsResult, tasksResult, automationExecCountResult, activeAutomationsResult] = await Promise.all([
     useCases.getAgencyDashboardSummary({ organizationId: orgId }),
     useCases.listAlerts({
       organizationId: orgId,
@@ -53,12 +55,36 @@ export default async function DashboardPage() {
       organizationId: orgId,
       pagination: { page: 1, pageSize: 5 },
     }),
+    // Phase 6F: automation execution counts for dashboard signals
+    useCases.countAutomationExecutionsByStatus(String(orgId)),
+    useCases.listAutomations({
+      organizationId: orgId,
+      status: 'active',
+      pagination: { page: 1, pageSize: 1 },
+    }),
   ]);
 
   const summaryError = !summaryResult.success;
   const summary = summaryResult.success ? summaryResult.value : null;
 
   const recentAlerts: Alert[] = alertsResult.success ? alertsResult.value.data : [];
+
+  // Phase 6F: Build automation signal data
+  const execCounts = automationExecCountResult.success ? automationExecCountResult.value : null;
+  const activeAutomationCount = activeAutomationsResult.success ? activeAutomationsResult.value.total : 0;
+
+  // Count automation-sourced active alerts (alertType starts with 'automation.')
+  const automationAlertCount = alertsResult.success
+    ? alertsResult.value.data.filter((a) => a.alertType?.startsWith('automation.')).length
+    : 0;
+
+  const automationSignalData: AutomationSignalData = {
+    activeAutomations:      activeAutomationCount,
+    recentFailedExecutions: execCounts?.failed    ?? 0,
+    runningExecutions:      execCounts?.running   ?? 0,
+    activeAutomationAlerts: automationAlertCount,
+    pendingAutomationTasks: summaryResult.success ? summaryResult.value.pendingTasks : 0,
+  };
 
   const recentTasks = tasksResult.success ? tasksResult.value.data : [];
 
@@ -127,13 +153,16 @@ export default async function DashboardPage() {
             )}
           </div>
 
+          {/* Automatizaciones — señales operativas (Phase 6F) */}
+          <AutomationSignalsWidget data={automationSignalData} />
+
           {/* Accesos rápidos */}
           <div className="lg:col-span-2 grid grid-cols-2 sm:grid-cols-4 gap-4">
             {[
-              { href: '/clients', label: 'Clientes', icon: '👥' },
-              { href: '/alerts', label: 'Alertas', icon: '🔔' },
-              { href: '/tasks', label: 'Tareas', icon: '📋' },
-              { href: '/metrics', label: 'Métricas', icon: '📊' },
+              { href: '/clients',     label: 'Clientes',        icon: '👥' },
+              { href: '/alerts',      label: 'Alertas',         icon: '🔔' },
+              { href: '/tasks',       label: 'Tareas',          icon: '📋' },
+              { href: '/automations', label: 'Automatizaciones', icon: '⚙️' },
             ].map(({ href, label, icon }) => (
               <Link
                 key={href}

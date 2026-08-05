@@ -20,7 +20,7 @@
 | 6C | Gateway n8n | N8nWebhookDispatcher + webhook route | 6B | ✅ COMPLETE 2026-08-04 |
 | 6D | Orquestación | Use cases de dispatch, cancel, retry | 6C | ✅ COMPLETE 2026-08-05 (correctivos aplicados) |
 | 6E | Admin UI | `/automations` funcional: lista, detalle, logs | 6D | ✅ COMPLETE 2026-08-05 |
-| 6F | Integración Alertas/Tareas | Alerta automática cuando automation falla | 6D |
+| 6F | Integración Alertas/Tareas | Alerta automática cuando automation falla | 6D | ⚠️ PENDIENTE E2E LOCAL 2026-08-05 |
 | 6G | Seguridad, Tests y Cierre | Tests E2E, auditoría, documentación de cierre | 6E + 6F |
 
 **Duración estimada total:** 8-12 días de desarrollo efectivo.
@@ -340,13 +340,28 @@ Todas las actions siguen el patrón Phase 5:
 
 ## Phase 6F — Integración con Alertas y Tareas
 
-**Objetivo:** Conectar el runtime de automatizaciones con el sistema de alertas existente. Cuando una automatización falla, se genera una alerta automáticamente.
+**Estado:** ⚠️ PENDIENTE VALIDACIÓN E2E LOCAL 2026-08-05
 
-**Criterio de aceptación:**
-- Webhook route crea alerta cuando `status = 'failed'`
-- Alerta incluye `automationId`, `executionId`, `errorMessage`
-- Alerta aparece en `/alerts` con severity apropiada
-- Tests: webhook de fallo → alerta creada
+**Implementado:** Evaluador determinístico de incidentes (`evaluateAutomationIncident`), deduplicación por `alert_key`, auto-resolución en `execution_succeeded`, señales en dashboard (`AutomationSignalsWidget`), badges ⚙️ Auto en AlertsTable/TasksTable, integración best-effort en webhook route (Paso 11b).
+
+**Resultados de validación:**
+- ✅ 854/854 tests (shared: 30, domain: 169, application: 207, infrastructure: 275, web: 173)
+- ✅ Phase 4 migrations: 317/317
+- ✅ typecheck `tsc --noEmit`: 0 errores
+- ✅ ESLint archivos 6F: 0 errores
+- ✅ build packages: EXIT:0
+- ❌ `next build`: Bus error pre-existente (OOM sandbox, confirmado con git stash)
+- 🔒 E2E Chromium: bloqueado en sandbox — requiere ejecución local con credenciales
+
+**Pendiente para marcar COMPLETE:** ejecutar E2E Chromium localmente con `E2E_TEST_EMAIL`/`E2E_TEST_PASSWORD` — confirmar que los 15 tests de `automations.e2e.ts` (Phase 6F) pasan sin skips.
+
+**Objetivo original:** Conectar el runtime de automatizaciones con el sistema de alertas existente. Cuando una automatización falla, se genera una alerta automáticamente.
+
+**Criterio de aceptación (cumplido excepto E2E local):**
+- ✅ Webhook route evalúa incidente cuando `status = 'failed'` o `'succeeded'`
+- ✅ Alerta incluye `automationId`, `executionId`, tipo de incidente en metadata
+- ✅ Alerta aparece en `/alerts` con severity apropiada y badge ⚙️ Auto
+- ✅ Tests: 21 tests de evaluate-automation-incident + 16 de evaluate-stuck
 
 ### Lógica de generación de alertas
 
