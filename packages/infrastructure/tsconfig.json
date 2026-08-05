@@ -1,12 +1,26 @@
 {
   "extends": "../../tsconfig.base.json",
   "compilerOptions": {
-    "lib": ["ES2022", "dom"],
+    "lib": [
+      "ES2022",
+      "dom"
+    ],
     "paths": {
-      "@bop-agency/shared": ["../shared/src/index.ts"],
-      "@bop-agency/domain": ["../domain/src/index.ts"],
-      "@bop-agency/application": ["../application/src/index.ts"]
+      "@bop-agency/shared": [
+        "../shared/src/index.ts"
+      ],
+      "@bop-agency/domain": [
+        "../domain/src/index.ts"
+      ],
+      "@bop-agency/application": [
+        "../application/src/index.ts"
+      ],
+      "@bop-agency/automation-engine": [
+        "../automation-engine/src/index.ts"
+      ]
     }
   },
-  "include": ["src"]
+  "include": [
+    "src"
+  ]
 }

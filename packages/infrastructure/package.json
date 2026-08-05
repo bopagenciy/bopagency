@@ -20,7 +20,8 @@
   "dependencies": {
     "@bop-agency/shared": "*",
     "@bop-agency/domain": "*",
-    "@bop-agency/application": "*"
+    "@bop-agency/application": "*",
+    "@bop-agency/automation-engine": "*"
   },
   "devDependencies": {
     "typescript": "^5.9.3",

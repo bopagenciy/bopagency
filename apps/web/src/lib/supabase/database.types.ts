@@ -8,6 +8,147 @@ export type Database = {
   };
   public: {
     Tables: {
+      automation_execution_logs: {
+        Row: {
+          id: string;
+          execution_id: string;
+          organization_id: string | null;
+          level: string;
+          message: string;
+          context: Json | null;
+          occurred_at: string;
+          created_at: string;
+        };
+        Insert: {
+          id?: string;
+          execution_id: string;
+          organization_id?: string | null;
+          level?: string;
+          message: string;
+          context?: Json | null;
+          occurred_at?: string;
+          created_at?: string;
+        };
+        Update: {
+          id?: string;
+          execution_id?: string;
+          organization_id?: string | null;
+          level?: string;
+          message?: string;
+          context?: Json | null;
+          occurred_at?: string;
+          created_at?: string;
+        };
+        Relationships: [];
+      };
+      automation_executions: {
+        Row: {
+          id: string;
+          organization_id: string;
+          automation_id: string;
+          client_id: string | null;
+          status: string;
+          attempt: number;
+          idempotency_key: string;
+          triggered_by: string;
+          trigger_type: string;
+          input_metadata: Json | null;
+          output_metadata: Json | null;
+          error_code: string | null;
+          error_message: string | null;
+          queued_at: string;
+          started_at: string | null;
+          completed_at: string | null;
+          created_at: string;
+          updated_at: string;
+        };
+        Insert: {
+          id?: string;
+          organization_id: string;
+          automation_id: string;
+          client_id?: string | null;
+          status?: string;
+          attempt?: number;
+          idempotency_key: string;
+          triggered_by: string;
+          trigger_type: string;
+          input_metadata?: Json | null;
+          output_metadata?: Json | null;
+          error_code?: string | null;
+          error_message?: string | null;
+          queued_at?: string;
+          started_at?: string | null;
+          completed_at?: string | null;
+          created_at?: string;
+          updated_at?: string;
+        };
+        Update: {
+          id?: string;
+          organization_id?: string;
+          automation_id?: string;
+          client_id?: string | null;
+          status?: string;
+          attempt?: number;
+          idempotency_key?: string;
+          triggered_by?: string;
+          trigger_type?: string;
+          input_metadata?: Json | null;
+          output_metadata?: Json | null;
+          error_code?: string | null;
+          error_message?: string | null;
+          queued_at?: string;
+          started_at?: string | null;
+          completed_at?: string | null;
+          created_at?: string;
+          updated_at?: string;
+        };
+        Relationships: [];
+      };
+      automation_webhook_events: {
+        Row: {
+          id: string;
+          organization_id: string | null;
+          execution_id: string | null;
+          external_event_id: string | null;
+          source: string;
+          event_type: string;
+          payload_hash: string | null;
+          received_at: string;
+          processed_at: string | null;
+          status: string;
+          error_code: string | null;
+          created_at: string;
+        };
+        Insert: {
+          id?: string;
+          organization_id?: string | null;
+          execution_id?: string | null;
+          external_event_id?: string | null;
+          source?: string;
+          event_type: string;
+          payload_hash?: string | null;
+          received_at?: string;
+          processed_at?: string | null;
+          status?: string;
+          error_code?: string | null;
+          created_at?: string;
+        };
+        Update: {
+          id?: string;
+          organization_id?: string | null;
+          execution_id?: string | null;
+          external_event_id?: string | null;
+          source?: string;
+          event_type?: string;
+          payload_hash?: string | null;
+          received_at?: string;
+          processed_at?: string | null;
+          status?: string;
+          error_code?: string | null;
+          created_at?: string;
+        };
+        Relationships: [];
+      };
       agents: {
         Row: {
           agent_type: Database['public']['Enums']['agent_type'];

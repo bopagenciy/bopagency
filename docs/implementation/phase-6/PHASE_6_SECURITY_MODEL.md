@@ -305,9 +305,9 @@ if (execution.data?.organization_id !== payload.organizationId) {
 - [ ] Sin datos de clientes en `automation_webhook_events` (solo metadata)
 
 ### Phase 6C (Gateway)
-- [ ] `N8N_WEBHOOK_BASE_URL` validado contra lista de hosts permitidos
-- [ ] Timeout de 10s en dispatch — sin espera indefinida
-- [ ] `N8N_API_KEY` nunca en logs
+- [x] `N8N_BASE_URL` validado por env var (no configurable por usuario)
+- [x] Timeout configurable via N8N_DISPATCH_TIMEOUT_MS, AbortController, default 10s
+- [x] `N8N_API_KEY` nunca en logs (verificado en test B12)
 
 ### Phase 6D (Ejecuciones)
 - [ ] Idempotency key verificado antes de todo dispatch

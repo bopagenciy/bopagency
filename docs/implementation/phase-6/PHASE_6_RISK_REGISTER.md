@@ -29,13 +29,13 @@
 **Severidad:** 🔴 Crítico  
 **Impacto:** Sin HMAC válido, cualquier actor puede enviar webhooks falsos y marcar ejecuciones como exitosas o crear alertas falsas  
 **Mitigación:** La webhook route rechaza con 403 si falta la firma o el secret no está configurado. El secret debe tener mínimo 32 bytes aleatorios (`openssl rand -hex 32`).  
-**Acción:** Generar y documentar en `.env.example` antes de Phase 6C.
+**Acción (✅ Phase 6C):** Implementado. Secret validado (min 32 chars) en `requireWebhookSecret()`. Documentado en .env.example. Route rechaza si falta.
 
 ### R-SEC-03 — `service_role` en webhook route mal contenido
 **Severidad:** 🟠 Alto  
 **Impacto:** Si el service_role se usa en más lugares de los documentados, bypasea RLS completamente  
-**Mitigación:** Grep periódico: `grep -rn "service_role\|createServiceRoleClient" apps/web/src/`. Debe aparecer SOLO en `apps/web/src/app/api/webhooks/n8n/route.ts`.  
-**Acción:** Añadir test de linting custom o comentario de auditoría en el cierre de cada subfase.
+**Mitigación:** Grep periódico: `grep -rn "createAdminClient\s*(" apps/web/src/`. La **definición** de `createAdminClient` puede estar en el helper server-only (`apps/web/src/lib/supabase/server.ts`). Su **invocación operativa** en Phase 6 debe limitarse a `apps/web/src/app/api/webhooks/n8n/route.ts`, y únicamente después de que `verifyIncomingWebhook()` retorne `ok: true`.  
+**Acción (✅ Phase 6C):** Test C15 verifica que createAdminClient() no se llama antes del HMAC. Grep pattern documentado en security model.
 
 ### R-SEC-04 — PII en `output_payload` o logs de ejecución
 **Severidad:** 🟡 Medio  

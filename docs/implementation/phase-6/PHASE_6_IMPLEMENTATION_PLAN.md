@@ -17,7 +17,7 @@
 |---------|--------|----------|-------------|
 | 6A | Domain y Contratos | Entidades, repositorios, estados canónicos | Auditoría completa (✅) | ✅ COMPLETE 2026-08-04 |
 | 6B | DB y Repositorios | Migraciones Supabase + adapters Supabase | 6A | ✅ COMPLETE 2026-08-04 |
-| 6C | Gateway n8n | N8nWebhookDispatcher + webhook route | 6B |
+| 6C | Gateway n8n | N8nWebhookDispatcher + webhook route | 6B | ✅ COMPLETE 2026-08-04 |
 | 6D | Orquestación | Use cases de dispatch, cancel, retry | 6C |
 | 6E | Admin UI | `/automations` funcional: lista, detalle, logs | 6D |
 | 6F | Integración Alertas/Tareas | Alerta automática cuando automation falla | 6D |

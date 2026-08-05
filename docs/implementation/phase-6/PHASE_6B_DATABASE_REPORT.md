@@ -109,7 +109,7 @@ Phase 6B implementa el modelo de datos completo para el runtime de automatizacio
 - `status` text CHECK IN ('received','processed','failed')
 - `received_at`, `processed_at` timestamptz
 
-**Seguridad:** Sin RLS — solo service_role tiene acceso (no se otorgó GRANT a authenticated).
+**Seguridad:** RLS habilitado. No se crean políticas para `authenticated` — el acceso es denegado por defecto. `service_role` es el único actor autorizado (webhook route Phase 6C con verificación HMAC previa).
 
 ### 3.4 public.automation_secrets_metadata
 

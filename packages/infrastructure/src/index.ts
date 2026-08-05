@@ -45,3 +45,6 @@ export { rowToAutomation } from './supabase/mappers/automation.mapper';
 export type { AutomationRow } from './supabase/mappers/automation.mapper';
 export { rowToAutomationExecution } from './supabase/mappers/automation-execution.mapper';
 export type { AutomationExecutionRow } from './supabase/mappers/automation-execution.mapper';
+
+// Phase 6C — n8n Gateway
+export { N8nWebhookDispatcher } from './n8n/n8n-webhook-dispatcher';

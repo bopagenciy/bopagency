@@ -239,8 +239,7 @@ CREATE INDEX idx_exec_logs_org_level
 | `received_at` | timestamptz | NOT NULL DEFAULT now() — inmutable |
 | `source` | text | NOT NULL DEFAULT 'n8n' |
 | `idempotency_key` | text | UNIQUE — mismo key = mismo evento |
-| `payload_hash` | text | SHA-256 del body para detección de duplicados |
-| `raw_payload` | jsonb | NOT NULL — payload completo recibido |
+| `payload_hash` | text | SHA-256 del body para detección de duplicados — el raw body nunca se almacena |
 | `processing_status` | text | CHECK IN ('received','processed','failed') |
 | `processed_at` | timestamptz | |
 | `error_message` | text | Si failed |
@@ -260,7 +259,7 @@ CREATE INDEX idx_webhook_events_status
   WHERE processing_status = 'failed';
 ```
 
-**RLS:** Sin RLS — acceso SOLO desde service_role (webhook route). `authenticated` no tiene acceso.
+**RLS:** Habilitado. Sin políticas para `authenticated` — el acceso es denegado por defecto. `service_role` es el único actor autorizado, y únicamente después de verificar HMAC en la webhook route (Phase 6C).
 
 **Retención:** 7 días. Limpiar con pg_cron o job n8n semanal.
 
@@ -322,7 +321,7 @@ automation_executions
 | `automation_secrets_metadata` | `vault_secret_id` | Referencia al Vault, nunca el secreto |
 | `automation_executions` | `input_payload`, `output_payload` | Filtrar claves: secret, token, key, password, auth, cred |
 | `automation_execution_logs` | `context` | Mismo filtro — prohibido loguear valores de secretos |
-| `automation_webhook_events` | `raw_payload` | service_role only — sin RLS para authenticated |
+| `automation_webhook_events` | `payload_hash` | RLS habilitado, sin políticas para `authenticated` (acceso denegado por defecto); `service_role` únicamente después de verificar HMAC; se guarda `payload_hash` SHA-256, nunca el payload crudo |
 
 ---
 

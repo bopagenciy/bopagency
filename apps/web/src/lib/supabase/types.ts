@@ -373,6 +373,100 @@ export type UserPreferencesUpdate = {
   updated_at?: string;
 };
 
+// ─── Phase 6B Row types ───────────────────────────────────────────────────────
+
+export type AutomationWebhookEventStatus = 'received' | 'processed' | 'failed';
+
+export type AutomationWebhookEventRow = {
+  id: string;
+  source: string;
+  external_event_id: string;
+  event_type: string;
+  payload_hash: string;
+  status: AutomationWebhookEventStatus;
+  processed_at: string | null;
+  error_code: string | null;
+  created_at: string;
+};
+
+export type AutomationWebhookEventInsert = {
+  id?: string;
+  source: string;
+  external_event_id: string;
+  event_type: string;
+  payload_hash: string;
+  status?: AutomationWebhookEventStatus;
+  processed_at?: string | null;
+  error_code?: string | null;
+  created_at?: string;
+};
+
+export type AutomationWebhookEventUpdate = {
+  event_type?: string;
+  status?: AutomationWebhookEventStatus;
+  processed_at?: string | null;
+  error_code?: string | null;
+};
+
+export type AutomationExecutionStatus =
+  | 'pending'
+  | 'queued'
+  | 'running'
+  | 'succeeded'
+  | 'failed'
+  | 'cancelled'
+  | 'retrying';
+
+export type AutomationExecutionRow = {
+  id: string;
+  organization_id: string;
+  automation_id: string;
+  status: AutomationExecutionStatus;
+  attempt: number;
+  trigger_type: string | null;
+  trigger_payload: Json;
+  output_metadata: Json;
+  error_code: string | null;
+  error_message: string | null;
+  started_at: string | null;
+  completed_at: string | null;
+  created_at: string;
+  updated_at: string;
+};
+
+export type AutomationExecutionUpdate = {
+  status?: AutomationExecutionStatus;
+  attempt?: number;
+  output_metadata?: Json;
+  error_code?: string | null;
+  error_message?: string | null;
+  started_at?: string | null;
+  completed_at?: string | null;
+  updated_at?: string;
+};
+
+export type AutomationExecutionLogRow = {
+  id: string;
+  execution_id: string;
+  organization_id: string;
+  level: string;
+  message: string;
+  context: Json;
+  occurred_at: string;
+  created_at: string;
+};
+
+export type AutomationExecutionLogInsert = {
+  id?: string;
+  execution_id: string;
+  organization_id: string;
+  level?: string;
+  message: string;
+  context?: Json;
+  occurred_at?: string;
+  created_at?: string;
+};
+
 // ─── Database interface ─────────────────────────────────────────────────────
 // Debe extender GenericSchema de @supabase/supabase-js:
 //   GenericSchema = { Tables, Views, Functions }
@@ -490,6 +584,25 @@ export interface Database {
             referencedColumns: ['id'];
           },
         ];
+      };
+      // ─── Phase 6B tables ──────────────────────────────────────────────────
+      automation_webhook_events: {
+        Row: AutomationWebhookEventRow;
+        Insert: AutomationWebhookEventInsert;
+        Update: AutomationWebhookEventUpdate;
+        Relationships: [];
+      };
+      automation_executions: {
+        Row: AutomationExecutionRow;
+        Insert: Record<string, never>;
+        Update: AutomationExecutionUpdate;
+        Relationships: [];
+      };
+      automation_execution_logs: {
+        Row: AutomationExecutionLogRow;
+        Insert: AutomationExecutionLogInsert;
+        Update: Record<string, never>;
+        Relationships: [];
       };
     };
     // Sin vistas en Fase 2/3. Requerido para extender GenericSchema.
