@@ -194,7 +194,7 @@ describe('N8nWebhookDispatcher.dispatch', () => {
     if (!result.success) expect(result.error.code).toBe('VALIDATION_ERROR');
   });
 
-  it('B11: metadata con claves prohibidas es sanitizada antes de enviar a n8n', async () => {
+  it('B11: metadata — claves prohibidas eliminadas (H4: patrones delimitados)', async () => {
     const mockFetch = vi.fn().mockResolvedValueOnce(new Response('{}', { status: 200 }));
     vi.stubGlobal('fetch', mockFetch);
 
@@ -206,11 +206,35 @@ describe('N8nWebhookDispatcher.dispatch', () => {
         triggerType:    'manual',
         callbackUrl:    CALLBACK,
         metadata: {
-          safe:          'value-ok',
-          secretToken:   'super-secret',      // debe ser eliminado
-          apiKey:        'should-be-removed',  // debe ser eliminado
-          email:         'user@test.com',      // debe ser eliminado
-          campaignName:  'campaign-123',       // debe ser eliminado (name)
+          // ── Claves que DEBEN eliminarse ────────────────────────────────────
+          secret:           'top-secret',          // palabra exacta
+          token:            'bearer-abc',           // palabra exacta
+          apiKey:           'key-value',            // compuesto exacto (snake: api_key)
+          api_key:          'key-value2',           // compuesto exacto
+          access_token:     'tok-123',              // compuesto exacto
+          accessToken:      'tok-456',              // compuesto (camelCase → access_token)
+          refresh_token:    'ref-789',              // compuesto exacto
+          password:         'hunter2',             // palabra exacta
+          authorization:    'Bearer xyz',           // palabra exacta
+          credential:       'cred-val',             // palabra exacta
+          credentials:      'creds-val',            // palabra exacta
+          private_key:      'pk-rsa',              // compuesto exacto
+          privateKey:       'pk-ec',               // compuesto (camelCase → private_key)
+          bearer:           'Bearer token',         // palabra exacta
+          oauth:            'oauth-code',           // palabra exacta
+          email:            'user@test.com',        // palabra exacta
+          phone:            '+1234567890',          // palabra exacta
+          ssn:              '123-45-6789',          // palabra exacta
+          userToken:        'usr-tok',              // contiene 'token' como palabra
+          authSecret:       'secret-val',           // contiene 'secret' como palabra
+          // ── Claves que DEBEN conservarse (H4: sin falsos positivos) ───────
+          safeValue:        'ok',                   // no coincide con nada
+          campaignId:       'cmp-1',               // 'campaign' ≠ ningún patrón
+          keyboardLayout:   'qwerty',               // 'keyboard','layout' ≠ ningún patrón
+          primaryKeyName:   'id',                   // 'primary','key','name' ≠ ningún patrón
+          tokenCount:       42,                     // contiene 'token' → FILTRADO (diseño intencional)
+          attemptNumber:    3,                      // no coincide
+          reportId:         'rpt-9',               // no coincide
         },
       },
     };
@@ -220,11 +244,68 @@ describe('N8nWebhookDispatcher.dispatch', () => {
 
     const [, init] = mockFetch.mock.calls[0] as [string, RequestInit];
     const body = JSON.parse(init.body as string);
-    expect(body.metadata.safe).toBe('value-ok');
-    expect(body.metadata.secretToken).toBeUndefined();
+
+    // Prohibidas — deben estar ausentes
+    expect(body.metadata.secret).toBeUndefined();
+    expect(body.metadata.token).toBeUndefined();
     expect(body.metadata.apiKey).toBeUndefined();
+    expect(body.metadata.api_key).toBeUndefined();
+    expect(body.metadata.access_token).toBeUndefined();
+    expect(body.metadata.accessToken).toBeUndefined();
+    expect(body.metadata.refresh_token).toBeUndefined();
+    expect(body.metadata.password).toBeUndefined();
+    expect(body.metadata.authorization).toBeUndefined();
+    expect(body.metadata.credential).toBeUndefined();
+    expect(body.metadata.credentials).toBeUndefined();
+    expect(body.metadata.private_key).toBeUndefined();
+    expect(body.metadata.privateKey).toBeUndefined();
+    expect(body.metadata.bearer).toBeUndefined();
+    expect(body.metadata.oauth).toBeUndefined();
     expect(body.metadata.email).toBeUndefined();
-    expect(body.metadata.campaignName).toBeUndefined();
+    expect(body.metadata.phone).toBeUndefined();
+    expect(body.metadata.ssn).toBeUndefined();
+    expect(body.metadata.userToken).toBeUndefined();
+    expect(body.metadata.authSecret).toBeUndefined();
+
+    // Legítimas — deben conservarse (H4: no falsos positivos)
+    expect(body.metadata.safeValue).toBe('ok');
+    expect(body.metadata.campaignId).toBe('cmp-1');
+    expect(body.metadata.keyboardLayout).toBe('qwerty');
+    expect(body.metadata.primaryKeyName).toBe('id');
+    expect(body.metadata.attemptNumber).toBe(3);
+    expect(body.metadata.reportId).toBe('rpt-9');
+  });
+
+  it('B11b: sanitización es recursiva — metadata anidada también es filtrada (H4)', async () => {
+    const mockFetch = vi.fn().mockResolvedValueOnce(new Response('{}', { status: 200 }));
+    vi.stubGlobal('fetch', mockFetch);
+
+    const options: DispatchOptions = {
+      idempotencyKey: IDEM_KEY,
+      payload: {
+        executionId:    EXEC_ID,
+        organizationId: ORG_ID,
+        triggerType:    'manual',
+        callbackUrl:    CALLBACK,
+        metadata: {
+          nested: {
+            secret:     'inner-secret',   // debe eliminarse
+            safeField:  'safe-value',     // debe conservarse
+          },
+          topLevel: 'ok',
+        },
+      },
+    };
+
+    const dispatcher = new N8nWebhookDispatcher();
+    await dispatcher.dispatch(AUTO_ID, options);
+
+    const [, init] = mockFetch.mock.calls[0] as [string, RequestInit];
+    const body = JSON.parse(init.body as string);
+    // Nested secret must be removed
+    expect(body.metadata.nested?.secret).toBeUndefined();
+    expect(body.metadata.nested?.safeField).toBe('safe-value');
+    expect(body.metadata.topLevel).toBe('ok');
   });
 
   it('B12: no se incluye secreto ni API key en los logs (via console.error spy)', async () => {

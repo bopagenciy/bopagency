@@ -309,10 +309,13 @@ if (execution.data?.organization_id !== payload.organizationId) {
 - [x] Timeout configurable via N8N_DISPATCH_TIMEOUT_MS, AbortController, default 10s
 - [x] `N8N_API_KEY` nunca en logs (verificado en test B12)
 
-### Phase 6D (Ejecuciones)
-- [ ] Idempotency key verificado antes de todo dispatch
-- [ ] `organizationId` verificado contra JWT antes de toda mutación
-- [ ] `output_payload` limitado a 10KB antes de persistir
+### Phase 6D (Ejecuciones) ✅ COMPLETE 2026-08-05
+- [x] Idempotency key verificado antes de todo dispatch (scoped a organizationId)
+- [x] `organizationId` en todas las llamadas a repositorio; RLS via cliente user-scoped
+- [x] Metadata sanitizada: claves con secret/token/key/password/auth/credential/etc. eliminadas
+- [x] Logs sanitizados: misma lista extendida en SupabaseExecutionLogRepository
+- [x] `service_role` no utilizado en ningún path de Phase 6D
+- [x] Dispatcher port en capa de aplicación — n8n no alcanzable sin composición explícita
 
 ### Phase 6E (UI)
 - [ ] Server Actions con `requireOrganizationRole` antes de toda mutación

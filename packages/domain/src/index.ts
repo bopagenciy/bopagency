@@ -153,3 +153,12 @@ export type { Percentage } from './value-objects/percentage';
 
 // Domain errors
 export * from './errors/domain.errors';
+
+// Phase 6D — ExecutionLog
+export type {
+  ExecutionLogRepository,
+  ExecutionLogLevel,
+  ExecutionLogEventType,
+  CreateExecutionLogInput,
+  ExecutionLog,
+} from './repositories/execution-log.repository';

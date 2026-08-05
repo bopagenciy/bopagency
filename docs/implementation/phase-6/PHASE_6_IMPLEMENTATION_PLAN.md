@@ -18,7 +18,7 @@
 | 6A | Domain y Contratos | Entidades, repositorios, estados canónicos | Auditoría completa (✅) | ✅ COMPLETE 2026-08-04 |
 | 6B | DB y Repositorios | Migraciones Supabase + adapters Supabase | 6A | ✅ COMPLETE 2026-08-04 |
 | 6C | Gateway n8n | N8nWebhookDispatcher + webhook route | 6B | ✅ COMPLETE 2026-08-04 |
-| 6D | Orquestación | Use cases de dispatch, cancel, retry | 6C |
+| 6D | Orquestación | Use cases de dispatch, cancel, retry | 6C | ✅ COMPLETE 2026-08-05 (correctivos aplicados) |
 | 6E | Admin UI | `/automations` funcional: lista, detalle, logs | 6D |
 | 6F | Integración Alertas/Tareas | Alerta automática cuando automation falla | 6D |
 | 6G | Seguridad, Tests y Cierre | Tests E2E, auditoría, documentación de cierre | 6E + 6F |
@@ -206,6 +206,12 @@ describe('POST /api/webhooks/n8n', () => {
 ## Phase 6D — Orquestación de Ejecuciones
 
 **Objetivo:** Implementar todos los use cases de orquestación con lógica de negocio completa.
+
+**Estado:** ✅ COMPLETE — revisión correctiva pre-commit aplicada 2026-08-05:
+- **H1 Retry backoff**: cuando `delayMs > 0` no se crea ejecución; se retorna `{ retryDeferred: true, nextEligibleAt }`.
+- **H2 Cancel running**: sólo se cancela localmente tras confirmación remota. Sin gateway → `CANCEL_NOT_SUPPORTED`. Fallo remoto → `EXTERNAL_SERVICE_ERROR`, ejecución permanece `running`.
+- **H3 Idempotency key retry**: validación longitud ≤500, sanitización de control chars, recovery 23505 vía `findByIdempotencyKey`.
+- **H4 Sanitización**: patrones de palabra completa (no subcadena). Eliminados falsos positivos sobre `keyboardLayout`, `primaryKeyName`, etc.
 
 **Criterio de aceptación:**
 - 8 use cases implementados con tests

@@ -313,21 +313,77 @@ export class N8nWebhookDispatcher implements WorkflowDispatcher {
 /**
  * Elimina del metadata campos que podrían contener secretos o PII.
  * Solo se envía a n8n metadata operacional segura.
+ *
+ * HALLAZGO 4 — patrones delimitados (no substring genérico):
+ * Se usa coincidencia de palabras completas (camelCase y snake_case) para
+ * evitar falsos positivos como keyboardLayout, primaryKeyName, author, etc.
+ *
+ * Palabras individuales prohibidas (single-word match):
+ *   secret, token, password, authorization, credential, credentials,
+ *   bearer, oauth, email, phone, ssn
+ *
+ * Compuestos exactos prohibidos (snake_case normalizado):
+ *   access_token, refresh_token, api_key, private_key
+ *
+ * Claves legítimas que se CONSERVAN (test de regresión):
+ *   keyboardLayout, primaryKeyName, authorName, addressBook, tokenCount
+ *   (estos contienen palabras como key, cred, name, address — pero no como
+ *    palabra completa o compuesto exacto de la lista prohibida)
  */
-const FORBIDDEN_METADATA_PATTERNS = [
-  'secret', 'token', 'key', 'password', 'auth',
-  'credential', 'cred', 'private', 'bearer', 'oauth',
-  'email', 'phone', 'name', 'address',
-] as const;
+
+/** Palabras individuales que deben ser palabras completas en la clave. */
+const FORBIDDEN_SINGLE_WORDS = new Set([
+  'secret', 'token', 'password', 'authorization',
+  'credential', 'credentials', 'bearer', 'oauth',
+  'email', 'phone', 'ssn',
+]);
+
+/** Compuestos exactos tras normalizar a snake_case. */
+const FORBIDDEN_COMPOUND_KEYS = new Set([
+  'access_token', 'refresh_token', 'api_key', 'private_key',
+]);
+
+/**
+ * Convierte camelCase a snake_case y extrae las palabras individuales.
+ * Ejemplo: "apiKey" → "api_key", "primaryKeyName" → "primary_key_name"
+ */
+function toSnakeCase(key: string): string {
+  return key
+    .replace(/([a-z])([A-Z])/g, '$1_$2')
+    .replace(/([A-Z]+)([A-Z][a-z])/g, '$1_$2')
+    .toLowerCase();
+}
+
+/**
+ * Retorna true si la clave debe ser excluida del metadata enviado a n8n.
+ * Usa coincidencia de palabra completa — no substring arbitrario.
+ */
+function isForbiddenMetadataKey(key: string): boolean {
+  const snake = toSnakeCase(key);
+
+  // Compuesto exacto (ej: api_key, access_token, private_key)
+  if (FORBIDDEN_COMPOUND_KEYS.has(snake)) return true;
+
+  // Palabra individual en la clave (ej: token en "authToken" → auth_token → ["auth","token"])
+  const words = snake.split('_').filter(Boolean);
+  return words.some((word) => FORBIDDEN_SINGLE_WORDS.has(word));
+}
 
 function sanitizeMetadata(
   metadata: Record<string, unknown>,
-): Record<string, unknown> {
+): Record<string, unknown>;
+function sanitizeMetadata(
+  metadata: unknown,
+): unknown;
+function sanitizeMetadata(
+  metadata: unknown,
+): unknown {
+  if (metadata === null || typeof metadata !== 'object' || Array.isArray(metadata)) {
+    return metadata;
+  }
   return Object.fromEntries(
-    Object.entries(metadata).filter(([k]) =>
-      !FORBIDDEN_METADATA_PATTERNS.some((pattern) =>
-        k.toLowerCase().includes(pattern),
-      ),
-    ),
+    Object.entries(metadata as Record<string, unknown>)
+      .filter(([k]) => !isForbiddenMetadataKey(k))
+      .map(([k, v]) => [k, sanitizeMetadata(v)]),
   );
 }

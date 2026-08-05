@@ -7,7 +7,8 @@ export type ErrorCode =
   | 'EXTERNAL_SERVICE_ERROR'
   | 'RATE_LIMITED'
   | 'INTERNAL_ERROR'
-  | 'NOT_IMPLEMENTED';
+  | 'NOT_IMPLEMENTED'
+  | 'CANCEL_NOT_SUPPORTED';
 
 export type AppError = {
   readonly code: ErrorCode;

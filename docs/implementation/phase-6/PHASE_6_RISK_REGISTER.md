@@ -135,12 +135,12 @@
 | R-SEC-01 | N8N_ENCRYPTION_KEY en git | 🔴 Crítico | Pendiente verificación manual | Pre-6A |
 | R-SEC-02 | HMAC secret débil o ausente | 🔴 Crítico | Mitigado por diseño en 6C | 6C |
 | R-SEC-03 | service_role descontrolado | 🟠 Alto | Mitigado por arquitectura | 6G (auditoría) |
-| R-SEC-04 | PII en payloads de ejecución | 🟡 Medio | Mitigado por sanitización | 6D |
+| R-SEC-04 | PII en payloads de ejecución | 🟡 Medio | ✅ RESUELTO en 6D — sanitización con patrones delimitados (H4): sin falsos positivos, recursiva (correctivo 2026-08-05) | 6D |
 | R-TECH-01 | Divergencia AutomationStatus | 🔴 Crítico | ✅ RESUELTO en 6B (mapper transitorio + migración SQL inactive→paused) | 6A/6B |
 | R-TECH-02 | ADD VALUE no transaccional | 🟠 Alto | ✅ RESUELTO en 6B (ADD VALUE IF NOT EXISTS fuera de transacción explícita) | 6B |
 | R-TECH-03 | host.docker.internal en Linux | 🟡 Medio | Mitigado por variable de entorno | 6C |
 | R-TECH-04 | Workflows sin backup JSON | 🟡 Medio | Acción manual pre-6A | Pre-6A |
-| R-TECH-05 | n8n timeout en dispatch | 🟡 Medio | Mitigado por estado queued→failed | 6D |
+| R-TECH-05 | n8n timeout en dispatch | 🟡 Medio | ✅ RESUELTO en 6D — dispatch failure → status=failed, errorCode=DISPATCH_FAILED, log dispatch_failed | 6D |
 | R-TECH-06 | Replay attack webhook | 🟡 Medio | ✅ RESUELTO en 6B — UNIQUE(org_id, idempotency_key) en automation_executions | 6B/6C |
 | R-TECH-07 | Meta token expirado | 🟡 Medio | Mitigado por expires_at | 6F |
 | R-TECH-08 | Valores legacy enum ('error','disabled','inactive') sin eliminar | 🟢 Bajo | Deuda técnica documentada — resolver en Phase 6E cuando no haya filas legacy | 6E |
@@ -149,3 +149,7 @@
 | R-PROC-01 | n8n no escala | 🟢 Bajo | WorkflowDispatcher abstrae | Futuro |
 | R-PROC-02 | Datos legado vs Supabase | 🟡 Medio | Scope delimitado: no migrar datos | 6G docs |
 | R-PROC-03 | Build falla en Windows | 🟢 Bajo | Validar en 6G | 6G |
+| R-TECH-11 | Ejecuciones queued/retrying sin consumidor (backoff sin scheduler) | 🟠 Alto | ✅ RESUELTO en revisión correctiva 6D (H1) — cuando backoff > 0 no se crea ejecución; se retorna `retryDeferred:true` + `nextEligibleAt`. Scheduler en Phase 6E. | 6D |
+| R-TECH-12 | Cancel running con estado divergente (local vs remoto) | 🟠 Alto | ✅ RESUELTO en revisión correctiva 6D (H2) — running solo se marca cancelled tras confirmación remota; sin gateway devuelve CANCEL_NOT_SUPPORTED | 6D |
+| R-TECH-13 | Idempotency key de retry con longitud excesiva o chars de control | 🟡 Medio | ✅ RESUELTO en revisión correctiva 6D (H3) — validación longitud ≤500, sanitización control chars, recovery 23505 | 6D |
+| R-TECH-14 | Falsos positivos en sanitización metadata (key, cred, name) | 🟡 Medio | ✅ RESUELTO en revisión correctiva 6D (H4) — patrones delimitados por palabra; keyboardLayout y primaryKeyName conservados | 6D |

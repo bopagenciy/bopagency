@@ -48,3 +48,9 @@ export type { AutomationExecutionRow } from './supabase/mappers/automation-execu
 
 // Phase 6C — n8n Gateway
 export { N8nWebhookDispatcher } from './n8n/n8n-webhook-dispatcher';
+
+// Phase 6D — ExecutionLog
+export { SupabaseExecutionLogRepository } from './supabase/repositories/supabase-execution-log.repository';
+
+// Phase 6D — Dispatcher adapter
+export { N8nDispatcherAdapter } from './n8n/n8n-dispatcher-adapter';

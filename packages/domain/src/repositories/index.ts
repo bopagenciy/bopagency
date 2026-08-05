@@ -18,3 +18,10 @@ export type {
   CreateExecutionInput,
   UpdateExecutionStatusInput,
 } from './automation-execution.repository';
+export type {
+  ExecutionLogRepository,
+  ExecutionLogLevel,
+  ExecutionLogEventType,
+  CreateExecutionLogInput,
+  ExecutionLog,
+} from './execution-log.repository';

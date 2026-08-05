@@ -129,3 +129,43 @@ export type {
   GetMembershipInput,
   GetMembershipDeps,
 } from './use-cases/profile/get-membership.use-case';
+
+// Phase 6D — Execution Orchestration use cases
+export { startAutomationExecution } from './use-cases/automations/start-execution.use-case';
+export type {
+  StartAutomationExecutionInput,
+  StartAutomationExecutionOutput,
+  StartAutomationExecutionDeps,
+} from './use-cases/automations/start-execution.use-case';
+
+export { cancelAutomationExecution } from './use-cases/automations/cancel-execution.use-case';
+export type {
+  CancelAutomationExecutionInput,
+  CancelAutomationExecutionDeps,
+} from './use-cases/automations/cancel-execution.use-case';
+
+export { retryAutomationExecution } from './use-cases/automations/retry-execution.use-case';
+export type {
+  RetryAutomationExecutionInput,
+  RetryAutomationExecutionOutput,
+  RetryAutomationExecutionDeps,
+} from './use-cases/automations/retry-execution.use-case';
+
+export { getAutomationExecution } from './use-cases/automations/get-execution.use-case';
+export type {
+  GetAutomationExecutionInput,
+  GetAutomationExecutionDeps,
+} from './use-cases/automations/get-execution.use-case';
+
+export { listAutomationExecutions } from './use-cases/automations/list-executions.use-case';
+export type {
+  ListAutomationExecutionsInput,
+  ListAutomationExecutionsDeps,
+} from './use-cases/automations/list-executions.use-case';
+
+// Phase 6D — Ports
+export type {
+  WorkflowDispatcherPort,
+  DispatchResult,
+  DispatchPayload,
+} from './ports/workflow-dispatcher.port';

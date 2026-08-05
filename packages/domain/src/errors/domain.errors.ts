@@ -87,3 +87,63 @@ export const invitationAlreadyAccepted = (): AppError =>
 // Profile errors
 export const profileNotFound = (userId: string): AppError =>
   notFound(`Profile not found: ${userId}`);
+
+// ─── AutomationExecution errors (Phase 6D) ────────────────────────────────────
+
+export const executionNotFound = (id: string): AppError =>
+  notFound(`Execution not found: ${id}`);
+
+export const automationNotActive = (id: string, status: string): AppError =>
+  createError(
+    'VALIDATION_ERROR',
+    `Automation ${id} is not active (current status: ${status}). Only active automations can be executed.`,
+  );
+
+export const invalidExecutionTransition = (from: string, to: string): AppError =>
+  createError(
+    'VALIDATION_ERROR',
+    `Cannot transition execution from "${from}" to "${to}". Transition not permitted.`,
+  );
+
+export const idempotencyConflict = (key: string): AppError =>
+  createError(
+    'CONFLICT',
+    `An execution with idempotency key "${key}" already exists in this organization.`,
+  );
+
+export const dispatchFailed = (safeReason: string): AppError =>
+  createError(
+    'EXTERNAL_SERVICE_ERROR',
+    `Execution dispatch failed: ${safeReason}`,
+  );
+
+export const maxAttemptsReached = (attempt: number, max: number): AppError =>
+  createError(
+    'VALIDATION_ERROR',
+    `Maximum retry attempts reached (attempt ${attempt} of ${max}). No further retries are allowed.`,
+  );
+
+export const retryNotAllowed = (status: string): AppError =>
+  createError(
+    'VALIDATION_ERROR',
+    `Cannot retry an execution in status "${status}". Only failed executions can be retried.`,
+  );
+
+export const cancelNotAllowed = (status: string): AppError =>
+  createError(
+    'VALIDATION_ERROR',
+    `Cannot cancel an execution in status "${status}". Only queued or running executions can be cancelled.`,
+  );
+
+export const cancelNotSupported = (): AppError =>
+  createError(
+    'CANCEL_NOT_SUPPORTED',
+    'Cannot cancel a running execution: no cancellation gateway is available. ' +
+    'Configure a dispatcher that supports remote cancellation to cancel running executions.',
+  );
+
+export const cancelRemoteFailed = (safeDetail: string): AppError =>
+  createError(
+    'EXTERNAL_SERVICE_ERROR',
+    `Remote cancellation failed — execution remains running. Safe detail: ${safeDetail}`,
+  );
