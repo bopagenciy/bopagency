@@ -120,6 +120,12 @@
 **Impacto:** Bloquea el despliegue  
 **Mitigación:** Ejecutar `npm run build` como parte del criterio de aceptación de Phase 6G en el mismo entorno Windows que usó Phase 5.
 
+### R-TECH-10 — `automation_webhook_events` sin RLS (detectado en revisión correctiva 6B)
+**Severidad:** 🟢 Bajo  
+**Estado:** ✅ RESUELTO — revisión correctiva 2026-08-04  
+**Descripción:** La migración Phase 6B inicial documentaba `automation_webhook_events` como "sin RLS — solo service_role", omitiendo `ENABLE ROW LEVEL SECURITY`. Esto contradecía el requisito de activar RLS en todas las tablas nuevas.  
+**Resolución:** Se añadió `ALTER TABLE public.automation_webhook_events ENABLE ROW LEVEL SECURITY;` en la sección G3 de la migración. No se crearon políticas para `authenticated` — cuando RLS está activo sin política aplicable, el acceso es denegado por defecto. `service_role` omite RLS por diseño en Supabase. `REVOKE ALL` en sección E4 actúa como defensa en profundidad. **automation_webhook_events tiene RLS habilitado y ninguna política para usuarios autenticados; será accesible únicamente mediante service_role después de verificar HMAC en Phase 6C.**
+
 ---
 
 ## Tabla Resumen de Riesgos
@@ -130,13 +136,16 @@
 | R-SEC-02 | HMAC secret débil o ausente | 🔴 Crítico | Mitigado por diseño en 6C | 6C |
 | R-SEC-03 | service_role descontrolado | 🟠 Alto | Mitigado por arquitectura | 6G (auditoría) |
 | R-SEC-04 | PII en payloads de ejecución | 🟡 Medio | Mitigado por sanitización | 6D |
-| R-TECH-01 | Divergencia AutomationStatus | 🔴 Crítico | Resolver en 6A | 6A |
-| R-TECH-02 | ADD VALUE no transaccional | 🟠 Alto | Mitigado por migración separada | 6B |
+| R-TECH-01 | Divergencia AutomationStatus | 🔴 Crítico | ✅ RESUELTO en 6B (mapper transitorio + migración SQL inactive→paused) | 6A/6B |
+| R-TECH-02 | ADD VALUE no transaccional | 🟠 Alto | ✅ RESUELTO en 6B (ADD VALUE IF NOT EXISTS fuera de transacción explícita) | 6B |
 | R-TECH-03 | host.docker.internal en Linux | 🟡 Medio | Mitigado por variable de entorno | 6C |
 | R-TECH-04 | Workflows sin backup JSON | 🟡 Medio | Acción manual pre-6A | Pre-6A |
 | R-TECH-05 | n8n timeout en dispatch | 🟡 Medio | Mitigado por estado queued→failed | 6D |
-| R-TECH-06 | Replay attack webhook | 🟡 Medio | Mitigado por idempotency_key | 6C |
+| R-TECH-06 | Replay attack webhook | 🟡 Medio | ✅ RESUELTO en 6B — UNIQUE(org_id, idempotency_key) en automation_executions | 6B/6C |
 | R-TECH-07 | Meta token expirado | 🟡 Medio | Mitigado por expires_at | 6F |
+| R-TECH-08 | Valores legacy enum ('error','disabled','inactive') sin eliminar | 🟢 Bajo | Deuda técnica documentada — resolver en Phase 6E cuando no haya filas legacy | 6E |
+| R-TECH-09 | FK circular automations ↔ executions (last_execution_id) | 🟢 Bajo | Pospuesto a Phase 6C cuando el dispatcher comience a escribir ejecuciones | 6C |
+| R-TECH-10 | automation_webhook_events sin RLS (corregido) | 🟢 Bajo | ✅ RESUELTO en revisión correctiva 6B — RLS habilitado, sin políticas para authenticated; accesible únicamente mediante service_role después de verificar HMAC en Phase 6C | 6B |
 | R-PROC-01 | n8n no escala | 🟢 Bajo | WorkflowDispatcher abstrae | Futuro |
 | R-PROC-02 | Datos legado vs Supabase | 🟡 Medio | Scope delimitado: no migrar datos | 6G docs |
 | R-PROC-03 | Build falla en Windows | 🟢 Bajo | Validar en 6G | 6G |
