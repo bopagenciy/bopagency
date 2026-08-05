@@ -91,6 +91,31 @@ export type {
   ListAutomationsDeps,
 } from './use-cases/automations/list-automations.use-case';
 
+// Phase 6E — Automation status management use cases
+export { getAutomation } from './use-cases/automations/get-automation.use-case';
+export type {
+  GetAutomationInput,
+  GetAutomationDeps,
+} from './use-cases/automations/get-automation.use-case';
+
+export { activateAutomation } from './use-cases/automations/activate-automation.use-case';
+export type {
+  ActivateAutomationInput,
+  ActivateAutomationDeps,
+} from './use-cases/automations/activate-automation.use-case';
+
+export { pauseAutomation } from './use-cases/automations/pause-automation.use-case';
+export type {
+  PauseAutomationInput,
+  PauseAutomationDeps,
+} from './use-cases/automations/pause-automation.use-case';
+
+export { archiveAutomation } from './use-cases/automations/archive-automation.use-case';
+export type {
+  ArchiveAutomationInput,
+  ArchiveAutomationDeps,
+} from './use-cases/automations/archive-automation.use-case';
+
 // Use cases — Organizations
 export { createOrganization } from './use-cases/organizations/create-organization.use-case';
 export type {

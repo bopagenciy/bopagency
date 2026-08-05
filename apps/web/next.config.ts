@@ -6,6 +6,8 @@ const nextConfig: NextConfig = {
     '@bop-agency/shared',
     '@bop-agency/domain',
     '@bop-agency/application',
+    '@bop-agency/infrastructure',
+    '@bop-agency/automation-engine',
   ],
 };
 

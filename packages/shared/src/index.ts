@@ -61,3 +61,23 @@ export type { AcknowledgeAlertFormValues, ResolveAlertFormValues } from './schem
 // Schemas — Tasks (Phase 5C)
 export { taskStatusSchema, updateTaskStatusSchema } from './schemas/task.schema';
 export type { UpdateTaskStatusFormValues } from './schemas/task.schema';
+
+// Schemas — Automations (Phase 6E)
+export {
+  automationIdSchema,
+  executionIdSchema,
+  activateAutomationSchema,
+  pauseAutomationSchema,
+  archiveAutomationSchema,
+  startExecutionSchema,
+  cancelExecutionSchema,
+  retryExecutionSchema,
+} from './schemas/automation.schema';
+export type {
+  ActivateAutomationFormValues,
+  PauseAutomationFormValues,
+  ArchiveAutomationFormValues,
+  StartExecutionFormValues,
+  CancelExecutionFormValues,
+  RetryExecutionFormValues,
+} from './schemas/automation.schema';

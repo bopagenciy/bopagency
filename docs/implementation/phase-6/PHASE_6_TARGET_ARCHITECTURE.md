@@ -171,15 +171,18 @@ Server Components + Server Actions + Rutas de webhooks.
 ```
 apps/web/src/
 ├── app/(protected)/automations/
-│   ├── page.tsx                              ← REEMPLAZAR UnderConstruction
-│   ├── loading.tsx                           ← CREAR
+│   ├── page.tsx                              ✅ 6E — lista paginada con filtros
+│   ├── loading.tsx / error.tsx               ✅ 6E
+│   ├── actions.ts                            ✅ 6E — activate, pause, archive, startExecution, cancelExecution, retryExecution
 │   ├── [automationId]/
-│   │   ├── page.tsx                          ← CREAR (detalle + historial)
+│   │   ├── page.tsx                          ✅ 6E — detalle + últimas 10 ejecuciones + acciones
+│   │   ├── loading.tsx / error.tsx           ✅ 6E
 │   │   └── executions/
-│   │       └── page.tsx                      ← CREAR (historial paginado)
-│   ├── actions.ts                            ← CREAR (dispatch, cancel, retry, activate, pause)
-│   └── new/
-│       └── page.tsx                          ← CREAR (Phase 6E solo si hay tiempo)
+│   │       ├── page.tsx                      ✅ 6E — historial paginado con filtros
+│   │       └── loading.tsx                   ✅ 6E
+│   └── executions/[executionId]/
+│       ├── page.tsx                          ✅ 6E — detalle ejecución + timeline de logs
+│       └── loading.tsx                       ✅ 6E
 └── app/api/webhooks/
     └── n8n/
         └── route.ts                          ← CREAR (recibe callbacks de n8n)

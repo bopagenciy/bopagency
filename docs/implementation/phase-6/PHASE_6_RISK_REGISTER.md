@@ -143,13 +143,14 @@
 | R-TECH-05 | n8n timeout en dispatch | 🟡 Medio | ✅ RESUELTO en 6D — dispatch failure → status=failed, errorCode=DISPATCH_FAILED, log dispatch_failed | 6D |
 | R-TECH-06 | Replay attack webhook | 🟡 Medio | ✅ RESUELTO en 6B — UNIQUE(org_id, idempotency_key) en automation_executions | 6B/6C |
 | R-TECH-07 | Meta token expirado | 🟡 Medio | Mitigado por expires_at | 6F |
-| R-TECH-08 | Valores legacy enum ('error','disabled','inactive') sin eliminar | 🟢 Bajo | Deuda técnica documentada — resolver en Phase 6E cuando no haya filas legacy | 6E |
+| R-TECH-08 | Valores legacy enum ('error','disabled','inactive') sin eliminar | 🟢 Bajo | Deuda técnica documentada — mapper transitorio activo (inactive→paused) en SupabaseAutomationRepository. UI 6E funciona correctamente ya que mapea a AutomationStatus canónico antes de renderizar. Resolver enum en migración SQL futura. | 6E |
 | R-TECH-09 | FK circular automations ↔ executions (last_execution_id) | 🟢 Bajo | Pospuesto a Phase 6C cuando el dispatcher comience a escribir ejecuciones | 6C |
 | R-TECH-10 | automation_webhook_events sin RLS (corregido) | 🟢 Bajo | ✅ RESUELTO en revisión correctiva 6B — RLS habilitado, sin políticas para authenticated; accesible únicamente mediante service_role después de verificar HMAC en Phase 6C | 6B |
 | R-PROC-01 | n8n no escala | 🟢 Bajo | WorkflowDispatcher abstrae | Futuro |
 | R-PROC-02 | Datos legado vs Supabase | 🟡 Medio | Scope delimitado: no migrar datos | 6G docs |
 | R-PROC-03 | Build falla en Windows | 🟢 Bajo | Validar en 6G | 6G |
-| R-TECH-11 | Ejecuciones queued/retrying sin consumidor (backoff sin scheduler) | 🟠 Alto | ✅ RESUELTO en revisión correctiva 6D (H1) — cuando backoff > 0 no se crea ejecución; se retorna `retryDeferred:true` + `nextEligibleAt`. Scheduler en Phase 6E. | 6D |
+| R-TECH-11 | Ejecuciones queued/retrying sin consumidor (backoff sin scheduler) | 🟠 Alto | ✅ RESUELTO en revisión correctiva 6D (H1) — cuando backoff > 0 no se crea ejecución; se retorna `retryDeferred:true` + `nextEligibleAt`. UI 6E muestra `retryDeferred` al usuario como señal informativa. Scheduler en Phase 6F. | 6D |
 | R-TECH-12 | Cancel running con estado divergente (local vs remoto) | 🟠 Alto | ✅ RESUELTO en revisión correctiva 6D (H2) — running solo se marca cancelled tras confirmación remota; sin gateway devuelve CANCEL_NOT_SUPPORTED | 6D |
 | R-TECH-13 | Idempotency key de retry con longitud excesiva o chars de control | 🟡 Medio | ✅ RESUELTO en revisión correctiva 6D (H3) — validación longitud ≤500, sanitización control chars, recovery 23505 | 6D |
 | R-TECH-14 | Falsos positivos en sanitización metadata (key, cred, name) | 🟡 Medio | ✅ RESUELTO en revisión correctiva 6D (H4) — patrones delimitados por palabra; keyboardLayout y primaryKeyName conservados | 6D |
+| R-TECH-15 | Contradicción entre database.types.ts y types.ts (stub manual) | 🟢 Bajo | ✅ VERIFICADO en validación 6E — types.ts es stub manual pre-CLI (documentado como temporal); database.types.ts es el autorizado; sin contradicciones introducidas por 6E. createAdminClient existe en server.ts pero NO se invoca en ningún punto del flujo UI automation | 6E |

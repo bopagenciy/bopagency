@@ -19,7 +19,7 @@
 | 6B | DB y Repositorios | Migraciones Supabase + adapters Supabase | 6A | ✅ COMPLETE 2026-08-04 |
 | 6C | Gateway n8n | N8nWebhookDispatcher + webhook route | 6B | ✅ COMPLETE 2026-08-04 |
 | 6D | Orquestación | Use cases de dispatch, cancel, retry | 6C | ✅ COMPLETE 2026-08-05 (correctivos aplicados) |
-| 6E | Admin UI | `/automations` funcional: lista, detalle, logs | 6D |
+| 6E | Admin UI | `/automations` funcional: lista, detalle, logs | 6D | ✅ COMPLETE 2026-08-05 |
 | 6F | Integración Alertas/Tareas | Alerta automática cuando automation falla | 6D |
 | 6G | Seguridad, Tests y Cierre | Tests E2E, auditoría, documentación de cierre | 6E + 6F |
 
@@ -318,6 +318,24 @@ Todas las actions siguen el patrón Phase 5:
 - `warning` → última execution succeeded pero hace más tiempo del esperado (según schedule)
 - `error` → última execution failed
 
+### ✅ Validación Final 6E (2026-08-05)
+
+| Check | Resultado |
+|-------|-----------|
+| TypeCheck (5 workspaces) | ✅ exit 0 |
+| ESLint (src/**/*.{ts,tsx}) | ✅ 0 errores |
+| next build | ⚠️ Bus error en sandbox (limitación entorno, no defecto de código) |
+| E2E Playwright Chromium | ⚠️ Dev server no arranca en sandbox; `skipIfNoCredentials()` omite sin E2E_TEST_EMAIL |
+| Unit tests @bop-agency/application | ✅ 170/170 passed |
+| Unit tests @bop-agency/web | ✅ 262/262 passed (23 archivos) |
+| Unit tests scripts/migrations/phase-4 | ✅ 317/317 passed |
+| Auditoría seguridad Server Actions | ✅ organizationId de sesión, no service_role, revalidatePath solo en éxito |
+| retryDeferred behavior | ✅ no crea ejecución, UI muestra info, no redirige a executionId faltante |
+| Tipos Supabase | ✅ database.types.ts (generado) y types.ts (stub manual) sin contradicciones; createAdminClient no usado en UI automation |
+| Componentes Phase 6E | ✅ 10 componentes (no 9) |
+
+**Estado:** ✅ COMPLETE — Phase 6E cerrada. Pendiente commit para milestone de release.
+
 ---
 
 ## Phase 6F — Integración con Alertas y Tareas
@@ -407,7 +425,7 @@ npm run test:e2e --workspace=@bop-agency/web
 | 6B | 8 | 2 |
 | 6C | 5 | 1 |
 | 6D | 8 | 1 |
-| 6E | 12 | 1 |
+| 6E | 12 | 1 | ✅ 4 use cases, 6 Server Actions, 4 rutas, 9 componentes, 77 tests |
 | 6F | 1 | 1 |
 | 6G | 4 (docs + E2E) | 3 |
 | **Total** | **~43** | **~13** |

@@ -88,6 +88,14 @@ export const invitationAlreadyAccepted = (): AppError =>
 export const profileNotFound = (userId: string): AppError =>
   notFound(`Profile not found: ${userId}`);
 
+// ─── Automation status-transition errors (Phase 6E) ───────────────────────────
+
+export const automationInvalidTransition = (from: string, to: string): AppError =>
+  createError(
+    'VALIDATION_ERROR',
+    `Cannot transition automation from "${from}" to "${to}". Transition not permitted.`,
+  );
+
 // ─── AutomationExecution errors (Phase 6D) ────────────────────────────────────
 
 export const executionNotFound = (id: string): AppError =>
