@@ -1459,7 +1459,7 @@ export type Database = {
       agent_type: 'specialist' | 'strategist' | 'analyst' | 'creative' | 'manager' | 'custom';
       alert_severity: 'info' | 'warning' | 'critical';
       alert_status: 'active' | 'acknowledged' | 'snoozed' | 'resolved';
-      automation_status: 'active' | 'paused' | 'error' | 'disabled' | 'inactive';
+      automation_status: 'active' | 'paused' | 'error' | 'disabled' | 'inactive' | 'draft' | 'archived';
       client_status: 'active' | 'inactive' | 'onboarding' | 'churned';
       document_status: 'draft' | 'published' | 'archived';
       integration_status: 'active' | 'inactive' | 'error';
@@ -1604,7 +1604,7 @@ export const Constants = {
       agent_type: ['specialist', 'strategist', 'analyst', 'creative', 'manager', 'custom'],
       alert_severity: ['info', 'warning', 'critical'],
       alert_status: ['active', 'acknowledged', 'snoozed', 'resolved'],
-      automation_status: ['active', 'paused', 'error', 'disabled', 'inactive'],
+      automation_status: ['active', 'paused', 'error', 'disabled', 'inactive', 'draft', 'archived'],
       client_status: ['active', 'inactive', 'onboarding', 'churned'],
       document_status: ['draft', 'published', 'archived'],
       integration_status: ['active', 'inactive', 'error'],

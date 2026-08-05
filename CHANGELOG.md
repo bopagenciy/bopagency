@@ -4,6 +4,102 @@ Historial de cambios del monorepo. Sigue [Keep a Changelog](https://keepachangel
 
 ---
 
+## [Phase 6] — 2026-08-05 — CODE COMPLETE ✅
+
+### Resumen
+
+Phase 6 implementó el runtime completo de automatizaciones sobre Clean Architecture, integrando n8n via HMAC, panel de administración, observabilidad y cierre formal de auditoría (6G).
+
+---
+
+### Phase 6G — Final Audit, Technical Closure and Production Readiness (2026-08-05)
+
+#### Correcciones aplicadas
+
+- **Corregido** `apps/web/src/lib/supabase/database.types.ts` — enum `automation_status` ahora incluye `'draft'` y `'archived'` (añadidos por migración Phase 6B pero faltaban en tipos manuales)
+- **Actualizado** `docs/implementation/phase-6/PHASE_6_IMPLEMENTATION_PLAN.md` — marcado 6F y 6G como COMPLETE
+
+#### Auditoría
+
+- Auditoría completa de 17 pasos: git scope, arquitectura, seguridad, modelo de datos, máquina de estados, n8n, UI/Server Actions, alertas/observabilidad, lockfiles, tipos Supabase, tests, typecheck, lint, secretos
+- **Tests:** 681 tests unitarios passing (shared: 30, domain: 169, application: 207, infrastructure: 275, automation-engine: 0/passWithNoTests)
+- **Typecheck:** PASS en todos los workspaces
+- **Seguridad:** PASS — HMAC constant-time, createAdminClient solo post-HMAC, sin NEXT_PUBLIC leaks, sin secretos logueados
+
+#### Documentación de cierre creada
+
+- `docs/implementation/phase-6/PHASE_6_FINAL_AUDIT.md`
+- `docs/implementation/phase-6/PHASE_6_PRODUCTION_READINESS_CHECKLIST.md`
+- `docs/implementation/phase-6/PHASE_6_N8N_INTEGRATION_RUNBOOK.md`
+- `docs/implementation/phase-6/PHASE_6_ROLLBACK_RUNBOOK.md`
+- `docs/implementation/phase-6/PHASE_6_OPERATIONS_RUNBOOK.md`
+- `docs/implementation/phase-6/PHASE_6_CLOSURE_REPORT.md`
+
+---
+
+### Phase 6F — Integración con Alertas y Tareas (2026-08-05)
+
+- **Añadido** `evaluate-automation-incident.use-case.ts` — evaluador determinístico de incidentes (dispatch_failed, execution_failed, max_attempts_reached, execution_succeeded)
+- **Añadido** `automation-incident-severity.ts` — clasificación centralizada de severidades
+- **Añadido** `automation-incident-signatures.ts` — firmas determinísticas sin PII ni timestamps
+- **Integrado** en webhook route: evaluación best-effort de incidentes en cada callback failed/succeeded
+- **Integrado** en start-execution y retry-execution: evaluación de incidentes on dispatch failure
+- **Añadido** `AutomationSignalsWidget` en dashboard — widget de estado de automatizaciones
+
+---
+
+### Phase 6E — Admin UI (2026-08-05)
+
+- **Añadido** ruta `/automations` — lista con filtros, badges de estado, acciones de activar/pausar/archivar
+- **Añadido** ruta `/automations/[automationId]` — detalle con executions tab
+- **Añadido** ruta `/automations/[automationId]/executions` — historial de ejecuciones
+- **Añadido** ruta `/automations/executions/[executionId]` — detalle con timeline de logs
+- **Añadido** 9 componentes de UI: `AutomationsTable`, `AutomationsFilters`, `AutomationActions`, `AutomationStatusBadge`, `ExecutionsTable`, `ExecutionActions`, `ExecutionStatusBadge`, `ExecutionTimeline`, `ExecutionsTableSkeleton`
+- **Añadido** 6 Server Actions con rol verificado: activate, pause, archive, startExecution, cancelExecution, retryExecution
+- **Añadido** 77 unit tests de Server Actions y componentes
+
+---
+
+### Phase 6D — Ejecución y Orquestación (2026-08-05)
+
+- **Añadido** `start-execution.use-case.ts` — dispatch manual o scheduled, idempotencia, dispatch hacia n8n
+- **Añadido** `retry-execution.use-case.ts` — reintento desde failed, nueva ejecución, política de backoff
+- **Añadido** `cancel-execution.use-case.ts` — cancelación de ejecución activa
+- **Añadido** `evaluate-stuck-automation-executions.use-case.ts` — detección de ejecuciones atascadas
+- **Añadido** composición `automation.composition.ts` y `automation-execution.composition.ts`
+- **Añadido** tests: start (17), cancel (14), retry (20), stuck (16), list (12) = 79 tests nuevos
+
+---
+
+### Phase 6C — Gateway n8n (2026-08-04)
+
+- **Añadido** `POST /api/webhooks/n8n` — callback seguro con HMAC SHA-256, deduplicación atómica, validación Zod, auditoría sanitizada
+- **Añadido** `apps/web/src/lib/webhooks/hmac.ts` — HMAC utils: `verifyIncomingWebhook`, `buildOutgoingSignatureHeaders`, `constantTimeCompare` (timingSafeEqual)
+- **Añadido** `packages/infrastructure/src/n8n/n8n-webhook-dispatcher.ts` — dispatcher HTTP con firma saliente, timeout configurable, cancel via REST API
+- **Añadido** 361 tests de HMAC + 629 tests del route + 19 tests del dispatcher
+
+---
+
+### Phase 6B — Persistencia (2026-08-04)
+
+- **Añadido** migración `20260804000000_phase6b_automation_runtime.sql` — 4 tablas nuevas, RLS, índices, triggers, sin secretos en DB
+- **Añadido** `SupabaseAutomationRepository` (383 líneas, 434 tests en mapper+repo)
+- **Añadido** `SupabaseAutomationExecutionRepository` (433 líneas, 506 tests)
+- **Añadido** `SupabaseExecutionLogRepository` y `SupabaseTaskRepository` (actualizado)
+- **Actualizado** `apps/web/src/lib/supabase/database.types.ts` con tablas Phase 6
+
+---
+
+### Phase 6A — Domain y Contratos (2026-08-04)
+
+- **Añadido** entidad `AutomationExecution` con estados: `queued | running | succeeded | failed | cancelled | retrying`
+- **Expandido** `Automation` con: `organizationId`, `clientId`, `triggerConfig`, `retryPolicy`, `n8nWorkflowId`, `metadata`
+- **Unificado** `AutomationStatus`: `draft | active | paused | archived` (eliminado error/disabled del dominio)
+- **Añadido** `AutomationExecutionRepository` y `ExecutionLogRepository` — contratos de puerto
+- **Añadido** `WorkflowDispatcher` port en application layer
+- **Añadido** 169 tests de dominio (automation-transitions: 45, execution-transitions: 57, money: 5, etc.)
+
+
 ## [Phase 5] — 2026-08-04 — COMPLETE ✅
 
 ### Resumen

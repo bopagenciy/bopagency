@@ -20,8 +20,8 @@
 | 6C | Gateway n8n | N8nWebhookDispatcher + webhook route | 6B | ✅ COMPLETE 2026-08-04 |
 | 6D | Orquestación | Use cases de dispatch, cancel, retry | 6C | ✅ COMPLETE 2026-08-05 (correctivos aplicados) |
 | 6E | Admin UI | `/automations` funcional: lista, detalle, logs | 6D | ✅ COMPLETE 2026-08-05 |
-| 6F | Integración Alertas/Tareas | Alerta automática cuando automation falla | 6D | ⚠️ PENDIENTE E2E LOCAL 2026-08-05 |
-| 6G | Seguridad, Tests y Cierre | Tests E2E, auditoría, documentación de cierre | 6E + 6F |
+| 6F | Integración Alertas/Tareas | Alerta automática cuando automation falla | 6D | ✅ COMPLETE 2026-08-05 (E2E pendiente local) |
+| 6G | Seguridad, Tests y Cierre | Tests E2E, auditoría, documentación de cierre | 6E + 6F | ✅ COMPLETE 2026-08-05 |
 
 **Duración estimada total:** 8-12 días de desarrollo efectivo.
 

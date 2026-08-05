@@ -5,7 +5,7 @@
 
 import { describe, it, expect, vi } from 'vitest';
 import { ok, err } from '@bop-agency/shared';
-import type { Automation, AutomationId, AutomationRepository, OrganizationId } from '@bop-agency/domain';
+import type { Automation, AutomationRepository, OrganizationId } from '@bop-agency/domain';
 import { automationId as makeAutomationId } from '@bop-agency/domain';
 import type { LoggerPort } from '../../../ports/logger.port';
 import { getAutomation } from '../get-automation.use-case';
@@ -45,7 +45,7 @@ function makeRepo(
   updateResult: Automation | null = null,
 ): AutomationRepository {
   const findResult = automation ? ok(automation) : err({ code: 'NOT_FOUND' as const, message: 'nf' });
-  const updResult = updateResult ? ok(updateResult) : ok(automation!);
+  const updResult = ok(updateResult ?? automation ?? makeAutomation());
   return {
     findById: vi.fn().mockResolvedValue(findResult),
     update: vi.fn().mockResolvedValue(updResult),
