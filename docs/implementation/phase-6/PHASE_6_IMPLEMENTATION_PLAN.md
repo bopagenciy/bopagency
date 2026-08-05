@@ -15,7 +15,7 @@
 
 | Subfase | Nombre | Objetivo | Prerequisito |
 |---------|--------|----------|-------------|
-| 6A | Domain y Contratos | Entidades, repositorios, estados canónicos | Auditoría completa (✅) |
+| 6A | Domain y Contratos | Entidades, repositorios, estados canónicos | Auditoría completa (✅) | ✅ COMPLETE 2026-08-04 |
 | 6B | DB y Repositorios | Migraciones Supabase + adapters Supabase | 6A |
 | 6C | Gateway n8n | N8nWebhookDispatcher + webhook route | 6B |
 | 6D | Orquestación | Use cases de dispatch, cancel, retry | 6C |

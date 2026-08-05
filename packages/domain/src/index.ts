@@ -52,7 +52,50 @@ export type {
 } from './entities/metric';
 export { validateMetricValues, validateMetricPeriod } from './entities/metric';
 export type { ReportId, ReportType, ReportStatus, Report } from './entities/report';
-export type { AutomationId, AutomationStatus, Automation } from './entities/automation';
+
+// Automation entity — Phase 6A
+export type {
+  AutomationId,
+  AutomationStatus,
+  AutomationTrigger,
+  AutomationRetryPolicy,
+  Automation,
+  AutomationFilter,
+  CreateAutomationInput,
+} from './entities/automation';
+export {
+  automationId,
+  DEFAULT_AUTOMATION_RETRY_POLICY,
+  canTransitionAutomation,
+  getAutomationNextStates,
+  canActivateAutomation,
+  canPauseAutomation,
+  canArchiveAutomation,
+  isAutomationTerminal,
+  isValidAutomationName,
+} from './entities/automation';
+
+// AutomationExecution entity — Phase 6A
+export type {
+  AutomationExecutionId,
+  IdempotencyKey,
+  AutomationExecutionStatus,
+  AutomationTriggerType,
+  AutomationExecution,
+  AutomationExecutionFilter,
+} from './entities/automation-execution';
+export {
+  automationExecutionId,
+  idempotencyKeyFromString,
+  canTransitionExecution,
+  getExecutionNextStates,
+  isExecutionTerminal,
+  canRetryExecution,
+  canCancelExecution,
+  validateExecutionDates,
+  isValidAttemptNumber,
+} from './entities/automation-execution';
+
 export type { AgentId, AgentType, Agent } from './entities/agent';
 export type { SkillId, Skill } from './entities/skill';
 export type { TemplateId, TemplateType, Template } from './entities/template';
@@ -71,7 +114,17 @@ export type {
 export type { AgentRepository } from './repositories/agent.repository';
 export type { SkillRepository } from './repositories/skill.repository';
 export type { TemplateRepository } from './repositories/template.repository';
-export type { AutomationRepository } from './repositories/automation.repository';
+export type {
+  AutomationRepository,
+  AutomationCountByStatus,
+  UpdateAutomationInput,
+} from './repositories/automation.repository';
+export type {
+  AutomationExecutionRepository,
+  AutomationExecutionCountByStatus,
+  CreateExecutionInput,
+  UpdateExecutionStatusInput,
+} from './repositories/automation-execution.repository';
 export type {
   OrganizationRepository,
   CreateOrganizationInput,

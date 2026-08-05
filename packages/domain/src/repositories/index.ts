@@ -11,4 +11,10 @@ export type {
 export type { AgentRepository } from './agent.repository';
 export type { SkillRepository } from './skill.repository';
 export type { TemplateRepository } from './template.repository';
-export type { AutomationRepository } from './automation.repository';
+export type { AutomationRepository, AutomationCountByStatus, UpdateAutomationInput } from './automation.repository';
+export type {
+  AutomationExecutionRepository,
+  AutomationExecutionCountByStatus,
+  CreateExecutionInput,
+  UpdateExecutionStatusInput,
+} from './automation-execution.repository';
