@@ -1,0 +1,346 @@
+{
+  "name": "REPORTES - Enviar Reportes Mensuales",
+  "nodes": [
+    {
+      "parameters": {},
+      "type": "n8n-nodes-base.manualTrigger",
+      "typeVersion": 1,
+      "position": [
+        -464,
+        -16
+      ],
+      "id": "29c8bbb7-785f-40e9-be10-633eb6256c55",
+      "name": "When clicking ‘Execute workflow’"
+    },
+    {
+      "parameters": {
+        "rule": {
+          "interval": [
+            {
+              "field": "months",
+              "triggerAtDayOfMonth": 2,
+              "triggerAtHour": 9
+            }
+          ]
+        }
+      },
+      "type": "n8n-nodes-base.scheduleTrigger",
+      "typeVersion": 1.3,
+      "position": [
+        -464,
+        -192
+      ],
+      "id": "a47f50ad-3448-478b-8e7c-1a4a08349cf7",
+      "name": "Schedule Trigger"
+    },
+    {
+      "parameters": {
+        "assignments": {
+          "assignments": [
+            {
+              "id": "f81c0e3c-78a0-4f2c-af66-67bdae45e86d",
+              "name": "startedAt",
+              "value": "={{ $now.toISO() }}",
+              "type": "string"
+            },
+            {
+              "id": "3eb11528-9f23-4b2d-8785-67054d87fb61",
+              "name": "executionId",
+              "value": "={{ $execution.id }}",
+              "type": "string"
+            },
+            {
+              "id": "74d9c15a-03ec-4c5b-b86f-6408a82536f8",
+              "name": "automationId",
+              "value": "reports-send-monthly-emails",
+              "type": "string"
+            }
+          ]
+        },
+        "includeOtherFields": true,
+        "options": {}
+      },
+      "type": "n8n-nodes-base.set",
+      "typeVersion": 3.4,
+      "position": [
+        -256,
+        -80
+      ],
+      "id": "e9638d19-5244-4e4c-8ec6-51fece2ffa33",
+      "name": "Contexto de ejecución"
+    },
+    {
+      "parameters": {
+        "mode": "runOnceForEachItem",
+        "jsCode": "const now = new Date();\n\nconst previousMonth = new Date(\n  Date.UTC(now.getUTCFullYear(), now.getUTCMonth() - 1, 1)\n);\n\nconst year = previousMonth.getUTCFullYear();\nconst month = String(previousMonth.getUTCMonth() + 1).padStart(2, '0');\n\nreturn {\n  ...$json,\n  reportType: 'monthly',\n  period: `${year}-${month}`,\n};"
+      },
+      "type": "n8n-nodes-base.code",
+      "typeVersion": 2,
+      "position": [
+        -48,
+        -80
+      ],
+      "id": "5b65cb9d-9a12-4191-8d7d-05a1f3c368f2",
+      "name": "Calcular periodo del reporte"
+    },
+    {
+      "parameters": {
+        "url": "={{\n  'http://host.docker.internal:3101/api/report-deliveries/pending' +\n  '?reportType=monthly' +\n  '&period=' +\n  encodeURIComponent(\n    $('Calcular periodo del reporte').first().json.period\n  ) +\n  '&limit=20'\n}}",
+        "authentication": "genericCredentialType",
+        "genericAuthType": "httpHeaderAuth",
+        "options": {}
+      },
+      "type": "n8n-nodes-base.httpRequest",
+      "typeVersion": 4.4,
+      "position": [
+        368,
+        -80
+      ],
+      "id": "1b68fb51-4246-4879-a238-10c5661ebcf7",
+      "name": "Obtener entregas pendientes",
+      "credentials": {
+        "httpHeaderAuth": {
+          "id": "aWupYovR4VRqmTAs",
+          "name": "BOP Report Deliveries API"
+        }
+      }
+    },
+    {
+      "parameters": {
+        "conditions": {
+          "options": {
+            "caseSensitive": true,
+            "leftValue": "",
+            "typeValidation": "strict",
+            "version": 3
+          },
+          "conditions": [
+            {
+              "id": "c8bd1294-a3c2-4801-8e95-aa5fd29e56bd",
+              "leftValue": "={{ $json.count }}",
+              "rightValue": 0,
+              "operator": {
+                "type": "number",
+                "operation": "gt"
+              }
+            }
+          ],
+          "combinator": "and"
+        },
+        "options": {}
+      },
+      "type": "n8n-nodes-base.if",
+      "typeVersion": 2.3,
+      "position": [
+        576,
+        -80
+      ],
+      "id": "c4e3ef1d-ad20-4374-9ae1-c396441d18d3",
+      "name": "¿Hay entregas pendientes?"
+    },
+    {
+      "parameters": {
+        "method": "POST",
+        "url": "http://host.docker.internal:3101/api/automations/reports-send-monthly-emails/executions",
+        "authentication": "genericCredentialType",
+        "genericAuthType": "httpHeaderAuth",
+        "sendBody": true,
+        "specifyBody": "json",
+        "jsonBody": "={{\n  {\n    status: 'success',\n    startedAt: $('Contexto de ejecución').first().json.startedAt,\n    finishedAt: $now.toISO(),\n    durationMs: Date.now() - new Date(\n      $('Contexto de ejecución').first().json.startedAt\n    ).getTime(),\n    error: null,\n    executionId: $('Contexto de ejecución').first().json.executionId,\n    metadata: {\n      source: 'n8n',\n      workflowName: 'REPORTES - Enviar Reportes Mensuales',\n      reportType: 'monthly',\n      period: $('Calcular periodo del reporte').first().json.period,\n      result: 'no_pending_deliveries',\n      deliveriesProcessed: 0\n    }\n  }\n}}",
+        "options": {}
+      },
+      "type": "n8n-nodes-base.httpRequest",
+      "typeVersion": 4.4,
+      "position": [
+        784,
+        16
+      ],
+      "id": "6d8ad372-3c63-448e-bec0-e0d4485a3a58",
+      "name": "Registrar ejecución sin entregas",
+      "credentials": {
+        "httpHeaderAuth": {
+          "id": "vYvNOJG8Hpdy7bj1",
+          "name": "BOP Automations API"
+        }
+      }
+    },
+    {
+      "parameters": {
+        "fieldToSplitOut": "deliveries",
+        "include": "allOtherFields",
+        "options": {}
+      },
+      "type": "n8n-nodes-base.splitOut",
+      "typeVersion": 1,
+      "position": [
+        784,
+        -176
+      ],
+      "id": "39b2d8cf-9324-44ed-acb5-830de1805001",
+      "name": "Separar entregas"
+    },
+    {
+      "parameters": {
+        "method": "POST",
+        "url": "http://host.docker.internal:3101/api/report-deliveries/queue",
+        "authentication": "genericCredentialType",
+        "genericAuthType": "httpHeaderAuth",
+        "sendBody": true,
+        "specifyBody": "json",
+        "jsonBody": "={{\n  {\n    reportType: $('Calcular periodo del reporte').first().json.reportType,\n    period: $('Calcular periodo del reporte').first().json.period\n  }\n}}",
+        "options": {}
+      },
+      "type": "n8n-nodes-base.httpRequest",
+      "typeVersion": 4.4,
+      "position": [
+        160,
+        -80
+      ],
+      "id": "be572610-eb49-4fe1-9763-df1c1478795e",
+      "name": "Preparar entregas mensuales",
+      "credentials": {
+        "httpHeaderAuth": {
+          "id": "aWupYovR4VRqmTAs",
+          "name": "BOP Report Deliveries API"
+        }
+      }
+    },
+    {
+      "parameters": {
+        "method": "POST",
+        "url": "={{\n  'http://host.docker.internal:3101/api/report-deliveries/' +\n  encodeURIComponent($json.deliveries.deliveryId) +\n  '/attempt'\n}}",
+        "authentication": "genericCredentialType",
+        "genericAuthType": "httpHeaderAuth",
+        "sendBody": true,
+        "specifyBody": "json",
+        "jsonBody": "{\n  \"channel\": \"email\"\n}",
+        "options": {}
+      },
+      "type": "n8n-nodes-base.httpRequest",
+      "typeVersion": 4.4,
+      "position": [
+        992,
+        -176
+      ],
+      "id": "a2b34a44-78c0-47d1-9db3-a3f8a9e8ebfc",
+      "name": "Registrar intento de entrega",
+      "credentials": {
+        "httpHeaderAuth": {
+          "id": "aWupYovR4VRqmTAs",
+          "name": "BOP Report Deliveries API"
+        }
+      }
+    }
+  ],
+  "pinData": {},
+  "connections": {
+    "When clicking ‘Execute workflow’": {
+      "main": [
+        [
+          {
+            "node": "Contexto de ejecución",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Schedule Trigger": {
+      "main": [
+        [
+          {
+            "node": "Contexto de ejecución",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Contexto de ejecución": {
+      "main": [
+        [
+          {
+            "node": "Calcular periodo del reporte",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Calcular periodo del reporte": {
+      "main": [
+        [
+          {
+            "node": "Preparar entregas mensuales",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Obtener entregas pendientes": {
+      "main": [
+        [
+          {
+            "node": "¿Hay entregas pendientes?",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "¿Hay entregas pendientes?": {
+      "main": [
+        [
+          {
+            "node": "Separar entregas",
+            "type": "main",
+            "index": 0
+          }
+        ],
+        [
+          {
+            "node": "Registrar ejecución sin entregas",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Preparar entregas mensuales": {
+      "main": [
+        [
+          {
+            "node": "Obtener entregas pendientes",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Separar entregas": {
+      "main": [
+        [
+          {
+            "node": "Registrar intento de entrega",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    }
+  },
+  "active": false,
+  "settings": {
+    "executionOrder": "v1",
+    "binaryMode": "separate",
+    "availableInMCP": false
+  },
+  "versionId": "4753afd9-1ea8-4f49-a595-facaaf6076c6",
+  "meta": {
+    "instanceId": "bee9b9317980ac3f647a99365b584641cbb8e27252d8ecd6146a59ac24144b3b"
+  },
+  "nodeGroups": [],
+  "id": "1rAwCkpQ3ZV292XM",
+  "tags": []
+}

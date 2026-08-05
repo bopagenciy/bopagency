@@ -1,0 +1,205 @@
+{
+  "name": "REPORTES - Generar Reportes Mensuales",
+  "nodes": [
+    {
+      "parameters": {},
+      "type": "n8n-nodes-base.manualTrigger",
+      "typeVersion": 1,
+      "position": [
+        -416,
+        16
+      ],
+      "id": "4c758933-5e1e-463b-bd90-aa3964486487",
+      "name": "When clicking ‘Execute workflow’"
+    },
+    {
+      "parameters": {
+        "rule": {
+          "interval": [
+            {
+              "field": "months",
+              "triggerAtDayOfMonth": 2,
+              "triggerAtHour": 8
+            }
+          ]
+        }
+      },
+      "type": "n8n-nodes-base.scheduleTrigger",
+      "typeVersion": 1.3,
+      "position": [
+        -416,
+        -144
+      ],
+      "id": "8b040274-1ea9-47f2-b37a-9400ef7d8c80",
+      "name": "Schedule Trigger"
+    },
+    {
+      "parameters": {
+        "assignments": {
+          "assignments": [
+            {
+              "id": "a0af1c48-3b92-4d25-817f-96a8326b3075",
+              "name": "startedAt",
+              "value": "={{ $now.toISO() }}",
+              "type": "string"
+            },
+            {
+              "id": "1d66d027-ca1a-45c5-a825-29961152f0e1",
+              "name": "executionId",
+              "value": "={{ $execution.id }}",
+              "type": "string"
+            },
+            {
+              "id": "d5ddb548-6638-4ca5-a47d-c26b91a35557",
+              "name": "automationId",
+              "value": "reports-generate-monthly",
+              "type": "string"
+            }
+          ]
+        },
+        "includeOtherFields": true,
+        "options": {}
+      },
+      "type": "n8n-nodes-base.set",
+      "typeVersion": 3.4,
+      "position": [
+        -208,
+        -64
+      ],
+      "id": "7d2a5360-6199-47ab-b32e-7c478fbd6b83",
+      "name": "Contexto de ejecución"
+    },
+    {
+      "parameters": {
+        "mode": "runOnceForEachItem",
+        "jsCode": "const now = new Date();\n\nconst previousMonth = new Date(\n  Date.UTC(now.getUTCFullYear(), now.getUTCMonth() - 1, 1)\n);\n\nconst year = previousMonth.getUTCFullYear();\nconst month = String(previousMonth.getUTCMonth() + 1).padStart(2, '0');\n\nreturn {\n  ...$json,\n  reportType: 'monthly',\n  period: `${year}-${month}`,\n};"
+      },
+      "type": "n8n-nodes-base.code",
+      "typeVersion": 2,
+      "position": [
+        -32,
+        -64
+      ],
+      "id": "50182932-ef7e-46b6-8911-697d27b2c159",
+      "name": "Calcular periodo del reporte"
+    },
+    {
+      "parameters": {
+        "method": "POST",
+        "url": "http://host.docker.internal:3101/api/reports/generate-all",
+        "sendBody": true,
+        "specifyBody": "json",
+        "jsonBody": "={{\n  {\n    reportType: $json.reportType,\n    period: $json.period\n  }\n}}",
+        "options": {}
+      },
+      "type": "n8n-nodes-base.httpRequest",
+      "typeVersion": 4.4,
+      "position": [
+        144,
+        -64
+      ],
+      "id": "4485e779-a79e-4961-8faf-a814d8e3f899",
+      "name": "Generar reportes mensuales"
+    },
+    {
+      "parameters": {
+        "method": "POST",
+        "url": "http://host.docker.internal:3101/api/automations/reports-generate-monthly/executions",
+        "authentication": "genericCredentialType",
+        "genericAuthType": "httpHeaderAuth",
+        "sendBody": true,
+        "specifyBody": "json",
+        "jsonBody": "={{\n  {\n    status: 'success',\n    startedAt: $('Contexto de ejecución').first().json.startedAt,\n    finishedAt: $now.toISO(),\n    durationMs: Date.now() - new Date(\n      $('Contexto de ejecución').first().json.startedAt\n    ).getTime(),\n    error: null,\n    executionId: $('Contexto de ejecución').first().json.executionId,\n    metadata: {\n      source: 'n8n',\n      workflowName: 'REPORTES - Generar Reportes Mensuales',\n      reportType: $('Calcular periodo del reporte').first().json.reportType,\n      period: $('Calcular periodo del reporte').first().json.period,\n      result: 'reports_generated'\n    }\n  }\n}}",
+        "options": {}
+      },
+      "type": "n8n-nodes-base.httpRequest",
+      "typeVersion": 4.4,
+      "position": [
+        352,
+        -64
+      ],
+      "id": "1d6a8959-1347-48b4-a247-701c0cd1433b",
+      "name": "Registrar ejecución exitosa",
+      "credentials": {
+        "httpHeaderAuth": {
+          "id": "vYvNOJG8Hpdy7bj1",
+          "name": "BOP Automations API"
+        }
+      }
+    }
+  ],
+  "pinData": {},
+  "connections": {
+    "Schedule Trigger": {
+      "main": [
+        [
+          {
+            "node": "Contexto de ejecución",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "When clicking ‘Execute workflow’": {
+      "main": [
+        [
+          {
+            "node": "Contexto de ejecución",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Calcular periodo del reporte": {
+      "main": [
+        [
+          {
+            "node": "Generar reportes mensuales",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Contexto de ejecución": {
+      "main": [
+        [
+          {
+            "node": "Calcular periodo del reporte",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Generar reportes mensuales": {
+      "main": [
+        [
+          {
+            "node": "Registrar ejecución exitosa",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    }
+  },
+  "active": true,
+  "settings": {
+    "executionOrder": "v1",
+    "binaryMode": "separate",
+    "availableInMCP": false,
+    "timeSavedMode": "fixed",
+    "errorWorkflow": "tqH3MB5CcvM94vE2",
+    "callerPolicy": "workflowsFromSameOwner"
+  },
+  "versionId": "ed60e065-f18e-48d4-89fe-17a45e693ee0",
+  "meta": {
+    "instanceId": "bee9b9317980ac3f647a99365b584641cbb8e27252d8ecd6146a59ac24144b3b"
+  },
+  "nodeGroups": [],
+  "id": "SjKZOYhrCTuQmmEH",
+  "tags": []
+}

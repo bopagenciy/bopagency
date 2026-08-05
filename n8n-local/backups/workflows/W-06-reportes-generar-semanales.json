@@ -1,0 +1,207 @@
+{
+  "name": "REPORTES - Generar Reportes Semanales",
+  "nodes": [
+    {
+      "parameters": {},
+      "type": "n8n-nodes-base.manualTrigger",
+      "typeVersion": 1,
+      "position": [
+        -432,
+        0
+      ],
+      "id": "11a43b14-52ec-4b78-b878-72d3cd8f9b41",
+      "name": "When clicking ‘Execute workflow’"
+    },
+    {
+      "parameters": {
+        "rule": {
+          "interval": [
+            {
+              "field": "weeks",
+              "triggerAtDay": [
+                1
+              ],
+              "triggerAtHour": 8
+            }
+          ]
+        }
+      },
+      "type": "n8n-nodes-base.scheduleTrigger",
+      "typeVersion": 1.3,
+      "position": [
+        -432,
+        -176
+      ],
+      "id": "00598946-fcd2-4494-ada9-c8860f9b1a95",
+      "name": "Schedule Trigger"
+    },
+    {
+      "parameters": {
+        "assignments": {
+          "assignments": [
+            {
+              "id": "9a08ff36-b5a1-46b7-b91c-a17c5588158f",
+              "name": "startedAt",
+              "value": "={{ $now.toISO() }}",
+              "type": "string"
+            },
+            {
+              "id": "f7948754-d4f0-46fb-bd0f-41f09a6480ff",
+              "name": "executionId",
+              "value": "={{ $execution.id }}",
+              "type": "string"
+            },
+            {
+              "id": "e2b4391e-66ec-47bb-a2c5-86633c71a097",
+              "name": "automationId",
+              "value": "reports-generate-weekly",
+              "type": "string"
+            }
+          ]
+        },
+        "includeOtherFields": true,
+        "options": {}
+      },
+      "type": "n8n-nodes-base.set",
+      "typeVersion": 3.4,
+      "position": [
+        -256,
+        -80
+      ],
+      "id": "c6168533-1bf9-4d95-b3d2-9fdc361977d8",
+      "name": "Contexto de ejecución"
+    },
+    {
+      "parameters": {
+        "mode": "runOnceForEachItem",
+        "jsCode": "function getIsoWeek(date) {\n  const target = new Date(Date.UTC(\n    date.getUTCFullYear(),\n    date.getUTCMonth(),\n    date.getUTCDate()\n  ));\n\n  const dayNumber = target.getUTCDay() || 7;\n  target.setUTCDate(target.getUTCDate() + 4 - dayNumber);\n\n  const yearStart = new Date(Date.UTC(target.getUTCFullYear(), 0, 1));\n\n  const weekNumber = Math.ceil(\n    (((target - yearStart) / 86400000) + 1) / 7\n  );\n\n  return {\n    year: target.getUTCFullYear(),\n    week: weekNumber,\n  };\n}\n\nconst now = new Date();\n\nconst previousWeekDate = new Date(now);\npreviousWeekDate.setUTCDate(previousWeekDate.getUTCDate() - 7);\n\nconst { year, week } = getIsoWeek(previousWeekDate);\n\nreturn {\n  ...$json,\n  reportType: 'weekly',\n  period: `${year}-W${String(week).padStart(2, '0')}`,\n};"
+      },
+      "type": "n8n-nodes-base.code",
+      "typeVersion": 2,
+      "position": [
+        -80,
+        -80
+      ],
+      "id": "74f324f8-55f5-4f24-bcc3-f3ef6ea8596d",
+      "name": "Calcular periodo semanal"
+    },
+    {
+      "parameters": {
+        "method": "POST",
+        "url": "http://host.docker.internal:3101/api/reports/generate-all",
+        "sendBody": true,
+        "specifyBody": "json",
+        "jsonBody": "={{\n  {\n    reportType: $json.reportType,\n    period: $json.period\n  }\n}}",
+        "options": {}
+      },
+      "type": "n8n-nodes-base.httpRequest",
+      "typeVersion": 4.4,
+      "position": [
+        80,
+        -80
+      ],
+      "id": "0807a715-dc03-48e0-ba11-643aa26f8052",
+      "name": "Generar reportes semanales"
+    },
+    {
+      "parameters": {
+        "method": "POST",
+        "url": "http://host.docker.internal:3101/api/automations/reports-generate-weekly/executions",
+        "authentication": "genericCredentialType",
+        "genericAuthType": "httpHeaderAuth",
+        "sendBody": true,
+        "specifyBody": "json",
+        "jsonBody": "={{\n  {\n    status: 'success',\n    startedAt: $('Contexto de ejecución').first().json.startedAt,\n    finishedAt: $now.toISO(),\n    durationMs: Date.now() - new Date(\n      $('Contexto de ejecución').first().json.startedAt\n    ).getTime(),\n    error: null,\n    executionId: $('Contexto de ejecución').first().json.executionId,\n    metadata: {\n      source: 'n8n',\n      workflowName: 'REPORTES - Generar Reportes Semanales',\n      reportType: $('Calcular periodo semanal').first().json.reportType,\n      period: $('Calcular periodo semanal').first().json.period,\n      result: 'reports_generated'\n    }\n  }\n}}",
+        "options": {}
+      },
+      "type": "n8n-nodes-base.httpRequest",
+      "typeVersion": 4.4,
+      "position": [
+        240,
+        -80
+      ],
+      "id": "d5ae2582-7566-4377-813f-38c2d0664878",
+      "name": "Registrar ejecución exitosa",
+      "credentials": {
+        "httpHeaderAuth": {
+          "id": "vYvNOJG8Hpdy7bj1",
+          "name": "BOP Automations API"
+        }
+      }
+    }
+  ],
+  "pinData": {},
+  "connections": {
+    "When clicking ‘Execute workflow’": {
+      "main": [
+        [
+          {
+            "node": "Contexto de ejecución",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Schedule Trigger": {
+      "main": [
+        [
+          {
+            "node": "Contexto de ejecución",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Contexto de ejecución": {
+      "main": [
+        [
+          {
+            "node": "Calcular periodo semanal",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Calcular periodo semanal": {
+      "main": [
+        [
+          {
+            "node": "Generar reportes semanales",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Generar reportes semanales": {
+      "main": [
+        [
+          {
+            "node": "Registrar ejecución exitosa",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    }
+  },
+  "active": true,
+  "settings": {
+    "executionOrder": "v1",
+    "binaryMode": "separate",
+    "availableInMCP": false,
+    "timeSavedMode": "fixed",
+    "errorWorkflow": "tqH3MB5CcvM94vE2",
+    "callerPolicy": "workflowsFromSameOwner"
+  },
+  "versionId": "977c0739-3591-4b52-81ef-f5fb6f7caacf",
+  "meta": {
+    "instanceId": "bee9b9317980ac3f647a99365b584641cbb8e27252d8ecd6146a59ac24144b3b"
+  },
+  "nodeGroups": [],
+  "id": "dlHTfszV5UmHEybH",
+  "tags": []
+}
