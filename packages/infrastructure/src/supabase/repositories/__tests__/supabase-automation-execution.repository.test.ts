@@ -233,6 +233,63 @@ describe('SupabaseAutomationExecutionRepository.updateStatus', () => {
     }
   });
 
+  // ── HALLAZGO 4 (Phase 6 cierre): cancelación de queued sin completed_at ──
+  // Reproduce a nivel de persistencia el caso que causaba el 23514 en
+  // ck_exec_completed_requires_started: cancelar una ejecución 'queued' NO
+  // debe incluir completed_at (ni started_at) en el UPDATE — deben quedar
+  // NULL en DB, que es el único estado consistente con el constraint.
+
+  it('cancela queued sin enviar completed_at ni started_at en el patch (no viola ck_exec_completed_requires_started)', async () => {
+    const row = makeRow({ status: 'cancelled', started_at: null, completed_at: null });
+    const supabase = makeSupabase({ data: row });
+    const repo = new SupabaseAutomationExecutionRepository(supabase as unknown as SupabaseClient);
+
+    const result = await repo.updateStatus(EXEC_ID, ORG_ID, {
+      status: 'cancelled',
+      errorMessage: 'Cancelled by user-1',
+    });
+
+    expect(result.success).toBe(true);
+    if (result.success) {
+      expect(result.value.status).toBe('cancelled');
+      expect(result.value.startedAt).toBeNull();
+      expect(result.value.completedAt).toBeNull();
+    }
+
+    const updateCall = (supabase._chain.update as ReturnType<typeof vi.fn>).mock.calls[0]?.[0] as Record<string, unknown>;
+    expect('completed_at' in updateCall).toBe(false);
+    expect('started_at' in updateCall).toBe(false);
+    expect(updateCall['status']).toBe('cancelled');
+  });
+
+  // ── HALLAZGO 4: cancelación de running SÍ envía completed_at ─────────────
+  // Aquí started_at ya está seteado en DB (la ejecución llegó a correr), así
+  // que incluir completed_at es seguro y no viola el constraint.
+
+  it('cancela running enviando completed_at en el patch (started_at ya estaba seteado)', async () => {
+    const row = makeRow({
+      status: 'cancelled',
+      started_at: '2026-08-01T06:00:05.000Z',
+      completed_at: '2026-08-01T06:05:00.000Z',
+    });
+    const supabase = makeSupabase({ data: row });
+    const repo = new SupabaseAutomationExecutionRepository(supabase as unknown as SupabaseClient);
+
+    const result = await repo.updateStatus(EXEC_ID, ORG_ID, {
+      status: 'cancelled',
+      completedAt: new Date('2026-08-01T06:05:00.000Z'),
+      errorMessage: 'Cancelled by user-1',
+    });
+
+    expect(result.success).toBe(true);
+    if (result.success) {
+      expect(result.value.completedAt).toBeInstanceOf(Date);
+    }
+
+    const updateCall = (supabase._chain.update as ReturnType<typeof vi.fn>).mock.calls[0]?.[0] as Record<string, unknown>;
+    expect(updateCall['completed_at']).toBe('2026-08-01T06:05:00.000Z');
+  });
+
   it('actualiza a failed con errorCode y errorMessage', async () => {
     const row = makeRow({
       status: 'failed',

@@ -34,6 +34,11 @@ export type DispatchPayload = {
   readonly organizationId: string;
   readonly clientId: string | null;
   readonly triggerType: string;
+  /**
+   * NOTA: la implementación de producción (N8nWebhookDispatcher) IGNORA
+   * este valor y resuelve callbackUrl server-side — ver comentario en
+   * StartAutomationExecutionInput.callbackUrl para el detalle de seguridad.
+   */
   readonly callbackUrl: string;
   readonly metadata: Record<string, unknown>;
 };

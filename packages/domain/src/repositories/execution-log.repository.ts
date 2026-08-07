@@ -9,6 +9,12 @@
  * - No se persiste payload crudo, HMAC, API keys, ni stack traces.
  * - El campo `context` debe ser sanitizado por el adaptador.
  * - Los mensajes son orientados al consumidor (no técnicos de infraestructura).
+ *
+ * NOTA (revisión de consistencia Phase 6): `context` es el nombre a nivel de
+ * dominio/aplicación. La columna real en `public.automation_execution_logs`
+ * se llama `metadata` (ver 20260804000000_phase6b_automation_runtime.sql).
+ * La traducción context↔metadata ocurre únicamente en
+ * SupabaseExecutionLogRepository — este archivo no cambia.
  */
 
 import type { Result, PaginatedResult, PaginationParams } from '@bop-agency/shared';

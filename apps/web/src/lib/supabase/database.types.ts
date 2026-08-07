@@ -8,34 +8,43 @@ export type Database = {
   };
   public: {
     Tables: {
+      // NOTA (revisión de consistencia Phase 6): este archivo no está
+      // importado por ningún código (server.ts/browser.ts usan el `Database`
+      // de ./types, no de aquí). Se corrige igualmente para que no quede
+      // desalineado con la migración real si en el futuro se regenera o se
+      // empieza a usar (ver 20260804000000_phase6b_automation_runtime.sql):
+      // la columna real es `metadata` (no `context`) y existe `event_type`.
       automation_execution_logs: {
         Row: {
           id: string;
           execution_id: string;
-          organization_id: string | null;
+          organization_id: string;
           level: string;
+          event_type: string | null;
           message: string;
-          context: Json | null;
+          metadata: Json | null;
           occurred_at: string;
           created_at: string;
         };
         Insert: {
           id?: string;
           execution_id: string;
-          organization_id?: string | null;
+          organization_id: string;
           level?: string;
+          event_type?: string | null;
           message: string;
-          context?: Json | null;
+          metadata?: Json | null;
           occurred_at?: string;
           created_at?: string;
         };
         Update: {
           id?: string;
           execution_id?: string;
-          organization_id?: string | null;
+          organization_id?: string;
           level?: string;
+          event_type?: string | null;
           message?: string;
-          context?: Json | null;
+          metadata?: Json | null;
           occurred_at?: string;
           created_at?: string;
         };

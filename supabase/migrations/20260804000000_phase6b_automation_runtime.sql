@@ -84,13 +84,50 @@ ALTER TABLE public.automations
   ADD COLUMN IF NOT EXISTS last_executed_at     timestamptz     NULL;
 
 -- B3. Constraints en columnas nuevas
-ALTER TABLE public.automations
-  ADD CONSTRAINT IF NOT EXISTS ck_automations_trigger_config_obj
-    CHECK (jsonb_typeof(trigger_config) = 'object'),
-  ADD CONSTRAINT IF NOT EXISTS ck_automations_retry_policy_obj
-    CHECK (jsonb_typeof(retry_policy) = 'object'),
-  ADD CONSTRAINT IF NOT EXISTS ck_automations_metadata_obj
-    CHECK (jsonb_typeof(metadata) = 'object');
+-- NOTA: PostgreSQL no soporta ADD CONSTRAINT IF NOT EXISTS.
+-- Se usan bloques DO $$ ... $$ que consultan pg_constraint para idempotencia.
+
+DO $$
+BEGIN
+  IF NOT EXISTS (
+    SELECT 1 FROM pg_constraint
+    WHERE conname    = 'ck_automations_trigger_config_obj'
+      AND conrelid   = 'public.automations'::regclass
+  ) THEN
+    ALTER TABLE public.automations
+      ADD CONSTRAINT ck_automations_trigger_config_obj
+        CHECK (jsonb_typeof(trigger_config) = 'object');
+  END IF;
+END
+$$;
+
+DO $$
+BEGIN
+  IF NOT EXISTS (
+    SELECT 1 FROM pg_constraint
+    WHERE conname    = 'ck_automations_retry_policy_obj'
+      AND conrelid   = 'public.automations'::regclass
+  ) THEN
+    ALTER TABLE public.automations
+      ADD CONSTRAINT ck_automations_retry_policy_obj
+        CHECK (jsonb_typeof(retry_policy) = 'object');
+  END IF;
+END
+$$;
+
+DO $$
+BEGIN
+  IF NOT EXISTS (
+    SELECT 1 FROM pg_constraint
+    WHERE conname    = 'ck_automations_metadata_obj'
+      AND conrelid   = 'public.automations'::regclass
+  ) THEN
+    ALTER TABLE public.automations
+      ADD CONSTRAINT ck_automations_metadata_obj
+        CHECK (jsonb_typeof(metadata) = 'object');
+  END IF;
+END
+$$;
 
 -- B4. Índices adicionales para dominio Phase 6A
 CREATE INDEX IF NOT EXISTS idx_automations_status_active
@@ -186,6 +223,20 @@ CREATE TRIGGER trg_automation_executions_updated_at
 REVOKE ALL ON public.automation_executions FROM anon, authenticated;
 GRANT SELECT, INSERT, UPDATE ON public.automation_executions TO authenticated;
 
+-- C5b. Permisos service_role (fix Phase 6 local staging — 42501/permission denied)
+-- CORRECCIÓN: el comentario original de esta migración asumía que service_role
+-- "hereda por defecto" los privilegios de tabla en Supabase. Eso NO es cierto de
+-- forma consistente: en instancias locales/self-hosted (supabase CLI) service_role
+-- solo trae REFERENCES/TRIGGER/TRUNCATE por defecto sobre tablas nuevas — sin
+-- SELECT/INSERT/UPDATE/DELETE explícitos, PostgREST devuelve 403 /
+-- SQLSTATE 42501 "permission denied for table ...". Evidencia local: el callback
+-- POST /api/webhooks/n8n (service_role, tras verificación HMAC) hace SELECT y
+-- UPDATE directos sobre esta tabla (apps/web/src/app/api/webhooks/n8n/route.ts).
+-- No se otorga INSERT/DELETE a service_role: la creación de ejecuciones sigue
+-- pasando por el cliente de sesión del usuario (RLS, ver
+-- apps/web/src/lib/composition/automation-execution.composition.ts).
+GRANT SELECT, UPDATE ON public.automation_executions TO service_role;
+
 -- =============================================================================
 -- SECCIÓN D — TABLA: public.automation_execution_logs
 -- =============================================================================
@@ -227,6 +278,15 @@ CREATE INDEX IF NOT EXISTS idx_exec_logs_org_level_warn_error
 REVOKE ALL ON public.automation_execution_logs FROM anon, authenticated;
 GRANT SELECT ON public.automation_execution_logs TO authenticated;
 -- INSERT solo desde service_role (webhook route). No se otorga INSERT a authenticated.
+
+-- D3b. Permisos service_role (fix Phase 6 local staging — 42501/permission denied)
+-- Mismo problema que en automation_executions (ver C5b): sin este GRANT explícito,
+-- el INSERT que hace el callback de n8n (apps/web/src/app/api/webhooks/n8n/route.ts,
+-- paso 11: registro sanitizado por ejecución) falla con 42501 en instancias donde
+-- service_role no hereda privilegios por defecto. Solo INSERT: el webhook route no
+-- lee ni actualiza logs, solo los crea; SELECT para la UI sigue siendo vía
+-- authenticated + RLS (política exec_logs_select).
+GRANT INSERT ON public.automation_execution_logs TO service_role;
 
 -- =============================================================================
 -- SECCIÓN E — TABLA: public.automation_webhook_events
@@ -280,7 +340,25 @@ CREATE INDEX IF NOT EXISTS idx_webhook_events_status_failed
 -- E4. Permisos: SOLO service_role
 -- authenticated no tiene acceso a esta tabla (auditoría interna)
 REVOKE ALL ON public.automation_webhook_events FROM anon, authenticated;
--- service_role hereda por defecto en Supabase — no necesita GRANT explícito
+
+-- CORRECCIÓN (fix Phase 6 local staging — causa raíz del 42501):
+-- El supuesto "service_role hereda por defecto en Supabase — no necesita GRANT
+-- explícito" es INCORRECTO para esta instancia. Auditoría local confirmó que
+-- service_role solo tenía REFERENCES/TRIGGER/TRUNCATE sobre esta tabla (sin
+-- SELECT/INSERT/UPDATE/DELETE), lo que producía:
+--   HTTP 403 — SQLSTATE 42501 — permission denied for table automation_webhook_events
+-- al intentar el INSERT de deduplicación del callback de n8n (PASO 7 de
+-- apps/web/src/app/api/webhooks/n8n/route.ts). Nótese que supabase-js encadena
+-- `.insert(...).select('id').single()` — el INSERT por sí solo no basta, PostgREST
+-- también requiere SELECT para devolver la fila insertada.
+-- service_role necesita: SELECT (retorno post-insert), INSERT (registro de
+-- deduplicación), UPDATE (marcar processed/failed). DELETE se otorga para
+-- soportar la retención documentada (sugerida: 7 días, ver COMMENT ON TABLE
+-- más abajo y deuda técnica Phase 6G — job de limpieza aún no implementado).
+GRANT SELECT, INSERT, UPDATE, DELETE ON public.automation_webhook_events TO service_role;
+-- anon permanece sin acceso operativo (ya cubierto por REVOKE ALL arriba).
+-- authenticated permanece sin política RLS ni GRANT (ver sección G3 — RLS
+-- habilitado, sin políticas para authenticated).
 
 -- =============================================================================
 -- SECCIÓN F — TABLA: public.automation_secrets_metadata
@@ -334,7 +412,18 @@ CREATE TRIGGER trg_automation_secrets_updated_at
 -- F5. Permisos base
 REVOKE ALL ON public.automation_secrets_metadata FROM anon, authenticated;
 GRANT SELECT ON public.automation_secrets_metadata TO authenticated;
--- INSERT/UPDATE solo via service_role o RLS admin/owner (ver políticas abajo)
+-- INSERT/UPDATE via RLS admin/owner (ver políticas abajo, sección G4)
+
+-- NOTA (auditoría de grants Phase 6 local staging): a diferencia de
+-- automation_executions / automation_execution_logs / automation_webhook_events,
+-- esta tabla NO recibe GRANT explícito a service_role en esta migración porque,
+-- a la fecha, ningún código de aplicación la lee ni escribe (no hay repositorio,
+-- mapper ni referencia en el dispatcher n8n — packages/infrastructure/src/n8n/
+-- n8n-webhook-dispatcher.ts resuelve credenciales por variables de entorno, no
+-- por esta tabla). Se seguirá el mismo principio de mínimo privilegio: el GRANT
+-- a service_role se añadirá en la migración correspondiente cuando exista un
+-- consumidor real (gestión de credenciales vía Supabase Vault, deuda técnica
+-- Phase 6E/6F — fuera de alcance de este cierre de Phase 6 local staging).
 
 -- =============================================================================
 -- SECCIÓN G — ROW LEVEL SECURITY

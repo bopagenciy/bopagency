@@ -84,7 +84,7 @@ openssl rand -hex 32
 ### 2.2 Actualizar en n8n primero
 
 1. Ir al panel de n8n
-2. Actualizar la variable `BOP_WEBHOOK_SECRET` con el nuevo valor
+2. Actualizar la variable `AUTOMATION_WEBHOOK_SECRET` con el nuevo valor (mismo nombre que en Next.js)
 3. Guardar y verificar que el workflow puede leer la nueva variable
 
 ### 2.3 Actualizar en Next.js

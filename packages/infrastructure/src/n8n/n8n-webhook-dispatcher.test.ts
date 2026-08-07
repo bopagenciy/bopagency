@@ -16,6 +16,19 @@
  *   B10. cancel timeout → err N8N_TIMEOUT
  *   B11. metadata con claves prohibidas es sanitizada
  *   B12. no se loguean secretos ni body completo
+ *
+ *   Cierre de gap Phase 6D — callbackUrl server-side (nunca desde el caller):
+ *   C1. body.callbackUrl se construye desde NEXT_PUBLIC_APP_URL
+ *   C2. local (NEXT_PUBLIC_APP_URL=http://localhost:3200) -> exactamente
+ *       http://localhost:3200/api/webhooks/n8n
+ *   C3. normaliza: descarta path/query/slash final heredados de NEXT_PUBLIC_APP_URL
+ *   C4. NEXT_PUBLIC_APP_URL ausente -> err INTERNAL_ERROR (falla segura, no adivina)
+ *   C5. NEXT_PUBLIC_APP_URL con protocolo no http/https -> err INTERNAL_ERROR
+ *   C6. NEXT_PUBLIC_APP_URL no parseable como URL -> err INTERNAL_ERROR
+ *   C7. un payload.callbackUrl "malicioso" en options.payload es IGNORADO
+ *       (el cliente/use case no puede sobrescribir callbackUrl)
+ *   C8. el dispatcher sigue recibiendo executionId real (no afectado por el cambio)
+ *   C9. idempotencyKey sigue presente en headers y body (no regresión)
  */
 import { describe, it, expect, vi, beforeEach } from 'vitest';
 import type { AutomationId } from '@bop-agency/domain';
@@ -28,9 +41,17 @@ const AUTO_ID   = 'auto-uuid-1' as unknown as AutomationId;
 const EXEC_ID   = 'exec-uuid-1';
 const ORG_ID    = 'org-uuid-1';
 const IDEM_KEY  = 'auto-uuid-1:exec-uuid-1:2026-08-04';
-const CALLBACK  = 'https://bopagency.com/api/webhooks/n8n';
+/**
+ * Valor deliberadamente "malicioso"/no confiable en options.payload.callbackUrl.
+ * Usado en los tests C1/C7 para probar que el dispatcher lo IGNORA por
+ * completo: callbackUrl real siempre sale de NEXT_PUBLIC_APP_URL, nunca de
+ * este campo (que en el use case real jamás lo puebla un cliente, pero el
+ * dispatcher no debe confiar en eso — defensa en profundidad).
+ */
+const CALLBACK  = 'https://evil.example.com/steal';
 const SECRET    = 'a'.repeat(32);
 const BASE_URL  = 'http://localhost:5678';
+const APP_URL   = 'http://localhost:3200';
 
 const VALID_OPTIONS: DispatchOptions = {
   idempotencyKey: IDEM_KEY,
@@ -49,6 +70,7 @@ beforeEach(() => {
   vi.stubEnv('N8N_BASE_URL', BASE_URL);
   vi.stubEnv('AUTOMATION_WEBHOOK_SECRET', SECRET);
   vi.stubEnv('N8N_DISPATCH_TIMEOUT_MS', '5000');
+  vi.stubEnv('NEXT_PUBLIC_APP_URL', APP_URL);
   vi.stubGlobal('fetch', vi.fn());
 });
 
@@ -321,6 +343,134 @@ describe('N8nWebhookDispatcher.dispatch', () => {
       expect(logStr).not.toContain(SECRET);
     }
     consoleSpy.mockRestore();
+  });
+
+  // ── C. callbackUrl server-side (cierre de gap Phase 6D) ──────────────────
+
+  it('C1/C7: body.callbackUrl se construye desde NEXT_PUBLIC_APP_URL, ignorando options.payload.callbackUrl', async () => {
+    const mockFetch = vi.fn().mockResolvedValueOnce(new Response('{}', { status: 200 }));
+    vi.stubGlobal('fetch', mockFetch);
+
+    const dispatcher = new N8nWebhookDispatcher();
+    // VALID_OPTIONS.payload.callbackUrl = CALLBACK ('https://evil.example.com/steal')
+    await dispatcher.dispatch(AUTO_ID, VALID_OPTIONS);
+
+    const [, init] = mockFetch.mock.calls[0] as [string, RequestInit];
+    const body = JSON.parse(init.body as string);
+
+    expect(body.callbackUrl).toBe('http://localhost:3200/api/webhooks/n8n');
+    expect(body.callbackUrl).not.toBe(CALLBACK);
+    expect(JSON.stringify(body)).not.toContain('evil.example.com');
+  });
+
+  it('C2: en local, callbackUrl resuelve exactamente a http://localhost:3200/api/webhooks/n8n', async () => {
+    vi.stubEnv('NEXT_PUBLIC_APP_URL', 'http://localhost:3200');
+    const mockFetch = vi.fn().mockResolvedValueOnce(new Response('{}', { status: 200 }));
+    vi.stubGlobal('fetch', mockFetch);
+
+    const dispatcher = new N8nWebhookDispatcher();
+    await dispatcher.dispatch(AUTO_ID, VALID_OPTIONS);
+
+    const [, init] = mockFetch.mock.calls[0] as [string, RequestInit];
+    const body = JSON.parse(init.body as string);
+    expect(body.callbackUrl).toBe('http://localhost:3200/api/webhooks/n8n');
+  });
+
+  it('C3: normaliza — descarta path/query/slash final heredados de NEXT_PUBLIC_APP_URL', async () => {
+    vi.stubEnv('NEXT_PUBLIC_APP_URL', 'http://localhost:3200/algun/path/?x=1');
+    const mockFetch = vi.fn().mockResolvedValueOnce(new Response('{}', { status: 200 }));
+    vi.stubGlobal('fetch', mockFetch);
+
+    const dispatcher = new N8nWebhookDispatcher();
+    await dispatcher.dispatch(AUTO_ID, VALID_OPTIONS);
+
+    const [, init] = mockFetch.mock.calls[0] as [string, RequestInit];
+    const body = JSON.parse(init.body as string);
+    expect(body.callbackUrl).toBe('http://localhost:3200/api/webhooks/n8n');
+  });
+
+  it('C3b: normaliza — NEXT_PUBLIC_APP_URL con trailing slash no produce doble slash', async () => {
+    vi.stubEnv('NEXT_PUBLIC_APP_URL', 'https://app.bopagency.com/');
+    const mockFetch = vi.fn().mockResolvedValueOnce(new Response('{}', { status: 200 }));
+    vi.stubGlobal('fetch', mockFetch);
+
+    const dispatcher = new N8nWebhookDispatcher();
+    await dispatcher.dispatch(AUTO_ID, VALID_OPTIONS);
+
+    const [, init] = mockFetch.mock.calls[0] as [string, RequestInit];
+    const body = JSON.parse(init.body as string);
+    expect(body.callbackUrl).toBe('https://app.bopagency.com/api/webhooks/n8n');
+  });
+
+  it('C4: NEXT_PUBLIC_APP_URL ausente -> err INTERNAL_ERROR (falla segura, no adivina host)', async () => {
+    vi.stubEnv('NEXT_PUBLIC_APP_URL', '');
+    const mockFetch = vi.fn();
+    vi.stubGlobal('fetch', mockFetch);
+
+    const dispatcher = new N8nWebhookDispatcher();
+    const result = await dispatcher.dispatch(AUTO_ID, VALID_OPTIONS);
+
+    expect(result.success).toBe(false);
+    if (!result.success) expect(result.error.code).toBe('INTERNAL_ERROR');
+    expect(mockFetch).not.toHaveBeenCalled();
+  });
+
+  it('C5: NEXT_PUBLIC_APP_URL con protocolo no http/https -> err INTERNAL_ERROR', async () => {
+    vi.stubEnv('NEXT_PUBLIC_APP_URL', 'ftp://localhost:3200');
+    const mockFetch = vi.fn();
+    vi.stubGlobal('fetch', mockFetch);
+
+    const dispatcher = new N8nWebhookDispatcher();
+    const result = await dispatcher.dispatch(AUTO_ID, VALID_OPTIONS);
+
+    expect(result.success).toBe(false);
+    if (!result.success) expect(result.error.code).toBe('INTERNAL_ERROR');
+    expect(mockFetch).not.toHaveBeenCalled();
+  });
+
+  it('C6: NEXT_PUBLIC_APP_URL no parseable como URL -> err INTERNAL_ERROR', async () => {
+    vi.stubEnv('NEXT_PUBLIC_APP_URL', 'no-es-una-url');
+    const mockFetch = vi.fn();
+    vi.stubGlobal('fetch', mockFetch);
+
+    const dispatcher = new N8nWebhookDispatcher();
+    const result = await dispatcher.dispatch(AUTO_ID, VALID_OPTIONS);
+
+    expect(result.success).toBe(false);
+    if (!result.success) expect(result.error.code).toBe('INTERNAL_ERROR');
+    expect(mockFetch).not.toHaveBeenCalled();
+  });
+
+  it('C8: el dispatcher sigue recibiendo executionId real en el body (no afectado por el cambio)', async () => {
+    const mockFetch = vi.fn().mockResolvedValueOnce(new Response('{}', { status: 200 }));
+    vi.stubGlobal('fetch', mockFetch);
+
+    const dispatcher = new N8nWebhookDispatcher();
+    const result = await dispatcher.dispatch(AUTO_ID, VALID_OPTIONS);
+
+    expect(result.success).toBe(true);
+    if (result.success) expect(result.value.id).toBe(EXEC_ID);
+
+    const [, init] = mockFetch.mock.calls[0] as [string, RequestInit];
+    const body = JSON.parse(init.body as string);
+    expect(body.executionId).toBe(EXEC_ID);
+  });
+
+  it('C9: idempotencyKey sigue presente en headers y body (no regresión de idempotencia)', async () => {
+    const mockFetch = vi.fn().mockResolvedValueOnce(new Response('{}', { status: 200 }));
+    vi.stubGlobal('fetch', mockFetch);
+
+    const dispatcher = new N8nWebhookDispatcher();
+    await dispatcher.dispatch(AUTO_ID, VALID_OPTIONS);
+
+    const [, init] = mockFetch.mock.calls[0] as [string, RequestInit];
+    const headers = init.headers as Record<string, string>;
+    const body = JSON.parse(init.body as string);
+
+    expect(headers['x-bop-event-id']).toBe(IDEM_KEY);
+    expect(body.idempotencyKey).toBe(IDEM_KEY);
+    // La firma HMAC sigue calculandose sobre timestamp.rawBody (protocolo sin cambios).
+    expect(headers['x-bop-signature']).toMatch(/^[0-9a-f]{64}$/);
   });
 });
 

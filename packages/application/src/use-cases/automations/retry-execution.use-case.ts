@@ -340,6 +340,8 @@ export async function retryAutomationExecution(
       organizationId: String(organizationId),
       clientId: previous.clientId ? String(previous.clientId) : null,
       triggerType: previous.triggerType,
+      // callbackUrl: N8nWebhookDispatcher lo ignora y lo resuelve
+      // server-side desde NEXT_PUBLIC_APP_URL (ver n8n-webhook-dispatcher.ts).
       callbackUrl: '',
       metadata: {
         previousExecutionId: String(previous.id),

@@ -11,10 +11,15 @@
  * - AUTOMATION_WEBHOOK_SECRET nunca se expone en logs ni respuestas.
  * - Timeout configurable via N8N_DISPATCH_TIMEOUT_MS (default: 10000ms).
  * - Solo usable desde contextos server-side (env vars solo disponibles en server).
+ * - callbackUrl NUNCA se acepta desde options.payload/el caller — siempre se
+ *   construye desde NEXT_PUBLIC_APP_URL (ver resolveCallbackUrl). Cierra la
+ *   vía de SSRF por callbackUrl arbitrario (form data, search params, headers).
  *
  * VARIABLES DE ENTORNO REQUERIDAS (server-only):
  *   N8N_BASE_URL                  - URL base de n8n (ej: http://localhost:5678)
  *   AUTOMATION_WEBHOOK_SECRET     - Secreto HMAC compartido (≥32 chars)
+ *   NEXT_PUBLIC_APP_URL           - Origin de BopIAgency, usado para construir
+ *                                   callbackUrl (ej: http://localhost:3200)
  *
  * VARIABLES OPCIONALES:
  *   N8N_DISPATCH_TIMEOUT_MS       - Timeout en ms (default: 10000)
@@ -33,13 +38,16 @@ import type { WorkflowDispatcher, DispatchOptions, AutomationRun } from '@bop-ag
 /**
  * Campos esperados en options.payload por el dispatcher.
  * El use case (Phase 6D) poblará estos campos antes de llamar dispatch().
+ *
+ * NOTA: `callbackUrl` NO forma parte de este tipo intencionalmente. Ver
+ * `resolveCallbackUrl()` — el dispatcher nunca acepta callbackUrl desde el
+ * caller (evita SSRF); siempre lo construye desde configuración server-side.
  */
 type N8nDispatchPayloadFields = {
   executionId: string;
   organizationId: string;
   clientId?: string | null;
   triggerType: string;
-  callbackUrl: string;
   metadata?: Record<string, unknown>;
 };
 
@@ -77,6 +85,50 @@ function requireHmacSecret(): Buffer {
     throw new Error('[n8n] AUTOMATION_WEBHOOK_SECRET no está configurado correctamente');
   }
   return Buffer.from(secret, 'utf-8');
+}
+
+/** Ruta fija del endpoint de callback en BopIAgency (nunca configurable por input externo). */
+const N8N_CALLBACK_PATH = '/api/webhooks/n8n';
+
+/**
+ * Resuelve la URL de callback que n8n debe usar para notificar el resultado
+ * de la ejecución.
+ *
+ * SEGURIDAD (cierre de gap: "el payload de dispatch no incluye callbackUrl"):
+ * - SIEMPRE se construye desde `NEXT_PUBLIC_APP_URL` (config server-side de
+ *   `apps/web`), NUNCA desde `options.payload` del use case, form data,
+ *   search params ni headers de la request entrante. El caller no puede
+ *   influir en este valor — cierra la vía de SSRF por callbackUrl arbitrario.
+ * - `NEXT_PUBLIC_APP_URL` es requerido (mismo criterio que
+ *   `verify-phase6-n8n.ps1`/`.env.example`, donde ya es obligatoria para
+ *   Phase 6). Si falta o es inválida, el dispatch falla de forma segura
+ *   (no se adivina ni se hardcodea un host de producción).
+ * - Solo se usa el origin (protocolo + host) de `NEXT_PUBLIC_APP_URL`;
+ *   cualquier path, query string o slash final presente en la variable se
+ *   descarta — evita URLs duplicadas o mal formadas (`//api/webhooks/n8n`).
+ * - En local, con `NEXT_PUBLIC_APP_URL=http://localhost:3200` (valor por
+ *   defecto en `.env.example`), resuelve exactamente a
+ *   `http://localhost:3200/api/webhooks/n8n`.
+ */
+function resolveCallbackUrl(): string {
+  const raw = process.env['NEXT_PUBLIC_APP_URL'];
+  if (!raw || raw.trim().length === 0) {
+    throw new Error('[n8n] NEXT_PUBLIC_APP_URL no está configurado — requerido para construir callbackUrl');
+  }
+
+  let parsed: URL;
+  try {
+    parsed = new URL(raw.trim());
+  } catch {
+    throw new Error('[n8n] NEXT_PUBLIC_APP_URL no es una URL válida');
+  }
+
+  if (parsed.protocol !== 'http:' && parsed.protocol !== 'https:') {
+    throw new Error('[n8n] NEXT_PUBLIC_APP_URL debe usar http o https');
+  }
+
+  // Origin normalizado (sin slash final, sin path/query heredados) + path fijo.
+  return `${parsed.protocol}//${parsed.host}${N8N_CALLBACK_PATH}`;
 }
 
 // ─── HMAC signing (standalone — no depende de apps/web) ──────────────────────
@@ -119,6 +171,10 @@ export class N8nWebhookDispatcher implements WorkflowDispatcher {
    * - executionId, organizationId, automationId, clientId
    * - idempotencyKey, triggerType, callbackUrl, metadata segura
    *
+   * callbackUrl SIEMPRE se resuelve server-side (ver resolveCallbackUrl) a
+   * partir de NEXT_PUBLIC_APP_URL — cualquier callbackUrl en
+   * options.payload es ignorado.
+   *
    * NO se reenvían secretos del sistema ni datos PII de clientes.
    * NO se loguea el body completo.
    */
@@ -136,6 +192,22 @@ export class N8nWebhookDispatcher implements WorkflowDispatcher {
       ));
     }
 
+    // Obtener configuración server-side (incluye callbackUrl — ver
+    // resolveCallbackUrl: nunca se toma de options.payload / del caller).
+    let baseUrl: string;
+    let secretBuf: Buffer;
+    let callbackUrl: string;
+    try {
+      baseUrl     = requireN8nBaseUrl();
+      secretBuf   = requireHmacSecret();
+      callbackUrl = resolveCallbackUrl();
+    } catch {
+      return err(createError(
+        'INTERNAL_ERROR',
+        'Error de configuración del dispatcher n8n',
+      ));
+    }
+
     // Construir payload mínimo y seguro para n8n
     const n8nPayload = {
       executionId:    payloadFields.executionId,
@@ -144,25 +216,12 @@ export class N8nWebhookDispatcher implements WorkflowDispatcher {
       clientId:       payloadFields.clientId ?? null,
       idempotencyKey: options.idempotencyKey,
       triggerType:    payloadFields.triggerType ?? 'manual',
-      callbackUrl:    payloadFields.callbackUrl ?? '',
+      callbackUrl,
       metadata:       sanitizeMetadata(payloadFields.metadata ?? {}),
     };
 
     // Serializar — este es el body exacto que se transmite y firma
     const rawBody = JSON.stringify(n8nPayload);
-
-    // Obtener configuración server-side
-    let baseUrl: string;
-    let secretBuf: Buffer;
-    try {
-      baseUrl   = requireN8nBaseUrl();
-      secretBuf = requireHmacSecret();
-    } catch {
-      return err(createError(
-        'INTERNAL_ERROR',
-        'Error de configuración del dispatcher n8n',
-      ));
-    }
 
     const webhookUrl = `${baseUrl}/webhook/${String(automationId)}`;
     const sigHeaders = buildSignatureHeaders(rawBody, options.idempotencyKey, secretBuf);

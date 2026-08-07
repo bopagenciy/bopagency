@@ -204,18 +204,38 @@
 
 ## Acciones Manuales Requeridas Antes de Producción
 
-1. `openssl rand -hex 32` → generar AUTOMATION_WEBHOOK_SECRET
-2. Configurar AUTOMATION_WEBHOOK_SECRET en n8n Y en Next.js (mismo valor)
-3. Configurar N8N_BASE_URL en variables de entorno de producción
-4. Hacer backup de base de datos de producción
-5. Aplicar migración `20260804000000_phase6b_automation_runtime.sql` en staging
-6. Regenerar tipos Supabase: `npx supabase gen types typescript`
-7. Ejecutar smoke tests según PHASE_6_N8N_INTEGRATION_RUNBOOK.md
-8. Validar RLS con usuario viewer en staging
-9. Ejecutar `npm run lint` y `npm run build` en Windows local
-10. Ejecutar E2E `automations.e2e.ts` en local con credenciales reales
-11. Aplicar migración en producción solo después de staging exitoso
-12. Monitorear durante 24h después del deploy
+### Pre-staging (preparación — 2026-08-05 COMPLETE)
+
+- [x] Documentos de staging preparados (`PHASE_6_STAGING_*.md`)
+- [x] Smoke test matrix definida (20 cases)
+- [x] Data fixtures diseñados
+- [x] Environment checklist creado
+- [x] 807 tests unitarios PASS (domain 169 + application 207 + infrastructure 275 + web 39 + migrations 317)
+- [x] lint + typecheck PASS en todos los packages
+
+### Staging (pendiente ejecución manual)
+
+1. Confirmar proyecto Supabase staging separado
+2. `openssl rand -hex 32` → generar `AUTOMATION_WEBHOOK_SECRET` para staging
+3. Configurar `AUTOMATION_WEBHOOK_SECRET` en n8n staging Y en `.env.staging` (mismo valor)
+4. Configurar `N8N_BASE_URL` apuntando a instancia n8n staging
+5. Backup de staging: `supabase db dump --linked --schema-only`
+6. Aplicar migración `20260804000000_phase6b_automation_runtime.sql` en staging
+7. Regenerar tipos: `supabase gen types typescript --linked > apps/web/src/lib/supabase/database.types.ts`
+8. Importar workflow de prueba en n8n staging
+9. Ejecutar smoke test matrix (20 cases — ver `PHASE_6_STAGING_SMOKE_TEST_MATRIX.md`)
+10. Validar RLS con usuario viewer en staging (case 20)
+11. Ejecutar E2E `automations.e2e.ts` con credenciales staging
+12. Ejecutar `npm run build` en Windows local (staging env vars)
+
+### Producción (solo después de staging exitoso)
+
+1. `openssl rand -hex 32` → generar `AUTOMATION_WEBHOOK_SECRET` para producción (diferente al de staging)
+2. Configurar `AUTOMATION_WEBHOOK_SECRET` en n8n producción Y en variables de producción
+3. Configurar `N8N_BASE_URL` en producción
+4. Backup de producción completo
+5. Aplicar migración en producción
+6. Monitorear durante 24h post-deploy
 
 ---
 

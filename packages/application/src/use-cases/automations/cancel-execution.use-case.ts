@@ -4,15 +4,27 @@
  * REGLAS (HALLAZGO 2 — Phase 6D correctivo):
  *
  * queued  → cancelled localmente (sin dispatcher externo).
+ *   startedAt permanece NULL, completedAt permanece NULL (nunca llegó a
+ *   iniciarse — ver HALLAZGO 4 más abajo).
  * running → REQUIERE cancelación remota confirmada vía dispatcher.cancel():
  *   - dispatcher ausente       → CANCEL_NOT_SUPPORTED (ejecución permanece running)
- *   - cancel remoto ok         → cancelled localmente
+ *   - cancel remoto ok         → cancelled localmente, completedAt = now()
  *   - cancel remoto falla/timeout → error seguro devuelto al caller,
  *                                   ejecución permanece en running
+ * retrying → rechazado con VALIDATION_ERROR (estado no cancelable en el
+ *   modelo actual; `retrying` no es asignado por ningún flujo de producción
+ *   hoy — reservado para el futuro scheduler de Phase 6E).
  * cancelled → idempotente (ok sin actualizar).
- * succeeded, failed, retrying → rechazados con VALIDATION_ERROR.
+ * succeeded, failed → rechazados con VALIDATION_ERROR.
  *
  * GARANTÍA: nunca se marca running como cancelled sin confirmación externa.
+ *
+ * HALLAZGO 4 (Phase 6 cierre — corregido):
+ * completedAt SOLO se setea cuando la ejecución cancelada ya estaba
+ * 'running' (es decir, ya tenía startedAt). Para queued → cancelled,
+ * completedAt se omite (queda NULL), porque forzarlo violaría el
+ * constraint DB ck_exec_completed_requires_started
+ * (completed_at IS NULL OR started_at IS NOT NULL).
  *
  * AISLAMIENTO:
  * - Siempre busca por (organizationId, executionId).
@@ -131,13 +143,30 @@ export async function cancelAutomationExecution(
   }
 
   // ── Actualizar estado a 'cancelled' ───────────────────────────────────────
+  //
+  // HALLAZGO 4 (Phase 6 cierre — corregido): completedAt solo se establece si
+  // la ejecución YA había comenzado (status === 'running', donde startedAt ya
+  // fue seteado por el callback de n8n). Una ejecución 'queued' nunca tuvo
+  // startedAt, así que forzar completedAt aquí violaría el constraint DB
+  // ck_exec_completed_requires_started (completed_at IS NULL OR
+  // started_at IS NOT NULL) — ver 20260804000000_phase6b_automation_runtime.sql.
+  //
+  // Al omitir la propiedad `completedAt` (undefined), SupabaseAutomationExecutionRepository
+  // .updateStatus() no incluye la columna `completed_at` en el UPDATE y por
+  // tanto conserva su valor NULL existente (ver supabase-automation-execution.repository.ts).
+  //
+  // `execution.status` es el estado ANTERIOR a esta actualización (capturado
+  // arriba, antes de cualquier transición), por lo que refleja con precisión
+  // si la ejecución llegó a iniciarse.
+
+  const wasStarted = execution.status === 'running';
 
   const updateResult = await deps.executionRepository.updateStatus(
     executionId,
     organizationId,
     {
       status: 'cancelled',
-      completedAt: new Date(),
+      ...(wasStarted ? { completedAt: new Date() } : {}),
       errorCode: null,
       errorMessage: safeReason
         ? `Cancelled by ${requestedBy}: ${safeReason}`

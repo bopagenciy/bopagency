@@ -102,14 +102,13 @@ npm run build --workspace=@bop-agency/web
 
 En el panel de n8n:
 1. Ir a Settings → Environment Variables
-2. Añadir `BOP_WEBHOOK_SECRET` = `<AUTOMATION_WEBHOOK_SECRET>`
-3. Añadir `BOP_CALLBACK_BASE_URL` = `<NEXT_PUBLIC_APP_URL>`
-4. Verificar que los workflows de staging apuntan a la URL correcta
+2. Añadir `AUTOMATION_WEBHOOK_SECRET` con el MISMO valor que `AUTOMATION_WEBHOOK_SECRET` en Next.js (mismo nombre de variable en ambos lados; no existe una variable "callback base url" en el código real)
+3. Verificar que los workflows de staging apuntan a la URL correcta
 
 #### Paso 7 — Configurar secreto HMAC (staging)
 
 Verificar que `AUTOMATION_WEBHOOK_SECRET` en Next.js (staging) es
-exactamente igual a `BOP_WEBHOOK_SECRET` en n8n (staging).
+exactamente igual a `AUTOMATION_WEBHOOK_SECRET` en n8n (staging).
 
 #### Paso 8 — Smoke test: cargar página de automations
 

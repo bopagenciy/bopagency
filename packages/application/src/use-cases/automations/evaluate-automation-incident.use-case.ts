@@ -304,10 +304,14 @@ async function handleRecovery(params: {
       });
     }
   } else {
+    // Logging seguro para diagnóstico: solo identificadores y código de error
+    // interno. Nunca secretos, HMAC, payload completo, headers ni PII.
     logger.warn('evaluateAutomationIncident: recovery resolve failed (best-effort)', {
       organizationId,
       automationId,
-      error: resolveResult.error.code,
+      executionId: String(executionId),
+      incidentType: 'RECOVERY',
+      errorCode: resolveResult.error.code,
     });
   }
 

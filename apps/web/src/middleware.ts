@@ -24,9 +24,14 @@ const PUBLIC_ROUTES = [
 const AUTH_ROUTES = ['/login', '/signup', '/forgot-password', '/reset-password'];
 
 // Rutas que siempre son públicas (assets, api routes especiales)
-const ALWAYS_PUBLIC_PREFIXES = ['/_next', '/favicon', '/api/health'];
+// NOTA: '/api/webhooks' excluye a los callbacks (ej. /api/webhooks/n8n) de la
+// autenticación por cookie de sesión. Estas rutas se autentican por HMAC
+// (ver apps/web/src/app/api/webhooks/n8n/route.ts) y NUNCA reciben una cookie
+// de sesión de Supabase — si el middleware las interceptara, el callback real
+// de n8n sería redirigido a /login en lugar de llegar al route handler.
+const ALWAYS_PUBLIC_PREFIXES = ['/_next', '/favicon', '/api/health', '/api/webhooks'];
 
-function isPublicRoute(pathname: string): boolean {
+export function isPublicRoute(pathname: string): boolean {
   if (ALWAYS_PUBLIC_PREFIXES.some((prefix) => pathname.startsWith(prefix))) {
     return true;
   }

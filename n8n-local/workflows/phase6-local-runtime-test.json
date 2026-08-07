@@ -1,0 +1,1237 @@
+{
+  "name": "Phase 6 - Local Runtime Test (BopIAgency <-> n8n)",
+  "nodes": [
+    {
+      "id": "0a6d40de-41c7-4c73-b2c7-dfe67c508190",
+      "name": "Nota - Overview",
+      "type": "n8n-nodes-base.stickyNote",
+      "typeVersion": 1,
+      "position": [
+        -760,
+        -420
+      ],
+      "parameters": {
+        "content": "## Phase 6 - Local Runtime Test (BopIAgency <-> n8n)\n\nWorkflow EXCLUSIVO de entorno local. Datos ficticios, sin PII.\n\n- Recibe el dispatch real de N8nWebhookDispatcher en POST /webhook/:automationId\n- Responde aceptacion rapido (antes de N8N_DISPATCH_TIMEOUT_MS)\n- Segun metadata.fixtureMode (default 'success') envia callbacks firmados\n  HMAC SHA-256 a payload.callbackUrl (obligatorio, ver mas abajo)\n\nfixtureMode soportados (whitelist EXPLICITA en el nodo 'Extraer Dispatch'):\n  success | failed | duplicate | stale-timestamp | invalid-signature | timeout\nCualquier valor no reconocido, ausente o nulo se normaliza a 'success'.\ninvalid-signature y stale-timestamp NUNCA se disparan por accidente.\n\n'duplicate' cubre a la vez 'callback duplicado' y 'replay protection'\n(mismo eventId, mismo body, mismo timestamp/firma, reenviado dos veces).\n\n'timeout' nunca deja ejecuciones colgadas: espera un tiempo FIJO (15s)\ny responde -- no reintenta ni entra en bucle.\n\nHALLAZGO (perdida de contexto) -- corregido:\n  callbackUrl es OBLIGATORIO en el dispatch (ya no hay fallback silencioso a\n  una URL local por defecto). 'Extraer Dispatch' valida executionId,\n  organizationId, automationId y callbackUrl; si falta alguno, o si\n  callbackUrl no apunta a localhost/127.0.0.1/host.docker.internal, el\n  workflow responde 400 sin firmar ni enviar nada. Solo 'localhost' se\n  reescribe a 'host.docker.internal' (el contenedor de n8n no resuelve\n  localhost al host). Los nodos 'Firmar ...' ya NO dependen del nodo\n  inmediatamente anterior para obtener el contexto (executionId,\n  callbackUrl, etc.): lo leen siempre de 'Extraer Dispatch' por nombre,\n  porque en las ramas Success/Failed/Duplicate un nodo HTTP Request ya se\n  ejecuto antes y su salida reemplaza el item por la respuesta HTTP.\n\nRequiere AUTOMATION_WEBHOOK_SECRET disponible en el contenedor de n8n\n(n8n-local/.env) y N8N_BLOCK_ENV_ACCESS_IN_NODE=false. Nunca hardcodeado\nen este JSON -- se lee de $env en cada nodo Code de firma.\n\nSin URLs de produccion: solo localhost/127.0.0.1/host.docker.internal.\n\nNUNCA activar ni apuntar este workflow a un n8n o BopIAgency de produccion.",
+        "height": 460,
+        "width": 480,
+        "color": 5
+      }
+    },
+    {
+      "id": "b5d63c85-3ccd-43c2-b408-8aadfd58670c",
+      "name": "Recibe Dispatch",
+      "type": "n8n-nodes-base.webhook",
+      "typeVersion": 2,
+      "position": [
+        -200,
+        0
+      ],
+      "parameters": {
+        "httpMethod": "POST",
+        "path": ":automationId",
+        "responseMode": "responseNode",
+        "options": {}
+      },
+      "notes": "Path dinamico :automationId para matchear /webhook/{automationId}, tal como lo construye N8nWebhookDispatcher (baseUrl + '/webhook/' + automationId). El workflow lee automationId del BODY (mas estable entre versiones de n8n que la captura de parametros de ruta), no de este parametro de path.",
+      "notesInFlow": false
+    },
+    {
+      "id": "0f594cfb-6a94-452c-92bd-faba6284a4f1",
+      "name": "Extraer Dispatch",
+      "type": "n8n-nodes-base.code",
+      "typeVersion": 2,
+      "position": [
+        20,
+        0
+      ],
+      "parameters": {
+        "mode": "runOnceForEachItem",
+        "language": "javaScript",
+        "jsCode": "// Phase 6 - extrae y valida el contexto del dispatch real de N8nWebhookDispatcher.\n// Contrato exacto (packages/infrastructure/src/n8n/n8n-webhook-dispatcher.ts):\n//   { executionId, organizationId, automationId, clientId, idempotencyKey,\n//     triggerType, callbackUrl, metadata }\n// 'attempt' normalmente NO viene en el payload de dispatch real (se asume 1),\n// pero se lee de source.attempt si algun caller de prueba lo informa.\n//\n// HALLAZGO (lectura del body del Webhook) -- corregido:\n// El nodo Webhook 'Recibe Dispatch' entrega el payload HTTP dentro de\n// $json.body (junto a headers/params/query), pero leer $json.body de forma\n// directa es fragil: $json es un alias de conveniencia que puede no\n// resolver de forma fiable dentro de un Code node segun el modo de\n// ejecucion/version de n8n. Evidencia real observada: 'Recibe Dispatch'\n// recibia correctamente body.callbackUrl, pero 'Extraer Dispatch' producia\n// callbackUrl vacio y validationError \"callbackUrl no es una URL valida\".\n// Correccion: usar $json directamente (alias estable del item actual en\n// modo runOnceForEachItem -- $input.first() NO es valido en este modo,\n// n8n lanza \"Can't use .first() here\") y aceptar tanto el envelope anidado\n// del Webhook node ({headers,params,query,body}) como un payload ya plano\n// (sin envelope), para pruebas manuales/futuras variantes de n8n:\n//   const envelope = $json;\n//   const source = envelope.body ?? envelope;\n\nconst envelope = $json;\nconst source = envelope.body ?? envelope;\n\nconst organizationId = typeof source.organizationId === 'string' ? source.organizationId : '';\nconst executionId = typeof source.executionId === 'string' ? source.executionId : '';\nconst automationId = typeof source.automationId === 'string' ? source.automationId : '';\nconst idempotencyKey = typeof source.idempotencyKey === 'string' ? source.idempotencyKey : '';\n\n// attempt: entero >= 1 si source lo informa (source.attempt); si no, 1.\nconst rawAttempt = source.attempt;\nconst attempt = (typeof rawAttempt === 'number' && Number.isInteger(rawAttempt) && rawAttempt >= 1)\n  ? rawAttempt\n  : 1;\n\n// fixtureMode: primero source.fixtureMode (top-level); si no existe,\n// unicamente source.metadata?.fixtureMode. Whitelist explicita de 6\n// valores -- cualquier otro valor (incluido ausente/null/typo) cae a\n// 'success'.\nconst ALLOWED_FIXTURE_MODES = ['success', 'failed', 'duplicate', 'stale-timestamp', 'invalid-signature', 'timeout'];\nconst rawFixtureMode = (typeof source.fixtureMode !== 'undefined' && source.fixtureMode !== null)\n  ? source.fixtureMode\n  : (source.metadata && source.metadata.fixtureMode);\nconst fixtureMode = ALLOWED_FIXTURE_MODES.includes(rawFixtureMode) ? rawFixtureMode : 'success';\n\n// Validacion deterministica por regex -- NO usar new URL(): el task runner\n// de n8n (modo aislado de ejecucion de nodos Code) no expone el global URL,\n// y el catch de un new URL() fallido se confundia con un formato invalido\n// (\"callbackUrl no es una URL valida\") incluso para URLs correctas.\n// Acepta EXCLUSIVAMENTE http, uno de los 3 hosts locales permitidos, un\n// puerto numerico, y el path fijo /api/webhooks/n8n -- sin query string,\n// sin fragment, sin path adicional, sin otros protocolos.\nconst CALLBACK_URL_PATTERN = /^http:\\/\\/(localhost|127\\.0\\.0\\.1|host\\.docker\\.internal):([0-9]{1,5})\\/api\\/webhooks\\/n8n$/;\nconst rawCallbackUrl = typeof source.callbackUrl === 'string' ? source.callbackUrl.trim() : '';\n\nlet callbackUrl = '';\nlet validationError = '';\n\nif (!executionId) {\n  validationError = 'executionId es requerido';\n} else if (!organizationId) {\n  validationError = 'organizationId es requerido';\n} else if (!automationId) {\n  validationError = 'automationId es requerido';\n} else if (!rawCallbackUrl) {\n  validationError = 'callbackUrl es requerido';\n} else {\n  const match = CALLBACK_URL_PATTERN.exec(rawCallbackUrl);\n  if (!match) {\n    validationError = 'callbackUrl no cumple el formato permitido (http://localhost|127.0.0.1|host.docker.internal:<puerto>/api/webhooks/n8n)';\n  } else {\n    const matchedHost = match[1];\n    const port = match[2];\n    // Solo en local: el contenedor de n8n no resuelve 'localhost' al host\n    // que corre Next.js, asi que se reescribe a host.docker.internal.\n    // 127.0.0.1 y host.docker.internal se dejan tal cual. El path\n    // (/api/webhooks/n8n) es fijo por la propia regex.\n    const normalizedHost = matchedHost === 'localhost' ? 'host.docker.internal' : matchedHost;\n    callbackUrl = `http://${normalizedHost}:${port}/api/webhooks/n8n`;\n  }\n}\n\nreturn {\n  json: {\n    organizationId,\n    executionId,\n    automationId,\n    idempotencyKey,\n    attempt,\n    callbackUrl,\n    fixtureMode,\n    validationError,\n  },\n};"
+      },
+      "notes": "Lee siempre desde $json (el nodo esta en modo Run Once for Each Item -- $input.first() no es valido aqui y lanza 'Cant use .first() here'), y usa envelope.body ?? envelope como fuente -- soporta tanto el envelope real del nodo Webhook ({headers,params,query,body}) como un payload ya plano. attempt: entero >= 1 si source.attempt viene informado, si no 1. fixtureMode: primero source.fixtureMode (top-level), si no existe unicamente source.metadata?.fixtureMode; whitelist EXPLICITA de 6 valores, cualquier otro valor (incluido ausente/null/typo) se normaliza a 'success'. callbackUrl: OBLIGATORIO y validado con una regex deterministica (no new URL() -- el task runner de n8n no expone ese global) que acepta unicamente http://(localhost|127.0.0.1|host.docker.internal):<puerto>/api/webhooks/n8n; 'localhost' se reescribe a 'host.docker.internal' porque el contenedor de n8n no lo resuelve al host (el path es fijo por la regex, sin query string ni protocolos distintos de http). Si executionId, organizationId, automationId o callbackUrl faltan, o si callbackUrl no es local, se setea validationError (revisado por 'Campos Minimos Validos?', que responde 400 sin firmar ni enviar nada).",
+      "notesInFlow": false
+    },
+    {
+      "id": "8ea6a7c9-f68c-45cc-a981-f797c1d17d89",
+      "name": "Campos Minimos Validos?",
+      "type": "n8n-nodes-base.if",
+      "typeVersion": 2.2,
+      "position": [
+        260,
+        0
+      ],
+      "parameters": {
+        "conditions": {
+          "options": {
+            "caseSensitive": true,
+            "leftValue": "",
+            "typeValidation": "strict"
+          },
+          "combinator": "and",
+          "conditions": [
+            {
+              "id": "cafa9ff8-6411-4ec2-bc79-feb369f9d7ce",
+              "leftValue": "={{$json.validationError}}",
+              "rightValue": "",
+              "operator": {
+                "type": "string",
+                "operation": "equals"
+              }
+            }
+          ]
+        },
+        "options": {}
+      },
+      "notes": "Revisa 'validationError', calculado en 'Extraer Dispatch': cubre executionId, organizationId, automationId (igual que antes) y ademas callbackUrl ausente o con host no permitido (nuevo).",
+      "notesInFlow": false
+    },
+    {
+      "id": "dacca382-cb8d-4d60-aabd-7b9cd6add390",
+      "name": "Responder Bad Request",
+      "type": "n8n-nodes-base.respondToWebhook",
+      "typeVersion": 1.1,
+      "position": [
+        500,
+        200
+      ],
+      "parameters": {
+        "respondWith": "json",
+        "responseBody": "={{ { \"error\": \"Bad request\", \"detail\": $json.validationError || 'executionId, organizationId, automationId y callbackUrl son requeridos' } }}",
+        "options": {
+          "responseCode": 400
+        }
+      }
+    },
+    {
+      "id": "303bd9fe-9095-497a-ae6d-77c57a91eca5",
+      "name": "Es fixtureMode timeout?",
+      "type": "n8n-nodes-base.if",
+      "typeVersion": 2.2,
+      "position": [
+        500,
+        -80
+      ],
+      "parameters": {
+        "conditions": {
+          "options": {
+            "caseSensitive": true,
+            "leftValue": "",
+            "typeValidation": "strict"
+          },
+          "combinator": "and",
+          "conditions": [
+            {
+              "id": "cd8614a1-8268-4bc0-82bd-623ad345da22",
+              "leftValue": "={{$json.fixtureMode}}",
+              "rightValue": "timeout",
+              "operator": {
+                "type": "string",
+                "operation": "equals"
+              }
+            }
+          ]
+        },
+        "options": {}
+      },
+      "notes": "Rama que deliberadamente NO responde a tiempo, para validar el timeout del lado del dispatcher (N8N_DISPATCH_TIMEOUT_MS, default 10000ms). No envia ningun callback: el objetivo es el timeout del dispatch en si.",
+      "notesInFlow": false
+    },
+    {
+      "id": "8af0b773-6df6-4b23-a562-524b44bbf9ad",
+      "name": "Esperar Mas Que Timeout Dispatch",
+      "type": "n8n-nodes-base.wait",
+      "typeVersion": 1.1,
+      "position": [
+        740,
+        -200
+      ],
+      "parameters": {
+        "amount": 15,
+        "unit": "seconds"
+      },
+      "notes": "15s > N8N_DISPATCH_TIMEOUT_MS por defecto (10000ms), para que el dispatcher ya haya abortado por timeout cuando esta respuesta tardia llegue.",
+      "notesInFlow": false
+    },
+    {
+      "id": "1d1cdb58-178c-42cb-9fc0-9b789c04ffdd",
+      "name": "Responder Tarde (Timeout Test)",
+      "type": "n8n-nodes-base.respondToWebhook",
+      "typeVersion": 1.1,
+      "position": [
+        980,
+        -200
+      ],
+      "parameters": {
+        "respondWith": "json",
+        "responseBody": "={{ { \"accepted\": true, \"note\": \"late response - dispatch timeout fixture\" } }}",
+        "options": {
+          "responseCode": 200
+        }
+      }
+    },
+    {
+      "id": "9e5cc167-1d15-49d3-a72d-3c8ce345bd22",
+      "name": "Responder Aceptacion",
+      "type": "n8n-nodes-base.respondToWebhook",
+      "typeVersion": 1.1,
+      "position": [
+        740,
+        40
+      ],
+      "parameters": {
+        "respondWith": "json",
+        "responseBody": "={{ { \"accepted\": true, \"executionId\": $json.executionId, \"automationId\": $json.automationId } }}",
+        "options": {
+          "responseCode": 200
+        }
+      }
+    },
+    {
+      "id": "b13f6f8a-b0b3-4655-973f-d053ab291a3f",
+      "name": "Es fixtureMode failed?",
+      "type": "n8n-nodes-base.if",
+      "typeVersion": 2.2,
+      "position": [
+        980,
+        160
+      ],
+      "parameters": {
+        "conditions": {
+          "options": {
+            "caseSensitive": true,
+            "leftValue": "",
+            "typeValidation": "strict"
+          },
+          "combinator": "and",
+          "conditions": [
+            {
+              "id": "eed12fbb-d76e-45d6-8383-5b4996e5d3ac",
+              "leftValue": "={{$json.fixtureMode}}",
+              "rightValue": "failed",
+              "operator": {
+                "type": "string",
+                "operation": "equals"
+              }
+            }
+          ]
+        },
+        "options": {}
+      }
+    },
+    {
+      "id": "459fc779-7fa6-4d80-bd34-4647c2f556b6",
+      "name": "Es fixtureMode duplicate?",
+      "type": "n8n-nodes-base.if",
+      "typeVersion": 2.2,
+      "position": [
+        1220,
+        160
+      ],
+      "parameters": {
+        "conditions": {
+          "options": {
+            "caseSensitive": true,
+            "leftValue": "",
+            "typeValidation": "strict"
+          },
+          "combinator": "and",
+          "conditions": [
+            {
+              "id": "7497d659-fa1c-4b32-9de7-8a1239e70352",
+              "leftValue": "={{$json.fixtureMode}}",
+              "rightValue": "duplicate",
+              "operator": {
+                "type": "string",
+                "operation": "equals"
+              }
+            }
+          ]
+        },
+        "options": {}
+      }
+    },
+    {
+      "id": "440ea56d-1b6d-43c0-ac25-e497bbbc9461",
+      "name": "Es fixtureMode stale-timestamp?",
+      "type": "n8n-nodes-base.if",
+      "typeVersion": 2.2,
+      "position": [
+        1460,
+        160
+      ],
+      "parameters": {
+        "conditions": {
+          "options": {
+            "caseSensitive": true,
+            "leftValue": "",
+            "typeValidation": "strict"
+          },
+          "combinator": "and",
+          "conditions": [
+            {
+              "id": "3e989b16-9230-4f72-8036-3227db2b6838",
+              "leftValue": "={{$json.fixtureMode}}",
+              "rightValue": "stale-timestamp",
+              "operator": {
+                "type": "string",
+                "operation": "equals"
+              }
+            }
+          ]
+        },
+        "options": {}
+      }
+    },
+    {
+      "id": "cff1184b-ac6a-47f2-8b89-3669430a9fb1",
+      "name": "Es fixtureMode invalid-signature?",
+      "type": "n8n-nodes-base.if",
+      "typeVersion": 2.2,
+      "position": [
+        1700,
+        160
+      ],
+      "parameters": {
+        "conditions": {
+          "options": {
+            "caseSensitive": true,
+            "leftValue": "",
+            "typeValidation": "strict"
+          },
+          "combinator": "and",
+          "conditions": [
+            {
+              "id": "b17ecd4e-30e1-4dd6-a920-d141c75df4e9",
+              "leftValue": "={{$json.fixtureMode}}",
+              "rightValue": "invalid-signature",
+              "operator": {
+                "type": "string",
+                "operation": "equals"
+              }
+            }
+          ]
+        },
+        "options": {}
+      }
+    },
+    {
+      "id": "42286f0f-04e7-4371-be5c-022c3cb7928a",
+      "name": "Success: Firmar Running",
+      "type": "n8n-nodes-base.code",
+      "typeVersion": 2,
+      "position": [
+        1220,
+        320
+      ],
+      "parameters": {
+        "mode": "runOnceForEachItem",
+        "language": "javaScript",
+        "jsCode": "// Phase 6 - firma HMAC compatible con apps/web/src/lib/webhooks/hmac.ts\n// canonical = `${unixTs}.${rawBody}` ; signature = hex(HMAC_SHA256(secret, canonical))\n// rawBody es EXACTAMENTE lo que se transmite (no se reserializa despues de firmar).\n//\n// HALLAZGO (perdida de contexto) -- corregido: este nodo YA NO lee\n// $input.item.json. En las ramas Success/Failed/Duplicate, el nodo HTTP\n// 'Enviar ...' anterior ya se ejecuto y su salida reemplaza el item por la\n// respuesta HTTP (sin executionId ni callbackUrl). El contexto se toma\n// siempre de 'Extraer Dispatch' por nombre, que n8n vincula por paired item\n// sin importar cuantos nodos HTTP se ejecutaron entre medio.\n\nconst crypto = require('crypto');\nconst secret = $env.AUTOMATION_WEBHOOK_SECRET;\nif (!secret || secret.length < 32) {\n  throw new Error('AUTOMATION_WEBHOOK_SECRET no configurado o muy corto (n8n-local/.env)');\n}\n\nconst ctx = $('Extraer Dispatch').item.json;\nif (!ctx.executionId) {\n  throw new Error('[fixture] executionId ausente en el contexto - no se puede firmar el callback');\n}\nif (!ctx.callbackUrl) {\n  throw new Error('[fixture] callbackUrl ausente en el contexto - no se puede enviar el callback');\n}\n\nconst unixTs = Math.floor(Date.now() / 1000).toString();\n\nconst callbackBody = {\n  eventId: `${ctx.executionId}-${unixTs}-started`,\n  eventType: 'execution.started',\n  timestamp: new Date().toISOString(),\n  organizationId: ctx.organizationId,\n  executionId: ctx.executionId,\n  automationId: ctx.automationId,\n  attempt: ctx.attempt,\n  outputMetadata: null,\n  errorCode: null,\n  errorMessage: null,\n};\n\nconst rawBody = JSON.stringify(callbackBody);\nconst canonical = `${unixTs}.${rawBody}`;\nconst signature = crypto.createHmac('sha256', Buffer.from(secret, 'utf-8'))\n  .update(canonical, 'utf-8')\n  .digest('hex');\n\nreturn {\n  json: {\n    executionId: ctx.executionId,\n    automationId: ctx.automationId,\n    organizationId: ctx.organizationId,\n    callbackUrl: ctx.callbackUrl,\n    url: ctx.callbackUrl,\n    fixtureMode: ctx.fixtureMode,\n    eventId: callbackBody.eventId,\n    unixTs,\n    rawBody,\n    signature,\n  },\n};"
+      }
+    },
+    {
+      "id": "db041a6d-ff41-4847-b5f4-9baaf663bf97",
+      "name": "Success: Enviar Running",
+      "type": "n8n-nodes-base.httpRequest",
+      "typeVersion": 4.2,
+      "position": [
+        1460,
+        320
+      ],
+      "parameters": {
+        "method": "POST",
+        "url": "={{$json.callbackUrl}}",
+        "sendHeaders": true,
+        "headerParameters": {
+          "parameters": [
+            {
+              "name": "Content-Type",
+              "value": "application/json"
+            },
+            {
+              "name": "x-bop-timestamp",
+              "value": "={{$json.unixTs}}"
+            },
+            {
+              "name": "x-bop-signature",
+              "value": "={{$json.signature}}"
+            },
+            {
+              "name": "x-bop-event-id",
+              "value": "={{$json.eventId}}"
+            }
+          ]
+        },
+        "sendBody": true,
+        "contentType": "raw",
+        "rawContentType": "application/json",
+        "body": "={{$json.rawBody}}",
+        "options": {
+          "timeout": 10000,
+          "response": {
+            "response": {
+              "neverError": true
+            }
+          }
+        }
+      }
+    },
+    {
+      "id": "ffd771e9-0ff2-4441-a7a0-ffdeb746b4e1",
+      "name": "Success: Espera Breve",
+      "type": "n8n-nodes-base.wait",
+      "typeVersion": 1.1,
+      "position": [
+        1700,
+        320
+      ],
+      "parameters": {
+        "amount": 2,
+        "unit": "seconds"
+      }
+    },
+    {
+      "id": "fb84ca82-733d-43af-91f5-bf759e7e2bc1",
+      "name": "Success: Firmar Succeeded",
+      "type": "n8n-nodes-base.code",
+      "typeVersion": 2,
+      "position": [
+        1940,
+        320
+      ],
+      "parameters": {
+        "mode": "runOnceForEachItem",
+        "language": "javaScript",
+        "jsCode": "// Phase 6 - firma HMAC compatible con apps/web/src/lib/webhooks/hmac.ts\n// canonical = `${unixTs}.${rawBody}` ; signature = hex(HMAC_SHA256(secret, canonical))\n// rawBody es EXACTAMENTE lo que se transmite (no se reserializa despues de firmar).\n//\n// HALLAZGO (perdida de contexto) -- corregido: este nodo YA NO lee\n// $input.item.json. En las ramas Success/Failed/Duplicate, el nodo HTTP\n// 'Enviar ...' anterior ya se ejecuto y su salida reemplaza el item por la\n// respuesta HTTP (sin executionId ni callbackUrl). El contexto se toma\n// siempre de 'Extraer Dispatch' por nombre, que n8n vincula por paired item\n// sin importar cuantos nodos HTTP se ejecutaron entre medio.\n\nconst crypto = require('crypto');\nconst secret = $env.AUTOMATION_WEBHOOK_SECRET;\nif (!secret || secret.length < 32) {\n  throw new Error('AUTOMATION_WEBHOOK_SECRET no configurado o muy corto (n8n-local/.env)');\n}\n\nconst ctx = $('Extraer Dispatch').item.json;\nif (!ctx.executionId) {\n  throw new Error('[fixture] executionId ausente en el contexto - no se puede firmar el callback');\n}\nif (!ctx.callbackUrl) {\n  throw new Error('[fixture] callbackUrl ausente en el contexto - no se puede enviar el callback');\n}\n\nconst unixTs = Math.floor(Date.now() / 1000).toString();\n\nconst callbackBody = {\n  eventId: `${ctx.executionId}-${unixTs}-succeeded`,\n  eventType: 'execution.succeeded',\n  timestamp: new Date().toISOString(),\n  organizationId: ctx.organizationId,\n  executionId: ctx.executionId,\n  automationId: ctx.automationId,\n  attempt: ctx.attempt,\n  outputMetadata: { fixture: 'phase6-local', note: 'resultado simulado, sin datos reales' },\n  errorCode: null,\n  errorMessage: null,\n};\n\nconst rawBody = JSON.stringify(callbackBody);\nconst canonical = `${unixTs}.${rawBody}`;\nconst signature = crypto.createHmac('sha256', Buffer.from(secret, 'utf-8'))\n  .update(canonical, 'utf-8')\n  .digest('hex');\n\nreturn {\n  json: {\n    executionId: ctx.executionId,\n    automationId: ctx.automationId,\n    organizationId: ctx.organizationId,\n    callbackUrl: ctx.callbackUrl,\n    url: ctx.callbackUrl,\n    fixtureMode: ctx.fixtureMode,\n    eventId: callbackBody.eventId,\n    unixTs,\n    rawBody,\n    signature,\n  },\n};"
+      }
+    },
+    {
+      "id": "6ea1ee6f-4285-498f-aaa9-23e0bfe3b895",
+      "name": "Success: Enviar Succeeded",
+      "type": "n8n-nodes-base.httpRequest",
+      "typeVersion": 4.2,
+      "position": [
+        2180,
+        320
+      ],
+      "parameters": {
+        "method": "POST",
+        "url": "={{$json.callbackUrl}}",
+        "sendHeaders": true,
+        "headerParameters": {
+          "parameters": [
+            {
+              "name": "Content-Type",
+              "value": "application/json"
+            },
+            {
+              "name": "x-bop-timestamp",
+              "value": "={{$json.unixTs}}"
+            },
+            {
+              "name": "x-bop-signature",
+              "value": "={{$json.signature}}"
+            },
+            {
+              "name": "x-bop-event-id",
+              "value": "={{$json.eventId}}"
+            }
+          ]
+        },
+        "sendBody": true,
+        "contentType": "raw",
+        "rawContentType": "application/json",
+        "body": "={{$json.rawBody}}",
+        "options": {
+          "timeout": 10000,
+          "response": {
+            "response": {
+              "neverError": true
+            }
+          }
+        }
+      }
+    },
+    {
+      "id": "80d8e05b-4fd5-4cc8-84ae-1ec8885472e2",
+      "name": "Failed: Firmar Running",
+      "type": "n8n-nodes-base.code",
+      "typeVersion": 2,
+      "position": [
+        1220,
+        480
+      ],
+      "parameters": {
+        "mode": "runOnceForEachItem",
+        "language": "javaScript",
+        "jsCode": "// Phase 6 - firma HMAC compatible con apps/web/src/lib/webhooks/hmac.ts\n// canonical = `${unixTs}.${rawBody}` ; signature = hex(HMAC_SHA256(secret, canonical))\n// rawBody es EXACTAMENTE lo que se transmite (no se reserializa despues de firmar).\n//\n// HALLAZGO (perdida de contexto) -- corregido: este nodo YA NO lee\n// $input.item.json. En las ramas Success/Failed/Duplicate, el nodo HTTP\n// 'Enviar ...' anterior ya se ejecuto y su salida reemplaza el item por la\n// respuesta HTTP (sin executionId ni callbackUrl). El contexto se toma\n// siempre de 'Extraer Dispatch' por nombre, que n8n vincula por paired item\n// sin importar cuantos nodos HTTP se ejecutaron entre medio.\n\nconst crypto = require('crypto');\nconst secret = $env.AUTOMATION_WEBHOOK_SECRET;\nif (!secret || secret.length < 32) {\n  throw new Error('AUTOMATION_WEBHOOK_SECRET no configurado o muy corto (n8n-local/.env)');\n}\n\nconst ctx = $('Extraer Dispatch').item.json;\nif (!ctx.executionId) {\n  throw new Error('[fixture] executionId ausente en el contexto - no se puede firmar el callback');\n}\nif (!ctx.callbackUrl) {\n  throw new Error('[fixture] callbackUrl ausente en el contexto - no se puede enviar el callback');\n}\n\nconst unixTs = Math.floor(Date.now() / 1000).toString();\n\nconst callbackBody = {\n  eventId: `${ctx.executionId}-${unixTs}-started`,\n  eventType: 'execution.started',\n  timestamp: new Date().toISOString(),\n  organizationId: ctx.organizationId,\n  executionId: ctx.executionId,\n  automationId: ctx.automationId,\n  attempt: ctx.attempt,\n  outputMetadata: null,\n  errorCode: null,\n  errorMessage: null,\n};\n\nconst rawBody = JSON.stringify(callbackBody);\nconst canonical = `${unixTs}.${rawBody}`;\nconst signature = crypto.createHmac('sha256', Buffer.from(secret, 'utf-8'))\n  .update(canonical, 'utf-8')\n  .digest('hex');\n\nreturn {\n  json: {\n    executionId: ctx.executionId,\n    automationId: ctx.automationId,\n    organizationId: ctx.organizationId,\n    callbackUrl: ctx.callbackUrl,\n    url: ctx.callbackUrl,\n    fixtureMode: ctx.fixtureMode,\n    eventId: callbackBody.eventId,\n    unixTs,\n    rawBody,\n    signature,\n  },\n};"
+      }
+    },
+    {
+      "id": "946987da-7259-450c-b4d8-cb24a3ed061e",
+      "name": "Failed: Enviar Running",
+      "type": "n8n-nodes-base.httpRequest",
+      "typeVersion": 4.2,
+      "position": [
+        1460,
+        480
+      ],
+      "parameters": {
+        "method": "POST",
+        "url": "={{$json.callbackUrl}}",
+        "sendHeaders": true,
+        "headerParameters": {
+          "parameters": [
+            {
+              "name": "Content-Type",
+              "value": "application/json"
+            },
+            {
+              "name": "x-bop-timestamp",
+              "value": "={{$json.unixTs}}"
+            },
+            {
+              "name": "x-bop-signature",
+              "value": "={{$json.signature}}"
+            },
+            {
+              "name": "x-bop-event-id",
+              "value": "={{$json.eventId}}"
+            }
+          ]
+        },
+        "sendBody": true,
+        "contentType": "raw",
+        "rawContentType": "application/json",
+        "body": "={{$json.rawBody}}",
+        "options": {
+          "timeout": 10000,
+          "response": {
+            "response": {
+              "neverError": true
+            }
+          }
+        }
+      }
+    },
+    {
+      "id": "f3f5aeb9-6e39-43b0-880f-99438ae4d0ba",
+      "name": "Failed: Espera Breve",
+      "type": "n8n-nodes-base.wait",
+      "typeVersion": 1.1,
+      "position": [
+        1700,
+        480
+      ],
+      "parameters": {
+        "amount": 2,
+        "unit": "seconds"
+      }
+    },
+    {
+      "id": "1a0d8834-1310-4197-8907-f14bd56ff9a7",
+      "name": "Failed: Firmar Failed",
+      "type": "n8n-nodes-base.code",
+      "typeVersion": 2,
+      "position": [
+        1940,
+        480
+      ],
+      "parameters": {
+        "mode": "runOnceForEachItem",
+        "language": "javaScript",
+        "jsCode": "// Phase 6 - firma HMAC compatible con apps/web/src/lib/webhooks/hmac.ts\n// canonical = `${unixTs}.${rawBody}` ; signature = hex(HMAC_SHA256(secret, canonical))\n// rawBody es EXACTAMENTE lo que se transmite (no se reserializa despues de firmar).\n//\n// HALLAZGO (perdida de contexto) -- corregido: este nodo YA NO lee\n// $input.item.json. En las ramas Success/Failed/Duplicate, el nodo HTTP\n// 'Enviar ...' anterior ya se ejecuto y su salida reemplaza el item por la\n// respuesta HTTP (sin executionId ni callbackUrl). El contexto se toma\n// siempre de 'Extraer Dispatch' por nombre, que n8n vincula por paired item\n// sin importar cuantos nodos HTTP se ejecutaron entre medio.\n\nconst crypto = require('crypto');\nconst secret = $env.AUTOMATION_WEBHOOK_SECRET;\nif (!secret || secret.length < 32) {\n  throw new Error('AUTOMATION_WEBHOOK_SECRET no configurado o muy corto (n8n-local/.env)');\n}\n\nconst ctx = $('Extraer Dispatch').item.json;\nif (!ctx.executionId) {\n  throw new Error('[fixture] executionId ausente en el contexto - no se puede firmar el callback');\n}\nif (!ctx.callbackUrl) {\n  throw new Error('[fixture] callbackUrl ausente en el contexto - no se puede enviar el callback');\n}\n\nconst unixTs = Math.floor(Date.now() / 1000).toString();\n\nconst callbackBody = {\n  eventId: `${ctx.executionId}-${unixTs}-failed`,\n  eventType: 'execution.failed',\n  timestamp: new Date().toISOString(),\n  organizationId: ctx.organizationId,\n  executionId: ctx.executionId,\n  automationId: ctx.automationId,\n  attempt: ctx.attempt,\n  outputMetadata: null,\n  errorCode: 'WORKFLOW_TEST_FAILURE',\n  errorMessage: 'Fallo simulado local (fixtureMode=failed). Sin datos reales.',\n};\n\nconst rawBody = JSON.stringify(callbackBody);\nconst canonical = `${unixTs}.${rawBody}`;\nconst signature = crypto.createHmac('sha256', Buffer.from(secret, 'utf-8'))\n  .update(canonical, 'utf-8')\n  .digest('hex');\n\nreturn {\n  json: {\n    executionId: ctx.executionId,\n    automationId: ctx.automationId,\n    organizationId: ctx.organizationId,\n    callbackUrl: ctx.callbackUrl,\n    url: ctx.callbackUrl,\n    fixtureMode: ctx.fixtureMode,\n    eventId: callbackBody.eventId,\n    unixTs,\n    rawBody,\n    signature,\n  },\n};"
+      }
+    },
+    {
+      "id": "1785b1be-80fa-4652-9cb9-2896b9a4215c",
+      "name": "Failed: Enviar Failed",
+      "type": "n8n-nodes-base.httpRequest",
+      "typeVersion": 4.2,
+      "position": [
+        2180,
+        480
+      ],
+      "parameters": {
+        "method": "POST",
+        "url": "={{$json.callbackUrl}}",
+        "sendHeaders": true,
+        "headerParameters": {
+          "parameters": [
+            {
+              "name": "Content-Type",
+              "value": "application/json"
+            },
+            {
+              "name": "x-bop-timestamp",
+              "value": "={{$json.unixTs}}"
+            },
+            {
+              "name": "x-bop-signature",
+              "value": "={{$json.signature}}"
+            },
+            {
+              "name": "x-bop-event-id",
+              "value": "={{$json.eventId}}"
+            }
+          ]
+        },
+        "sendBody": true,
+        "contentType": "raw",
+        "rawContentType": "application/json",
+        "body": "={{$json.rawBody}}",
+        "options": {
+          "timeout": 10000,
+          "response": {
+            "response": {
+              "neverError": true
+            }
+          }
+        }
+      }
+    },
+    {
+      "id": "60d0726c-6283-4d69-9496-48964c24f70b",
+      "name": "Duplicate: Firmar Running",
+      "type": "n8n-nodes-base.code",
+      "typeVersion": 2,
+      "position": [
+        1460,
+        640
+      ],
+      "parameters": {
+        "mode": "runOnceForEachItem",
+        "language": "javaScript",
+        "jsCode": "// Phase 6 - firma HMAC compatible con apps/web/src/lib/webhooks/hmac.ts\n// canonical = `${unixTs}.${rawBody}` ; signature = hex(HMAC_SHA256(secret, canonical))\n// rawBody es EXACTAMENTE lo que se transmite (no se reserializa despues de firmar).\n//\n// HALLAZGO (perdida de contexto) -- corregido: este nodo YA NO lee\n// $input.item.json. En las ramas Success/Failed/Duplicate, el nodo HTTP\n// 'Enviar ...' anterior ya se ejecuto y su salida reemplaza el item por la\n// respuesta HTTP (sin executionId ni callbackUrl). El contexto se toma\n// siempre de 'Extraer Dispatch' por nombre, que n8n vincula por paired item\n// sin importar cuantos nodos HTTP se ejecutaron entre medio.\n\nconst crypto = require('crypto');\nconst secret = $env.AUTOMATION_WEBHOOK_SECRET;\nif (!secret || secret.length < 32) {\n  throw new Error('AUTOMATION_WEBHOOK_SECRET no configurado o muy corto (n8n-local/.env)');\n}\n\nconst ctx = $('Extraer Dispatch').item.json;\nif (!ctx.executionId) {\n  throw new Error('[fixture] executionId ausente en el contexto - no se puede firmar el callback');\n}\nif (!ctx.callbackUrl) {\n  throw new Error('[fixture] callbackUrl ausente en el contexto - no se puede enviar el callback');\n}\n\nconst unixTs = Math.floor(Date.now() / 1000).toString();\n\nconst callbackBody = {\n  eventId: `${ctx.executionId}-${unixTs}-started`,\n  eventType: 'execution.started',\n  timestamp: new Date().toISOString(),\n  organizationId: ctx.organizationId,\n  executionId: ctx.executionId,\n  automationId: ctx.automationId,\n  attempt: ctx.attempt,\n  outputMetadata: null,\n  errorCode: null,\n  errorMessage: null,\n};\n\nconst rawBody = JSON.stringify(callbackBody);\nconst canonical = `${unixTs}.${rawBody}`;\nconst signature = crypto.createHmac('sha256', Buffer.from(secret, 'utf-8'))\n  .update(canonical, 'utf-8')\n  .digest('hex');\n\nreturn {\n  json: {\n    executionId: ctx.executionId,\n    automationId: ctx.automationId,\n    organizationId: ctx.organizationId,\n    callbackUrl: ctx.callbackUrl,\n    url: ctx.callbackUrl,\n    fixtureMode: ctx.fixtureMode,\n    eventId: callbackBody.eventId,\n    unixTs,\n    rawBody,\n    signature,\n  },\n};"
+      }
+    },
+    {
+      "id": "9010f2dd-c25d-4778-afff-ee78f54cb550",
+      "name": "Duplicate: Enviar Running",
+      "type": "n8n-nodes-base.httpRequest",
+      "typeVersion": 4.2,
+      "position": [
+        1700,
+        640
+      ],
+      "parameters": {
+        "method": "POST",
+        "url": "={{$json.callbackUrl}}",
+        "sendHeaders": true,
+        "headerParameters": {
+          "parameters": [
+            {
+              "name": "Content-Type",
+              "value": "application/json"
+            },
+            {
+              "name": "x-bop-timestamp",
+              "value": "={{$json.unixTs}}"
+            },
+            {
+              "name": "x-bop-signature",
+              "value": "={{$json.signature}}"
+            },
+            {
+              "name": "x-bop-event-id",
+              "value": "={{$json.eventId}}"
+            }
+          ]
+        },
+        "sendBody": true,
+        "contentType": "raw",
+        "rawContentType": "application/json",
+        "body": "={{$json.rawBody}}",
+        "options": {
+          "timeout": 10000,
+          "response": {
+            "response": {
+              "neverError": true
+            }
+          }
+        }
+      }
+    },
+    {
+      "id": "686fce8c-1b5e-46d4-bf7f-360c8d770aa8",
+      "name": "Duplicate: Espera Breve",
+      "type": "n8n-nodes-base.wait",
+      "typeVersion": 1.1,
+      "position": [
+        1940,
+        640
+      ],
+      "parameters": {
+        "amount": 2,
+        "unit": "seconds"
+      }
+    },
+    {
+      "id": "5d1ba2f3-fd45-4248-8084-3240b59bacd7",
+      "name": "Duplicate: Firmar Succeeded",
+      "type": "n8n-nodes-base.code",
+      "typeVersion": 2,
+      "position": [
+        2180,
+        640
+      ],
+      "parameters": {
+        "mode": "runOnceForEachItem",
+        "language": "javaScript",
+        "jsCode": "// Phase 6 - firma HMAC compatible con apps/web/src/lib/webhooks/hmac.ts\n// canonical = `${unixTs}.${rawBody}` ; signature = hex(HMAC_SHA256(secret, canonical))\n// rawBody es EXACTAMENTE lo que se transmite (no se reserializa despues de firmar).\n//\n// HALLAZGO (perdida de contexto) -- corregido: este nodo YA NO lee\n// $input.item.json. En las ramas Success/Failed/Duplicate, el nodo HTTP\n// 'Enviar ...' anterior ya se ejecuto y su salida reemplaza el item por la\n// respuesta HTTP (sin executionId ni callbackUrl). El contexto se toma\n// siempre de 'Extraer Dispatch' por nombre, que n8n vincula por paired item\n// sin importar cuantos nodos HTTP se ejecutaron entre medio.\n\nconst crypto = require('crypto');\nconst secret = $env.AUTOMATION_WEBHOOK_SECRET;\nif (!secret || secret.length < 32) {\n  throw new Error('AUTOMATION_WEBHOOK_SECRET no configurado o muy corto (n8n-local/.env)');\n}\n\nconst ctx = $('Extraer Dispatch').item.json;\nif (!ctx.executionId) {\n  throw new Error('[fixture] executionId ausente en el contexto - no se puede firmar el callback');\n}\nif (!ctx.callbackUrl) {\n  throw new Error('[fixture] callbackUrl ausente en el contexto - no se puede enviar el callback');\n}\n\nconst unixTs = Math.floor(Date.now() / 1000).toString();\n\nconst callbackBody = {\n  eventId: `${ctx.executionId}-${unixTs}-succeeded`,\n  eventType: 'execution.succeeded',\n  timestamp: new Date().toISOString(),\n  organizationId: ctx.organizationId,\n  executionId: ctx.executionId,\n  automationId: ctx.automationId,\n  attempt: ctx.attempt,\n  outputMetadata: { fixture: 'phase6-local', note: 'resultado simulado, sin datos reales' },\n  errorCode: null,\n  errorMessage: null,\n};\n\nconst rawBody = JSON.stringify(callbackBody);\nconst canonical = `${unixTs}.${rawBody}`;\nconst signature = crypto.createHmac('sha256', Buffer.from(secret, 'utf-8'))\n  .update(canonical, 'utf-8')\n  .digest('hex');\n\nreturn {\n  json: {\n    executionId: ctx.executionId,\n    automationId: ctx.automationId,\n    organizationId: ctx.organizationId,\n    callbackUrl: ctx.callbackUrl,\n    url: ctx.callbackUrl,\n    fixtureMode: ctx.fixtureMode,\n    eventId: callbackBody.eventId,\n    unixTs,\n    rawBody,\n    signature,\n  },\n};"
+      }
+    },
+    {
+      "id": "26758bdd-8bd3-497e-b66e-413ea918ec18",
+      "name": "Duplicate: Enviar Succeeded (1a vez)",
+      "type": "n8n-nodes-base.httpRequest",
+      "typeVersion": 4.2,
+      "position": [
+        2420,
+        600
+      ],
+      "parameters": {
+        "method": "POST",
+        "url": "={{$json.callbackUrl}}",
+        "sendHeaders": true,
+        "headerParameters": {
+          "parameters": [
+            {
+              "name": "Content-Type",
+              "value": "application/json"
+            },
+            {
+              "name": "x-bop-timestamp",
+              "value": "={{$json.unixTs}}"
+            },
+            {
+              "name": "x-bop-signature",
+              "value": "={{$json.signature}}"
+            },
+            {
+              "name": "x-bop-event-id",
+              "value": "={{$json.eventId}}"
+            }
+          ]
+        },
+        "sendBody": true,
+        "contentType": "raw",
+        "rawContentType": "application/json",
+        "body": "={{$json.rawBody}}",
+        "options": {
+          "timeout": 10000,
+          "response": {
+            "response": {
+              "neverError": true
+            }
+          }
+        }
+      },
+      "notes": "Primer envio del callback firmado. Debe procesarse normalmente (200 ok).",
+      "notesInFlow": false
+    },
+    {
+      "id": "a4181816-bfb3-4444-a14a-1800800a182a",
+      "name": "Duplicate: Enviar Succeeded (2a vez - Replay)",
+      "type": "n8n-nodes-base.httpRequest",
+      "typeVersion": 4.2,
+      "position": [
+        2420,
+        700
+      ],
+      "parameters": {
+        "method": "POST",
+        "url": "={{$json.callbackUrl}}",
+        "sendHeaders": true,
+        "headerParameters": {
+          "parameters": [
+            {
+              "name": "Content-Type",
+              "value": "application/json"
+            },
+            {
+              "name": "x-bop-timestamp",
+              "value": "={{$json.unixTs}}"
+            },
+            {
+              "name": "x-bop-signature",
+              "value": "={{$json.signature}}"
+            },
+            {
+              "name": "x-bop-event-id",
+              "value": "={{$json.eventId}}"
+            }
+          ]
+        },
+        "sendBody": true,
+        "contentType": "raw",
+        "rawContentType": "application/json",
+        "body": "={{$json.rawBody}}",
+        "options": {
+          "timeout": 10000,
+          "response": {
+            "response": {
+              "neverError": true
+            }
+          }
+        }
+      },
+      "notes": "Reenvio EXACTO del mismo body/headers/eventId ya firmado (misma referencia de datos que el primer envio). Debe responder 200 {ok:true,duplicate:true} por la deduplicacion atomica en automation_webhook_events (unique constraint source+external_event_id). Cubre a la vez 'callback duplicado' y 'replay protection'.",
+      "notesInFlow": false
+    },
+    {
+      "id": "4442ce3a-58c5-4e5c-87e6-def624a5d64e",
+      "name": "Stale: Firmar Con Timestamp Vencido",
+      "type": "n8n-nodes-base.code",
+      "typeVersion": 2,
+      "position": [
+        1700,
+        800
+      ],
+      "parameters": {
+        "mode": "runOnceForEachItem",
+        "language": "javaScript",
+        "jsCode": "// Phase 6 - firma HMAC compatible con apps/web/src/lib/webhooks/hmac.ts\n// canonical = `${unixTs}.${rawBody}` ; signature = hex(HMAC_SHA256(secret, canonical))\n// rawBody es EXACTAMENTE lo que se transmite (no se reserializa despues de firmar).\n//\n// HALLAZGO (perdida de contexto) -- corregido: este nodo YA NO lee\n// $input.item.json. En las ramas Success/Failed/Duplicate, el nodo HTTP\n// 'Enviar ...' anterior ya se ejecuto y su salida reemplaza el item por la\n// respuesta HTTP (sin executionId ni callbackUrl). El contexto se toma\n// siempre de 'Extraer Dispatch' por nombre, que n8n vincula por paired item\n// sin importar cuantos nodos HTTP se ejecutaron entre medio.\n\nconst crypto = require('crypto');\nconst secret = $env.AUTOMATION_WEBHOOK_SECRET;\nif (!secret || secret.length < 32) {\n  throw new Error('AUTOMATION_WEBHOOK_SECRET no configurado o muy corto (n8n-local/.env)');\n}\n\nconst ctx = $('Extraer Dispatch').item.json;\nif (!ctx.executionId) {\n  throw new Error('[fixture] executionId ausente en el contexto - no se puede firmar el callback');\n}\nif (!ctx.callbackUrl) {\n  throw new Error('[fixture] callbackUrl ausente en el contexto - no se puede enviar el callback');\n}\n\n// Timestamp deliberadamente fuera de AUTOMATION_WEBHOOK_TOLERANCE_SECONDS\n// (max valido = 3600s), para ejercer la rama STALE_TIMESTAMP (403), no\n// INVALID_SIGNATURE: la firma se calcula correctamente sobre este mismo\n// timestamp vencido.\nconst unixTs = (Math.floor(Date.now() / 1000) - 3700).toString();\n\nconst callbackBody = {\n  eventId: `${ctx.executionId}-${unixTs}-stale`,\n  eventType: 'execution.succeeded',\n  timestamp: new Date().toISOString(),\n  organizationId: ctx.organizationId,\n  executionId: ctx.executionId,\n  automationId: ctx.automationId,\n  attempt: ctx.attempt,\n  outputMetadata: null,\n  errorCode: null,\n  errorMessage: null,\n};\n\nconst rawBody = JSON.stringify(callbackBody);\nconst canonical = `${unixTs}.${rawBody}`;\nconst signature = crypto.createHmac('sha256', Buffer.from(secret, 'utf-8'))\n  .update(canonical, 'utf-8')\n  .digest('hex');\n\nreturn {\n  json: {\n    executionId: ctx.executionId,\n    automationId: ctx.automationId,\n    organizationId: ctx.organizationId,\n    callbackUrl: ctx.callbackUrl,\n    url: ctx.callbackUrl,\n    fixtureMode: ctx.fixtureMode,\n    eventId: callbackBody.eventId,\n    unixTs,\n    rawBody,\n    signature,\n  },\n};"
+      },
+      "notes": "Firma VALIDA calculada sobre un x-bop-timestamp ya vencido (-3700s), para ejercer especificamente STALE_TIMESTAMP (403), no INVALID_SIGNATURE.",
+      "notesInFlow": false
+    },
+    {
+      "id": "08f4326b-e608-4b66-a99b-3c6aa261c1d5",
+      "name": "Stale: Enviar Callback",
+      "type": "n8n-nodes-base.httpRequest",
+      "typeVersion": 4.2,
+      "position": [
+        1940,
+        800
+      ],
+      "parameters": {
+        "method": "POST",
+        "url": "={{$json.callbackUrl}}",
+        "sendHeaders": true,
+        "headerParameters": {
+          "parameters": [
+            {
+              "name": "Content-Type",
+              "value": "application/json"
+            },
+            {
+              "name": "x-bop-timestamp",
+              "value": "={{$json.unixTs}}"
+            },
+            {
+              "name": "x-bop-signature",
+              "value": "={{$json.signature}}"
+            },
+            {
+              "name": "x-bop-event-id",
+              "value": "={{$json.eventId}}"
+            }
+          ]
+        },
+        "sendBody": true,
+        "contentType": "raw",
+        "rawContentType": "application/json",
+        "body": "={{$json.rawBody}}",
+        "options": {
+          "timeout": 10000,
+          "response": {
+            "response": {
+              "neverError": true
+            }
+          }
+        }
+      }
+    },
+    {
+      "id": "d31695ba-3ab4-4b3b-8488-e6c731c1b090",
+      "name": "InvalidSig: Firmar E Invalidar",
+      "type": "n8n-nodes-base.code",
+      "typeVersion": 2,
+      "position": [
+        1940,
+        960
+      ],
+      "parameters": {
+        "mode": "runOnceForEachItem",
+        "language": "javaScript",
+        "jsCode": "// Phase 6 - firma HMAC compatible con apps/web/src/lib/webhooks/hmac.ts\n// canonical = `${unixTs}.${rawBody}` ; signature = hex(HMAC_SHA256(secret, canonical))\n// rawBody es EXACTAMENTE lo que se transmite (no se reserializa despues de firmar).\n//\n// HALLAZGO (perdida de contexto) -- corregido: este nodo YA NO lee\n// $input.item.json. En las ramas Success/Failed/Duplicate, el nodo HTTP\n// 'Enviar ...' anterior ya se ejecuto y su salida reemplaza el item por la\n// respuesta HTTP (sin executionId ni callbackUrl). El contexto se toma\n// siempre de 'Extraer Dispatch' por nombre, que n8n vincula por paired item\n// sin importar cuantos nodos HTTP se ejecutaron entre medio.\n\nconst crypto = require('crypto');\nconst secret = $env.AUTOMATION_WEBHOOK_SECRET;\nif (!secret || secret.length < 32) {\n  throw new Error('AUTOMATION_WEBHOOK_SECRET no configurado o muy corto (n8n-local/.env)');\n}\n\nconst ctx = $('Extraer Dispatch').item.json;\nif (!ctx.executionId) {\n  throw new Error('[fixture] executionId ausente en el contexto - no se puede firmar el callback');\n}\nif (!ctx.callbackUrl) {\n  throw new Error('[fixture] callbackUrl ausente en el contexto - no se puede enviar el callback');\n}\n\nconst unixTs = Math.floor(Date.now() / 1000).toString();\n\nconst callbackBody = {\n  eventId: `${ctx.executionId}-${unixTs}-badsig`,\n  eventType: 'execution.succeeded',\n  timestamp: new Date().toISOString(),\n  organizationId: ctx.organizationId,\n  executionId: ctx.executionId,\n  automationId: ctx.automationId,\n  attempt: ctx.attempt,\n  outputMetadata: null,\n  errorCode: null,\n  errorMessage: null,\n};\n\nconst rawBody = JSON.stringify(callbackBody);\nconst canonical = `${unixTs}.${rawBody}`;\nlet signature = crypto.createHmac('sha256', Buffer.from(secret, 'utf-8'))\n  .update(canonical, 'utf-8')\n  .digest('hex');\n\n// Fixture invalid-signature: se invalida deliberadamente 1 caracter hex\n// de una firma correctamente calculada, SOLO en este workflow local.\nconst lastChar = signature.slice(-1);\nconst flipped = lastChar === '0' ? '1' : '0';\nsignature = signature.slice(0, -1) + flipped;\n\nreturn {\n  json: {\n    executionId: ctx.executionId,\n    automationId: ctx.automationId,\n    organizationId: ctx.organizationId,\n    callbackUrl: ctx.callbackUrl,\n    url: ctx.callbackUrl,\n    fixtureMode: ctx.fixtureMode,\n    eventId: callbackBody.eventId,\n    unixTs,\n    rawBody,\n    signature,\n  },\n};"
+      },
+      "notes": "Calcula la firma correcta y luego invierte deliberadamente 1 caracter hex, SOLO en este workflow local, para ejercer INVALID_SIGNATURE (403).",
+      "notesInFlow": false
+    },
+    {
+      "id": "6fdd600e-2ca7-4aaa-bfcf-43575d42e740",
+      "name": "InvalidSig: Enviar Callback",
+      "type": "n8n-nodes-base.httpRequest",
+      "typeVersion": 4.2,
+      "position": [
+        2180,
+        960
+      ],
+      "parameters": {
+        "method": "POST",
+        "url": "={{$json.callbackUrl}}",
+        "sendHeaders": true,
+        "headerParameters": {
+          "parameters": [
+            {
+              "name": "Content-Type",
+              "value": "application/json"
+            },
+            {
+              "name": "x-bop-timestamp",
+              "value": "={{$json.unixTs}}"
+            },
+            {
+              "name": "x-bop-signature",
+              "value": "={{$json.signature}}"
+            },
+            {
+              "name": "x-bop-event-id",
+              "value": "={{$json.eventId}}"
+            }
+          ]
+        },
+        "sendBody": true,
+        "contentType": "raw",
+        "rawContentType": "application/json",
+        "body": "={{$json.rawBody}}",
+        "options": {
+          "timeout": 10000,
+          "response": {
+            "response": {
+              "neverError": true
+            }
+          }
+        }
+      }
+    }
+  ],
+  "connections": {
+    "Recibe Dispatch": {
+      "main": [
+        [
+          {
+            "node": "Extraer Dispatch",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Extraer Dispatch": {
+      "main": [
+        [
+          {
+            "node": "Campos Minimos Validos?",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Campos Minimos Validos?": {
+      "main": [
+        [
+          {
+            "node": "Es fixtureMode timeout?",
+            "type": "main",
+            "index": 0
+          }
+        ],
+        [
+          {
+            "node": "Responder Bad Request",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Es fixtureMode timeout?": {
+      "main": [
+        [
+          {
+            "node": "Esperar Mas Que Timeout Dispatch",
+            "type": "main",
+            "index": 0
+          }
+        ],
+        [
+          {
+            "node": "Responder Aceptacion",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Esperar Mas Que Timeout Dispatch": {
+      "main": [
+        [
+          {
+            "node": "Responder Tarde (Timeout Test)",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Responder Aceptacion": {
+      "main": [
+        [
+          {
+            "node": "Es fixtureMode failed?",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Es fixtureMode failed?": {
+      "main": [
+        [
+          {
+            "node": "Failed: Firmar Running",
+            "type": "main",
+            "index": 0
+          }
+        ],
+        [
+          {
+            "node": "Es fixtureMode duplicate?",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Es fixtureMode duplicate?": {
+      "main": [
+        [
+          {
+            "node": "Duplicate: Firmar Running",
+            "type": "main",
+            "index": 0
+          }
+        ],
+        [
+          {
+            "node": "Es fixtureMode stale-timestamp?",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Es fixtureMode stale-timestamp?": {
+      "main": [
+        [
+          {
+            "node": "Stale: Firmar Con Timestamp Vencido",
+            "type": "main",
+            "index": 0
+          }
+        ],
+        [
+          {
+            "node": "Es fixtureMode invalid-signature?",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Es fixtureMode invalid-signature?": {
+      "main": [
+        [
+          {
+            "node": "InvalidSig: Firmar E Invalidar",
+            "type": "main",
+            "index": 0
+          }
+        ],
+        [
+          {
+            "node": "Success: Firmar Running",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Success: Firmar Running": {
+      "main": [
+        [
+          {
+            "node": "Success: Enviar Running",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Success: Enviar Running": {
+      "main": [
+        [
+          {
+            "node": "Success: Espera Breve",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Success: Espera Breve": {
+      "main": [
+        [
+          {
+            "node": "Success: Firmar Succeeded",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Success: Firmar Succeeded": {
+      "main": [
+        [
+          {
+            "node": "Success: Enviar Succeeded",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Failed: Firmar Running": {
+      "main": [
+        [
+          {
+            "node": "Failed: Enviar Running",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Failed: Enviar Running": {
+      "main": [
+        [
+          {
+            "node": "Failed: Espera Breve",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Failed: Espera Breve": {
+      "main": [
+        [
+          {
+            "node": "Failed: Firmar Failed",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Failed: Firmar Failed": {
+      "main": [
+        [
+          {
+            "node": "Failed: Enviar Failed",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Duplicate: Firmar Running": {
+      "main": [
+        [
+          {
+            "node": "Duplicate: Enviar Running",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Duplicate: Enviar Running": {
+      "main": [
+        [
+          {
+            "node": "Duplicate: Espera Breve",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Duplicate: Espera Breve": {
+      "main": [
+        [
+          {
+            "node": "Duplicate: Firmar Succeeded",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Duplicate: Firmar Succeeded": {
+      "main": [
+        [
+          {
+            "node": "Duplicate: Enviar Succeeded (1a vez)",
+            "type": "main",
+            "index": 0
+          },
+          {
+            "node": "Duplicate: Enviar Succeeded (2a vez - Replay)",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Stale: Firmar Con Timestamp Vencido": {
+      "main": [
+        [
+          {
+            "node": "Stale: Enviar Callback",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "InvalidSig: Firmar E Invalidar": {
+      "main": [
+        [
+          {
+            "node": "InvalidSig: Enviar Callback",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    }
+  },
+  "active": false,
+  "settings": {
+    "executionOrder": "v1",
+    "saveManualExecutions": true,
+    "callerPolicy": "workflowsFromSameOwner"
+  },
+  "versionId": "00000000-0000-0000-0000-000000000001",
+  "meta": {
+    "templateCredsSetupCompleted": true,
+    "instanceId": "phase6-local-fixture"
+  },
+  "tags": []
+}

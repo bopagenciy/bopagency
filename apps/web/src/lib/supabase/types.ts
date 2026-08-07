@@ -445,13 +445,18 @@ export type AutomationExecutionUpdate = {
   updated_at?: string;
 };
 
+// NOTA (revisión de consistencia Phase 6): la columna real en SQL es
+// `metadata`, no `context` (ver 20260804000000_phase6b_automation_runtime.sql).
+// También falta `event_type` (columna real, nullable). Corregido aquí para
+// que coincida exactamente con la migración.
 export type AutomationExecutionLogRow = {
   id: string;
   execution_id: string;
   organization_id: string;
   level: string;
+  event_type: string | null;
   message: string;
-  context: Json;
+  metadata: Json | null;
   occurred_at: string;
   created_at: string;
 };
@@ -461,8 +466,9 @@ export type AutomationExecutionLogInsert = {
   execution_id: string;
   organization_id: string;
   level?: string;
+  event_type?: string | null;
   message: string;
-  context?: Json;
+  metadata?: Json | null;
   occurred_at?: string;
   created_at?: string;
 };

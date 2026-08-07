@@ -7,7 +7,13 @@
  * SEGURIDAD:
  * - organizationId requerido en todas las operaciones.
  * - Nunca se persiste raw body, HMAC, API keys, ni stack traces.
- * - El campo `context` es sanitizado antes de persistir.
+ * - El campo `context` del dominio (CreateExecutionLogInput.context) es
+ *   sanitizado antes de persistir y se guarda en la columna real de la
+ *   tabla `public.automation_execution_logs`, que se llama `metadata`
+ *   (ver 20260804000000_phase6b_automation_runtime.sql). El nombre del
+ *   campo a nivel de dominio ("context") es intencionalmente distinto del
+ *   nombre de la columna en DB ("metadata") — este repositorio es el único
+ *   punto de traducción entre ambos.
  * - error_message truncado a 500 chars.
  * - Claves prohibidas eliminadas del contexto.
  *
@@ -52,7 +58,9 @@ type ExecutionLogRow = {
   level: string;
   event_type: string;
   message: string;
-  context: Record<string, unknown>;
+  // Columna real en SQL: `metadata` (ver 20260804000000_phase6b_automation_runtime.sql).
+  // El dominio la expone como `context` — ver nota de traducción arriba.
+  metadata: Record<string, unknown>;
   occurred_at: string;
 };
 
@@ -72,7 +80,8 @@ export class SupabaseExecutionLogRepository implements ExecutionLogRepository {
       level:           input.level,
       event_type:      input.event,
       message:         input.message.slice(0, 500),
-      context:         safeContext,
+      // Columna real: `metadata` (no `context` — ver nota de traducción arriba).
+      metadata:        safeContext,
       occurred_at:     new Date().toISOString(),
     });
 
@@ -146,7 +155,8 @@ function rowToLog(row: ExecutionLogRow): ExecutionLog {
     level:         row.level as ExecutionLogLevel,
     event:         row.event_type as ExecutionLogEventType,
     message:       row.message,
-    context:       row.context ?? {},
+    // row.metadata (columna real) se expone como `context` en el dominio.
+    context:       row.metadata ?? {},
     occurredAt:    new Date(row.occurred_at),
   };
 }

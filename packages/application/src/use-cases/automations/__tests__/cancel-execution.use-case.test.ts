@@ -87,6 +87,24 @@ describe('cancelAutomationExecution', () => {
     expect(dispatcher.cancel).not.toHaveBeenCalled();
   });
 
+  // ── B1b (HALLAZGO 4): queued → cancelled NO envía completedAt ────────────
+  // startedAt/completedAt deben permanecer NULL en DB para no violar
+  // ck_exec_completed_requires_started (completed_at IS NULL OR started_at IS NOT NULL).
+
+  it('does not set completedAt when cancelling a queued execution (avoids violating ck_exec_completed_requires_started)', async () => {
+    const execRepo = makeExecRepo(makeExecution({ status: 'queued' }), ok(makeExecution({ status: 'cancelled' })));
+    const deps = makeDeps({ executionRepository: execRepo });
+    await cancelAutomationExecution(makeInput(), deps);
+
+    expect(execRepo.updateStatus).toHaveBeenCalledTimes(1);
+    const patch = (execRepo.updateStatus as ReturnType<typeof vi.fn>).mock.calls[0]?.[2] as Record<string, unknown>;
+    expect(patch['status']).toBe('cancelled');
+    expect('completedAt' in patch).toBe(false);
+    expect(patch['completedAt']).toBeUndefined();
+    // startedAt nunca se toca en cancelación — el repositorio lo deja NULL.
+    expect('startedAt' in patch).toBe(false);
+  });
+
   // ── B2: running + dispatcher ok → cancelled ───────────────────────────────
 
   it('cancels a running execution when dispatcher.cancel confirms success', async () => {
@@ -99,6 +117,21 @@ describe('cancelAutomationExecution', () => {
     if (result.success) expect(result.value.status).toBe('cancelled');
     expect(dispatcher.cancel).toHaveBeenCalledWith(String(EXEC_ID));
     expect(execRepo.updateStatus).toHaveBeenCalled();
+  });
+
+  // ── B2b (HALLAZGO 4): running → cancelled SÍ envía completedAt ────────────
+  // Una ejecución running ya tiene startedAt seteado, así que completar
+  // completedAt aquí es seguro y no viola el constraint.
+
+  it('sets completedAt when cancelling a running execution (startedAt already set)', async () => {
+    const dispatcher = makeDispatcher(ok(undefined as void));
+    const execRepo = makeExecRepo(makeExecution({ status: 'running' }), ok(makeExecution({ status: 'cancelled' })));
+    const deps = makeDeps({ dispatcher, executionRepository: execRepo });
+    await cancelAutomationExecution(makeInput(), deps);
+
+    const patch = (execRepo.updateStatus as ReturnType<typeof vi.fn>).mock.calls[0]?.[2] as Record<string, unknown>;
+    expect(patch['status']).toBe('cancelled');
+    expect(patch['completedAt']).toBeInstanceOf(Date);
   });
 
   // ── B3 (H2): running + no dispatcher → CANCEL_NOT_SUPPORTED ──────────────

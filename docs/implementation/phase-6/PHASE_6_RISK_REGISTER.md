@@ -158,3 +158,8 @@
 | R-TECH-17 | Evaluador de incidentes falla y bloquea flujo principal | 🟡 Medio | ✅ RESUELTO en 6F — best-effort pattern: evalIncidentSilently() wrappea en try/catch; resultado de alerta/tarea no afecta success del caller | 6F |
 | R-TECH-18 | Trigger trg_alerts_70_audit_fields bloquea UPDATE de resolved_at | 🟠 Alto | ✅ RESUELTO en 6F — usar adminClient (service_role, auth.uid() IS NULL) bypass el trigger; clientes autenticados siguen bloqueados correctamente | 6F |
 | R-TECH-19 | SelectQueryError en Supabase TS para client_id en automation_executions | 🟢 Bajo | ✅ MITIGADO en 6F — clientId se pasa como null (best-effort); alert/task creation funciona sin clientId; no impacta deduplicación ni severidad | 6F |
+| R-STAG-01 | No existe proyecto Supabase staging separado | 🔴 Crítico | BLOCKER — no aplicar migración hasta confirmar staging project ref | Staging |
+| R-STAG-02 | n8n staging no disponible (solo local) | 🟠 Alto | Usar n8n-local con docker compose; documentar limitación Linux (host.docker.internal) | Staging |
+| R-STAG-03 | AUTOMATION_WEBHOOK_SECRET reutilizado entre entornos | 🔴 Crítico | Generar secretos diferentes por entorno con openssl rand -hex 32 | Staging |
+| R-STAG-04 | Migración aplicada en producción por error de project ref | 🔴 Crítico | Verificar supabase projects list antes de cualquier db push | Staging |
+| R-STAG-05 | Build next.js falla en Linux sandbox (Bus error, code 135) | 🟢 Bajo | Entorno sandbox Linux tiene 4GB RAM; build PASS confirmado en Windows local | Staging |

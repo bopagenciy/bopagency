@@ -83,7 +83,15 @@ export type StartAutomationExecutionInput = {
   readonly idempotencyKey?: string;
   /**
    * URL de callback para que n8n notifique el resultado.
-   * Si no se proporciona, se usa cadena vacía (n8n puede ignorarla).
+   * Si no se proporciona, se usa cadena vacía.
+   *
+   * NOTA DE SEGURIDAD: la implementación concreta usada en producción
+   * (N8nWebhookDispatcher, ver packages/infrastructure/src/n8n) IGNORA
+   * este campo y siempre resuelve callbackUrl server-side desde
+   * NEXT_PUBLIC_APP_URL — nunca confía en un valor provisto por el caller
+   * (evita SSRF). Este campo se mantiene en el contrato para no romper
+   * otras implementaciones de WorkflowDispatcherPort (fakes/tests), pero
+   * ningún caller de este use case debe poblarlo con input de un cliente.
    */
   readonly callbackUrl?: string;
 };

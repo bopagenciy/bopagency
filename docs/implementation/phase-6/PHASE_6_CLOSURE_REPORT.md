@@ -71,7 +71,7 @@ segura con n8n, la orquestación de ejecuciones y la observabilidad.
 
 ### n8n
 - Version: compatible con webhooks HTTP y REST API v1
-- Configuración requerida: `BOP_WEBHOOK_SECRET`, `BOP_CALLBACK_BASE_URL`
+- Configuración requerida: `AUTOMATION_WEBHOOK_SECRET` (mismo nombre y valor en Next.js y en n8n; no existe una variable "callback base url" en el código real — ver `PHASE_6_N8N_INTEGRATION_RUNBOOK.md`)
 - El equipo de n8n debe implementar la firma HMAC en los callbacks
 
 ### Supabase
@@ -120,6 +120,19 @@ supabase/migrations/20260804000000_phase6b_automation_runtime.sql
 
 **Aplicación requerida en staging y producción antes del deploy.**
 **Backup obligatorio antes de aplicar en producción.**
+
+**[ACTUALIZADO 2026-08-07 — cierre de pendientes técnicos de Phase 6 local staging]**
+Validación local end-to-end (`dispatch n8n → running → succeeded`) detectó que `service_role`
+no tenía `SELECT/INSERT/UPDATE/DELETE` explícitos sobre `automation_executions`,
+`automation_execution_logs` y `automation_webhook_events` (el supuesto "hereda por
+defecto" del comentario original era incorrecto), causando `403 / SQLSTATE 42501`.
+La migración fue corregida para otorgar explícitamente el mínimo privilegio necesario
+por tabla a `service_role`. También se corrigió `resolveActiveByAlertKeyPrefixes`
+(recovery best-effort de alertas), que escribía texto libre en `alerts.resolved_by`
+(columna `uuid` FK a `auth.users`). Detalle completo, evidencia y comandos de grants en
+`PHASE_6_LOCAL_N8N_SETUP.md` §0.5. Tests nuevos: `phase6b-grants.test.ts` (23),
+`supabase-alert.repository.test.ts` (+9). La migración sigue sin aplicarse a
+staging/producción (branch `feat/phase-6-automation-runtime`, no mergeado a `main`).
 
 ---
 

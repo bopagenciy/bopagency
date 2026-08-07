@@ -20,6 +20,8 @@
  *   C13. Ejecución no encontrada → 400
  *   C14. Race condition unique violation manejada → 200 {duplicate: true}
  *   C15. service_role NO se crea antes de verificar HMAC (orden estricto)
+ *   C17. Tabla exacta usada para deduplicación de webhooks (automation_webhook_events,
+ *        nunca webhook_events), y manejo seguro de errores de inserción (ej. 42P01)
  */
 import { describe, it, expect, vi, beforeEach } from 'vitest';
 
@@ -397,6 +399,61 @@ describe('C9: execution.succeeded válido', () => {
     const res = await POST(req as never);
     expect(res.status).toBe(200);
   });
+
+  it('retorna 200 aunque la recuperación de alertas (Phase 6F, best-effort) falle en la tabla "alerts"', async () => {
+    // Reproduce el escenario del bug "recovery resolve failed (best-effort)":
+    // el UPDATE sobre `alerts` en resolveActiveByAlertKeyPrefixes falla,
+    // pero el callback principal ya actualizó automation_executions con éxito
+    // y por lo tanto debe seguir respondiendo 200.
+    let callCount = 0;
+    mockAdminFrom.mockImplementation((table: string) => {
+      if (table === 'automation_webhook_events') {
+        if (callCount++ === 0) return makeInsertOkChain();
+        return { update: vi.fn().mockReturnThis(), eq: vi.fn().mockResolvedValue({ error: null }) };
+      }
+      if (table === 'automation_executions') {
+        return {
+          select: vi.fn().mockReturnThis(),
+          update: vi.fn().mockReturnThis(),
+          eq:     vi.fn().mockReturnThis(),
+          single: vi.fn().mockResolvedValue({
+            data: {
+              id:              EXEC_UUID,
+              organization_id: ORG_UUID,
+              automation_id:   AUTO_UUID,
+              status:          'running',
+              attempt:         1,
+            },
+            error: null,
+          }),
+        };
+      }
+      if (table === 'automation_execution_logs') {
+        return { insert: vi.fn().mockResolvedValue({ error: null }) };
+      }
+      if (table === 'alerts') {
+        // Simula el UPDATE fallando (p.ej. 22P02 invalid input syntax for uuid,
+        // o cualquier otro error transitorio) — best-effort, no debe propagar.
+        return {
+          update: vi.fn().mockReturnThis(),
+          eq:     vi.fn().mockReturnThis(),
+          or:     vi.fn().mockReturnThis(),
+          select: vi.fn().mockResolvedValue({
+            data:  null,
+            error: { code: '22P02', message: 'invalid input syntax for type uuid' },
+          }),
+        };
+      }
+      return { insert: vi.fn().mockResolvedValue({ error: null }) };
+    });
+
+    const req = makeRequest(
+      { ...VALID_PAYLOAD, eventType: 'execution.succeeded' },
+      VALID_HEADERS,
+    );
+    const res = await POST(req as never);
+    expect(res.status).toBe(200);
+  });
 });
 
 // ─── C10. execution.failed válido ────────────────────────────────────────────
@@ -438,6 +495,79 @@ describe('C10: execution.failed — errorMessage sanitizado', () => {
     const body = await res.json() as Record<string, unknown>;
     expect(JSON.stringify(body)).not.toContain('Bearer');
     expect(JSON.stringify(body)).not.toContain('sk-abc123');
+  });
+});
+
+// ─── C18 (HALLAZGO 4 — Phase 6 cierre). execution.cancelled: completed_at condicional ──
+// n8n puede notificar execution.cancelled tanto para una ejecución que ya
+// estaba 'running' como para una que seguía 'queued' (canTransitionExecution
+// permite queued → cancelled). Si started_at nunca se seteó (queued), el
+// UPDATE NO debe incluir completed_at, o se violaría
+// ck_exec_completed_requires_started (completed_at IS NULL OR started_at IS NOT NULL).
+
+describe('C18: execution.cancelled — completed_at condicional (HALLAZGO 4)', () => {
+  it('queued → cancelled: el UPDATE NO incluye completed_at', async () => {
+    let callCount = 0;
+    const updateMock = vi.fn().mockReturnThis();
+    mockAdminFrom.mockImplementation((table: string) => {
+      if (table === 'automation_webhook_events') {
+        if (callCount++ === 0) return makeInsertOkChain();
+        return { update: vi.fn().mockReturnThis(), eq: vi.fn().mockResolvedValue({ error: null }) };
+      }
+      if (table === 'automation_executions') {
+        return {
+          select: vi.fn().mockReturnThis(),
+          update: updateMock,
+          eq:     vi.fn().mockReturnThis(),
+          single: vi.fn().mockResolvedValue({
+            data: { id: EXEC_UUID, organization_id: ORG_UUID, automation_id: AUTO_UUID, status: 'queued', attempt: 1 },
+            error: null,
+          }),
+        };
+      }
+      return { insert: vi.fn().mockResolvedValue({ error: null }) };
+    });
+
+    const req = makeRequest({ ...VALID_PAYLOAD, eventType: 'execution.cancelled' }, VALID_HEADERS);
+    const res = await POST(req as never);
+    expect(res.status).toBe(200);
+
+    expect(updateMock).toHaveBeenCalledTimes(1);
+    const patch = updateMock.mock.calls[0]?.[0] as Record<string, unknown>;
+    expect(patch['status']).toBe('cancelled');
+    expect('completed_at' in patch).toBe(false);
+    expect('started_at' in patch).toBe(false);
+  });
+
+  it('running → cancelled: el UPDATE SÍ incluye completed_at (started_at ya estaba seteado)', async () => {
+    let callCount = 0;
+    const updateMock = vi.fn().mockReturnThis();
+    mockAdminFrom.mockImplementation((table: string) => {
+      if (table === 'automation_webhook_events') {
+        if (callCount++ === 0) return makeInsertOkChain();
+        return { update: vi.fn().mockReturnThis(), eq: vi.fn().mockResolvedValue({ error: null }) };
+      }
+      if (table === 'automation_executions') {
+        return {
+          select: vi.fn().mockReturnThis(),
+          update: updateMock,
+          eq:     vi.fn().mockReturnThis(),
+          single: vi.fn().mockResolvedValue({
+            data: { id: EXEC_UUID, organization_id: ORG_UUID, automation_id: AUTO_UUID, status: 'running', attempt: 1 },
+            error: null,
+          }),
+        };
+      }
+      return { insert: vi.fn().mockResolvedValue({ error: null }) };
+    });
+
+    const req = makeRequest({ ...VALID_PAYLOAD, eventType: 'execution.cancelled' }, VALID_HEADERS);
+    const res = await POST(req as never);
+    expect(res.status).toBe(200);
+
+    const patch = updateMock.mock.calls[0]?.[0] as Record<string, unknown>;
+    expect(patch['status']).toBe('cancelled');
+    expect(typeof patch['completed_at']).toBe('string');
   });
 });
 
@@ -625,5 +755,252 @@ describe('C15: orden de seguridad', () => {
     expect(verifyCallOrder).toBeDefined();
     expect(adminCallOrder).toBeDefined();
     expect(verifyCallOrder ?? 0).toBeLessThan(adminCallOrder ?? Infinity);
+  });
+});
+
+// ─── C16. Log de ejecución usa la columna real (metadata, no context) ─────────
+// Revisión de consistencia Phase 6: apps/web/src/app/api/webhooks/n8n/route.ts
+// insertaba en `automation_execution_logs` usando una clave `context`, pero
+// la columna real definida en 20260804000000_phase6b_automation_runtime.sql
+// es `metadata` (y además faltaba `event_type`). Este test falla si el bug
+// reaparece.
+
+describe('C16: insert en automation_execution_logs usa las columnas reales', () => {
+  it('usa "metadata" (no "context") y setea "event_type" al procesar execution.started', async () => {
+    const logInsertSpy = vi.fn().mockResolvedValue({ error: null });
+
+    let webhookEventsCall = 0;
+    mockAdminFrom.mockImplementation((table: string) => {
+      if (table === 'automation_webhook_events') {
+        webhookEventsCall++;
+        if (webhookEventsCall === 1) return makeInsertOkChain();
+        return { update: vi.fn().mockReturnThis(), eq: vi.fn().mockResolvedValue({ error: null }) };
+      }
+      if (table === 'automation_executions') {
+        return {
+          select: vi.fn().mockReturnThis(),
+          update: vi.fn().mockReturnThis(),
+          eq:     vi.fn().mockReturnThis(),
+          single: vi.fn().mockResolvedValue({
+            data: {
+              id:              EXEC_UUID,
+              organization_id: ORG_UUID,
+              automation_id:   AUTO_UUID,
+              status:          'queued',
+              attempt:         1,
+            },
+            error: null,
+          }),
+        };
+      }
+      if (table === 'automation_execution_logs') {
+        return { insert: logInsertSpy };
+      }
+      return {
+        insert: vi.fn().mockReturnThis(),
+        select: vi.fn().mockReturnThis(),
+        update: vi.fn().mockReturnThis(),
+        eq:     vi.fn().mockReturnThis(),
+        single: vi.fn().mockResolvedValue({ data: null, error: null }),
+      };
+    });
+
+    const req = makeRequest({ ...VALID_PAYLOAD, eventType: 'execution.started' }, VALID_HEADERS);
+    const res = await POST(req as never);
+    expect(res.status).toBe(200);
+
+    expect(logInsertSpy).toHaveBeenCalledTimes(1);
+    const insertedRow = logInsertSpy.mock.calls[0]?.[0] as Record<string, unknown>;
+
+    // La columna real es "metadata" — nunca debe insertarse bajo "context".
+    expect(insertedRow).toHaveProperty('metadata');
+    expect(insertedRow).not.toHaveProperty('context');
+
+    // event_type debe reflejar el eventType del callback.
+    expect(insertedRow['event_type']).toBe('execution.started');
+
+    // Campos base de la fila siguen presentes.
+    expect(insertedRow['execution_id']).toBe(EXEC_UUID);
+    expect(insertedRow['organization_id']).toBe(ORG_UUID);
+    expect(insertedRow['level']).toBe('info');
+  });
+
+  it('usa level "error" y event_type "execution.failed" cuando la ejecución falla', async () => {
+    const logInsertSpy = vi.fn().mockResolvedValue({ error: null });
+
+    let webhookEventsCall = 0;
+    mockAdminFrom.mockImplementation((table: string) => {
+      if (table === 'automation_webhook_events') {
+        webhookEventsCall++;
+        if (webhookEventsCall === 1) return makeInsertOkChain();
+        return { update: vi.fn().mockReturnThis(), eq: vi.fn().mockResolvedValue({ error: null }) };
+      }
+      if (table === 'automation_executions') {
+        return {
+          select: vi.fn().mockReturnThis(),
+          update: vi.fn().mockReturnThis(),
+          eq:     vi.fn().mockReturnThis(),
+          single: vi.fn().mockResolvedValue({
+            data: {
+              id:              EXEC_UUID,
+              organization_id: ORG_UUID,
+              automation_id:   AUTO_UUID,
+              status:          'running',
+              attempt:         1,
+            },
+            error: null,
+          }),
+        };
+      }
+      if (table === 'automation_execution_logs') {
+        return { insert: logInsertSpy };
+      }
+      return { update: vi.fn().mockReturnThis(), eq: vi.fn().mockResolvedValue({ error: null }) };
+    });
+
+    const req = makeRequest(
+      { ...VALID_PAYLOAD, eventType: 'execution.failed', errorCode: 'WORKFLOW_TEST_FAILURE' },
+      VALID_HEADERS,
+    );
+    const res = await POST(req as never);
+    expect(res.status).toBe(200);
+
+    const insertedRow = logInsertSpy.mock.calls[0]?.[0] as Record<string, unknown>;
+    expect(insertedRow).toHaveProperty('metadata');
+    expect(insertedRow).not.toHaveProperty('context');
+    expect(insertedRow['event_type']).toBe('execution.failed');
+    expect(insertedRow['level']).toBe('error');
+  });
+});
+
+// ─── C17. Tabla exacta usada por el cliente Supabase para dedup de webhooks ──
+// SQLSTATE 42P01 ("undefined_table") observado en el flujo local al procesar
+// callbacks de n8n. Auditoría: route.ts SIEMPRE llama a
+// adminClient.from('automation_webhook_events') (nombre real definido en
+// supabase/migrations/20260804000000_phase6b_automation_runtime.sql, Sección
+// E) — nunca 'webhook_events' ni ninguna otra variante. Estos tests capturan
+// el nombre EXACTO pasado a .from() para que un regreso a un nombre
+// incorrecto haga fallar el test (los tests anteriores usaban un mock con
+// fallback genérico que no distinguía el nombre de tabla).
+
+describe('C17: tabla exacta usada para deduplicación de webhooks', () => {
+  it('callback running (execution.started) inserta en "automation_webhook_events"', async () => {
+    setupAdminFromMock({});
+
+    const req = makeRequest({ ...VALID_PAYLOAD, eventType: 'execution.started' }, VALID_HEADERS);
+    const res = await POST(req as never);
+    expect(res.status).toBe(200);
+
+    const tablesQueried = mockAdminFrom.mock.calls.map((call) => call[0]);
+    expect(tablesQueried).toContain('automation_webhook_events');
+    expect(tablesQueried).not.toContain('webhook_events');
+  });
+
+  it('callback succeeded (execution.succeeded) inserta en "automation_webhook_events"', async () => {
+    let callCount = 0;
+    mockAdminFrom.mockImplementation((table: string) => {
+      if (table === 'automation_webhook_events') {
+        if (callCount++ === 0) return makeInsertOkChain();
+        return { update: vi.fn().mockReturnThis(), eq: vi.fn().mockResolvedValue({ error: null }) };
+      }
+      if (table === 'automation_executions') {
+        return {
+          select: vi.fn().mockReturnThis(),
+          update: vi.fn().mockReturnThis(),
+          eq:     vi.fn().mockReturnThis(),
+          single: vi.fn().mockResolvedValue({
+            data: {
+              id:              EXEC_UUID,
+              organization_id: ORG_UUID,
+              automation_id:   AUTO_UUID,
+              status:          'running',
+              attempt:         1,
+            },
+            error: null,
+          }),
+        };
+      }
+      return { insert: vi.fn().mockResolvedValue({ error: null }) };
+    });
+
+    const req = makeRequest({ ...VALID_PAYLOAD, eventType: 'execution.succeeded' }, VALID_HEADERS);
+    const res = await POST(req as never);
+    expect(res.status).toBe(200);
+
+    const tablesQueried = mockAdminFrom.mock.calls.map((call) => call[0]);
+    expect(tablesQueried).toContain('automation_webhook_events');
+    expect(tablesQueried).not.toContain('webhook_events');
+  });
+
+  it('el insert de deduplicación usa únicamente columnas reales de la migración (source, external_event_id, event_type, payload_hash, status)', async () => {
+    const insertSpy = vi.fn().mockReturnThis();
+    let callCount = 0;
+    mockAdminFrom.mockImplementation((table: string) => {
+      if (table === 'automation_webhook_events') {
+        if (callCount++ === 0) {
+          return {
+            insert: insertSpy,
+            select: vi.fn().mockReturnThis(),
+            single: vi.fn().mockResolvedValue({ data: { id: 'wh-1' }, error: null }),
+          };
+        }
+        return { update: vi.fn().mockReturnThis(), eq: vi.fn().mockResolvedValue({ error: null }) };
+      }
+      if (table === 'automation_executions') {
+        return {
+          select: vi.fn().mockReturnThis(),
+          update: vi.fn().mockReturnThis(),
+          eq:     vi.fn().mockReturnThis(),
+          single: vi.fn().mockResolvedValue({
+            data: { id: EXEC_UUID, organization_id: ORG_UUID, automation_id: AUTO_UUID, status: 'queued', attempt: 1 },
+            error: null,
+          }),
+        };
+      }
+      return { insert: vi.fn().mockResolvedValue({ error: null }) };
+    });
+
+    const req = makeRequest({ ...VALID_PAYLOAD, eventType: 'execution.started' }, VALID_HEADERS);
+    const res = await POST(req as never);
+    expect(res.status).toBe(200);
+
+    expect(insertSpy).toHaveBeenCalledTimes(1);
+    const insertedRow = insertSpy.mock.calls[0]?.[0] as Record<string, unknown>;
+
+    const REAL_COLUMNS = new Set([
+      'id', 'organization_id', 'execution_id', 'external_event_id', 'source',
+      'event_type', 'payload_hash', 'received_at', 'processed_at', 'status',
+      'error_code', 'created_at',
+    ]);
+    for (const key of Object.keys(insertedRow)) {
+      expect(REAL_COLUMNS.has(key), `columna inesperada en insert: ${key}`).toBe(true);
+    }
+    // No se persiste el body/payload crudo ni la firma HMAC en esta fila.
+    expect(insertedRow).not.toHaveProperty('raw_body');
+    expect(insertedRow).not.toHaveProperty('payload');
+    expect(insertedRow).not.toHaveProperty('signature');
+    expect(insertedRow).not.toHaveProperty('headers');
+  });
+
+  it('un error de inserción tipo SQLSTATE 42P01 (relation does not exist) se maneja de forma segura: 500 sin detalles SQL', async () => {
+    mockAdminFrom.mockImplementationOnce(() => ({
+      insert: vi.fn().mockReturnThis(),
+      select: vi.fn().mockReturnThis(),
+      single: vi.fn().mockResolvedValue({
+        data:  null,
+        error: { code: '42P01', message: 'relation "public.automation_webhook_events" does not exist' },
+      }),
+    }));
+
+    const req = makeRequest(VALID_PAYLOAD, VALID_HEADERS);
+    const res = await POST(req as never);
+    expect(res.status).toBe(500);
+
+    const body = await res.json() as Record<string, unknown>;
+    const bodyStr = JSON.stringify(body);
+    expect(bodyStr).not.toContain('42P01');
+    expect(bodyStr).not.toContain('relation');
+    expect(bodyStr).not.toContain('does not exist');
+    expect(bodyStr).not.toContain('automation_webhook_events');
   });
 });

@@ -258,7 +258,20 @@ export async function POST(request: NextRequest): Promise<Response> {
   if (newStatus === 'running') {
     statusPatch['started_at'] = now;
   }
-  if (['succeeded', 'failed', 'cancelled'].includes(newStatus)) {
+  // HALLAZGO 4 (Phase 6 cierre — corregido): 'succeeded'/'failed' solo se
+  // alcanzan desde 'running' (n8n únicamente reporta éxito/fallo de una
+  // ejecución que ya corrió), así que started_at siempre está seteado ahí.
+  // 'cancelled', en cambio, es alcanzable tanto desde 'running' como desde
+  // 'queued' (canTransitionExecution permite queued → cancelled — n8n puede
+  // notificar la cancelación de un run que nunca llegó a iniciarse). Si
+  // currentStatus es 'queued', started_at sigue NULL: forzar completed_at
+  // aquí violaría ck_exec_completed_requires_started
+  // (completed_at IS NULL OR started_at IS NOT NULL).
+  if (
+    newStatus === 'succeeded' ||
+    newStatus === 'failed' ||
+    (newStatus === 'cancelled' && currentStatus === 'running')
+  ) {
     statusPatch['completed_at'] = now;
   }
   if (payload.outputMetadata !== null && payload.outputMetadata !== undefined) {
@@ -303,9 +316,10 @@ export async function POST(request: NextRequest): Promise<Response> {
       execution_id:    payload.executionId,
       organization_id: payload.organizationId,
       level:           newStatus === 'failed' ? 'error' : 'info',
+      event_type:      payload.eventType,
       message:         `Execution ${newStatus} via n8n callback`,
       // eslint-disable-next-line @typescript-eslint/no-explicit-any
-      context:         logContext as any,
+      metadata:        logContext as any,
       // No almacenar error_message completo aquí — ya está en execution
       occurred_at:     now,
     });

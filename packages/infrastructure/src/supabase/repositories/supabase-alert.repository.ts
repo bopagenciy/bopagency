@@ -368,6 +368,58 @@ export class SupabaseAlertRepository implements AlertRepository {
   // Resuelve alertas activas cuyo alert_key empiece con alguno de los prefijos.
   // Requiere service_role (adminClient) para que auth.uid() IS NULL y el trigger
   // permita actualizar resolved_at directamente.
+  //
+  // NOTA (fix Phase 6 local staging — recovery resolve best-effort):
+  // `resolved_by` es `uuid NULL REFERENCES auth.users(id)` en el schema
+  // (ver 20260730150000_phase4_data_migration_targets.sql). El caller de
+  // esta recuperación automática (evaluate-automation-incident.use-case.ts)
+  // no tiene un usuario autenticado real — la resolución la dispara el
+  // sistema al recibir `execution_succeeded`. Por eso `resolvedByLabel`
+  // (p.ej. "automation-recovery:<executionId>") NUNCA debe escribirse
+  // directamente en `resolved_by`: al no ser un UUID válido, Postgres
+  // rechaza el UPDATE con 22P02 (invalid input syntax for type uuid),
+  // que PostgREST reporta como error genérico — visible como
+  // `evaluateAutomationIncident: recovery resolve failed (best-effort)`.
+  // Si el label es un UUID válido (p.ej. un usuario real forzando una
+  // recuperación manual) se persiste tal cual; en cualquier otro caso
+  // (incluida la recuperación automática del sistema) se deja NULL,
+  // que es un valor válido para una columna FK nullable.
+  //
+  // SEGUNDO DEFECTO (validación E2E posterior, 2026-08-07): el fix de arriba
+  // era necesario pero NO suficiente. `20260730150000_phase4_data_migration_targets.sql`
+  // nunca otorgó GRANT explícito a `service_role` sobre `public.alerts` (solo
+  // a `authenticated`, líneas 909-928 de esa migración) — a diferencia de las
+  // 4 tablas de Phase 6B, que sí recibieron su GRANT correctivo. `service_role`
+  // bypasea RLS pero NO exime del chequeo de privilegios GRANT/REVOKE: sin ese
+  // GRANT, PostgREST devuelve 42501 "permission denied for table alerts" en
+  // CUALQUIER UPDATE/SELECT que este método intente, sin importar el valor de
+  // `resolved_by`. Corregido en la migración correctiva
+  // `20260807150000_fix_alerts_service_role_grant.sql` (Phase 4 ya está en
+  // `main`/aplicada — no se edita in-place, se agrega una migración nueva).
+  //
+  // TERCER DEFECTO (validación E2E, 2026-08-07): con el GRANT ya aplicado, el
+  // UPDATE seguía fallando con `42703 column alerts.alert_key does not exist`
+  // pese a que la columna SÍ existe. Se intentó corregir envolviendo el valor
+  // de cada condición LIKE entre comillas dobles dentro de `.or(...)`, por ser
+  // ':' un carácter reservado en la gramática or()/and() de PostgREST
+  // (https://docs.postgrest.org/en/stable/references/api/url_grammar.html#reserved-characters).
+  // El quoting se verificó correcto en runtime (logging temporal
+  // `RECOVERY_FILTER_V2`, con Next.js y PostgREST reiniciados, caché de
+  // `.next` limpia): el string enviado a `.or()` era exactamente el esperado,
+  // con cada valor completamente entre comillas — y el 42703 persistió de
+  // todas formas específicamente combinando `.or()` con `UPDATE`/`PATCH`.
+  //
+  // RESOLUCIÓN FINAL: en vez de seguir depurando la gramática interna de
+  // `or=(...)` de PostgREST combinada con UPDATE, se elimina por completo la
+  // dependencia de `.or()`. Los 4 prefijos recuperables
+  // (`recoverableAlertKeyPrefixes`) son mutuamente excluyentes por diseño
+  // (dispatch-failed / execution-failed / max-attempts / stuck no se
+  // solapan), así que no hace falta una única condición OR: se ejecuta un
+  // UPDATE independiente por prefijo con `.like('alert_key', ...)` — el
+  // operador de filtro simple de PostgREST, sin gramática de combinador de
+  // por medio — y se acumulan los ids de alertas resueltas (deduplicados) en
+  // un Set. Es secuencial (no `Promise.all`) para mantener el logging y el
+  // mapeo de errores deterministas y simples.
 
   async resolveActiveByAlertKeyPrefixes(
     prefixes: string[],
@@ -378,38 +430,65 @@ export class SupabaseAlertRepository implements AlertRepository {
 
     const now = new Date().toISOString();
     const safeLabel = resolvedByLabel.slice(0, 200).replace(/['"]/g, '');
+    const resolvedBy = UUID_PATTERN.test(safeLabel) ? safeLabel : null;
 
-    // Construir filtro OR para los prefijos
-    // Supabase no tiene LIKE OR nativo, usamos .or() con múltiples condiciones
-    const likeConditions = prefixes
-      .map((p) => `alert_key.like.${p.replace(/[%_]/g, '')}%`)
-      .join(',');
+    const resolvedIds = new Set<string>();
 
-    const { data, error } = await this.supabase
-      .from('alerts')
-      .update({
-        status: 'resolved',
-        resolved_at: now,
-        resolved_by: safeLabel,
-        updated_at: now,
-      })
-      .eq('organization_id', String(organizationId))
-      .eq('status', 'active')
-      .or(likeConditions)
-      .select('id');
+    for (const prefix of prefixes) {
+      const safePrefix = prefix.replace(/[%_]/g, '');
 
-    if (error) {
-      return err({
-        code: 'INTERNAL_ERROR' as const,
-        message: 'Error al resolver alertas por prefijo de clave',
-        details: error.code,
-      });
+      const { data, error } = await this.supabase
+        .from('alerts')
+        .update({
+          status: 'resolved',
+          resolved_at: now,
+          resolved_by: resolvedBy,
+          updated_at: now,
+        })
+        .eq('organization_id', String(organizationId))
+        .eq('status', 'active')
+        .like('alert_key', `${safePrefix}%`)
+        .select('id');
+
+      if (error) {
+        // Logging seguro del error REAL de Postgres/PostgREST antes de
+        // mapearlo a INTERNAL_ERROR — necesario para distinguir en runtime,
+        // sin adivinar, entre 42501 (permission denied / grants), 22P02
+        // (uuid inválido), RLS, triggers, o cualquier otra causa. Solo
+        // campos de diagnóstico del error de Postgres (code/message/details/
+        // hint) y el prefijo (determinístico, sin PII) que estaba
+        // procesando — nunca secretos, tokens, headers, payload completo ni
+        // PII. `error.message`/`error.details` de Postgres para fallos de
+        // schema/permiso no contienen datos de usuario.
+        console.error('[SupabaseAlertRepository.resolveActiveByAlertKeyPrefixes] Postgres/PostgREST error', {
+          operation: 'UPDATE public.alerts (recovery best-effort)',
+          prefix:  safePrefix,
+          code:    error.code,
+          message: error.message,
+          details: error.details,
+          hint:    error.hint,
+        });
+        return err({
+          code: 'INTERNAL_ERROR' as const,
+          message: 'Error al resolver alertas por prefijo de clave',
+          details: error.code,
+        });
+      }
+
+      for (const row of data ?? []) {
+        resolvedIds.add(row.id as string);
+      }
     }
 
-    return ok(data?.length ?? 0);
+    return ok(resolvedIds.size);
   }
 
 }
+
+// UUID v4/general formato estándar (8-4-4-4-12 hex). Usado únicamente para
+// decidir si `resolvedByLabel` puede persistirse en la columna `resolved_by`
+// (uuid FK a auth.users). Ver nota en resolveActiveByAlertKeyPrefixes.
+const UUID_PATTERN = /^[0-9a-f]{8}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{12}$/i;
 
 // ─── Helpers ──────────────────────────────────────────────────────────────────
 

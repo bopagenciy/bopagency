@@ -34,10 +34,20 @@ NEXT_PUBLIC_APP_URL=https://app.bopagencia.com
 
 ### En n8n
 
+> **Corrección (revisión de consistencia Phase 6):** `BOP_WEBHOOK_SECRET` y
+> `BOP_CALLBACK_BASE_URL` **no existen en ningún código auditado** — eran
+> nombres aspiracionales de una versión anterior de este runbook. El código
+> real (`N8nWebhookDispatcher`, `hmac.ts`) solo lee `AUTOMATION_WEBHOOK_SECRET`
+> y no lee ninguna variable "callback base url": la URL de callback la decide
+> quien dispara la ejecución (`callbackUrl` en el payload de dispatch), o el
+> workflow de n8n puede apuntar directamente a
+> `${NEXT_PUBLIC_APP_URL}/api/webhooks/n8n` si `callbackUrl` llega vacío
+> (ver nota en el Paso 4).
+
 ```bash
-# Variables de entorno en n8n para el workflow de automatización:
-BOP_WEBHOOK_SECRET=<mismo valor que AUTOMATION_WEBHOOK_SECRET>
-BOP_CALLBACK_BASE_URL=https://app.bopagencia.com
+# Variable de entorno en n8n para el nodo de firma del workflow:
+# MISMO nombre y MISMO valor que AUTOMATION_WEBHOOK_SECRET en Next.js.
+AUTOMATION_WEBHOOK_SECRET=<mismo valor exacto que AUTOMATION_WEBHOOK_SECRET en Next.js>
 ```
 
 ---
@@ -59,9 +69,9 @@ BOP_CALLBACK_BASE_URL=https://app.bopagencia.com
 ### Paso 1 — Configurar secreto HMAC compartido
 
 - [ ] Generar secreto: `openssl rand -hex 32`
-- [ ] Copiar valor a `AUTOMATION_WEBHOOK_SECRET` en Next.js
-- [ ] Copiar MISMO valor a `BOP_WEBHOOK_SECRET` en n8n
-- [ ] Verificar que el secreto tiene exactamente 64 chars hexadecimales
+- [ ] Copiar valor a `AUTOMATION_WEBHOOK_SECRET` en `apps/web/.env.local` (Next.js)
+- [ ] Copiar el MISMO valor a `AUTOMATION_WEBHOOK_SECRET` en `n8n-local/.env` (n8n) — mismo nombre de variable en ambos lados
+- [ ] Verificar que el secreto tiene al menos 32 caracteres (`AUTOMATION_WEBHOOK_SECRET.length >= 32`, ver `hmac.ts`)
 - [ ] NO versionar el secreto en git
 
 ### Paso 2 — Configurar URL base de n8n
@@ -72,14 +82,19 @@ BOP_CALLBACK_BASE_URL=https://app.bopagencia.com
 
 ### Paso 3 — Configurar webhook path en n8n
 
+> **Corrección (revisión de consistencia Phase 6):** el dispatcher real
+> (`N8nWebhookDispatcher.dispatch`) construye la URL usando el **id de la
+> automatización** (`automationId`, `automations.id`), **no** el campo
+> `n8n_workflow_id`/`workflow_id`. Ese campo existe en la tabla `automations`
+> pero el dispatcher actual no lo lee para construir la URL.
+
 El dispatcher construye la URL como:
 ```
-${N8N_BASE_URL}/webhook/${n8nWorkflowId}
+${N8N_BASE_URL}/webhook/${automationId}
 ```
 
-- [ ] Confirmar que cada Automation en DB tiene el campo `n8n_workflow_id` correcto
-- [ ] Verificar que el webhook path en n8n coincide con el `n8nWorkflowId` almacenado
-- [ ] Probar que la URL construida es accesible (curl GET a la URL)
+- [ ] Configurar el Webhook node de n8n con un path dinámico (ej. `:automationId`) para aceptar cualquier `automations.id`, o crear un webhook fijo por automatización si se prefiere 1 workflow por automatización
+- [ ] Verificar que la URL construida (`${N8N_BASE_URL}/webhook/{automationId real}`) es accesible
 
 ### Paso 4 — Preparar workflow de n8n para testing
 
@@ -89,29 +104,45 @@ El workflow n8n debe:
 3. Ejecutar la lógica de automatización
 4. Enviar callback a `callbackUrl` con headers HMAC firmados
 
-Payload que envía BopIAgency al disparar (campo `payload` del dispatch):
+Payload real que envía `N8nWebhookDispatcher` (body JSON exacto del POST de dispatch):
 ```json
 {
   "executionId": "uuid",
   "organizationId": "uuid",
+  "automationId": "uuid",
   "clientId": "uuid | null",
+  "idempotencyKey": "string",
   "triggerType": "manual | schedule | webhook | event",
-  "callbackUrl": "https://app.bopagencia.com/api/webhooks/n8n",
+  "callbackUrl": "string (puede llegar vacío, ver nota)",
   "metadata": {}
 }
 ```
 
+> **Nota de exactitud:** `automationId` e `idempotencyKey` SÍ forman parte del
+> body real (el ejemplo anterior de este runbook los omitía). Además,
+> `callbackUrl` llega como **cadena vacía** cuando la ejecución se dispara
+> desde la UI actual (`startExecutionAction` no la pasa;
+> `startAutomationExecution` usa `''` por defecto). El workflow de n8n debe
+> estar preparado para ese caso — por ejemplo, usando `callbackUrl` si viene
+> informado y, si no, apuntando directamente a
+> `${NEXT_PUBLIC_APP_URL}/api/webhooks/n8n` (local:
+> `http://host.docker.internal:3200/api/webhooks/n8n` desde dentro del
+> contenedor de n8n). Ver `PHASE_6_LOCAL_N8N_SETUP.md` para el workflow local
+> de referencia que ya implementa este fallback.
+
 - [ ] Importar o ajustar workflow de n8n para leer estos campos
-- [ ] Configurar el nodo de n8n para firmar el callback con `BOP_WEBHOOK_SECRET`
+- [ ] Configurar el nodo de n8n para firmar el callback con `AUTOMATION_WEBHOOK_SECRET`
 - [ ] Confirmar que n8n incluye `X-Bop-Event-Id` único en cada callback
 
 ### Paso 5 — Implementar firma saliente de n8n (callback hacia BopIAgency)
 
 n8n debe firmar cada callback POST así:
 ```javascript
+const secret = $env.AUTOMATION_WEBHOOK_SECRET; // mismo nombre que en Next.js
 const timestamp = Math.floor(Date.now() / 1000).toString();
-const canonical = `${timestamp}.${JSON.stringify(body)}`;
-const sig = crypto.createHmac('sha256', BOP_WEBHOOK_SECRET)
+const rawBody = JSON.stringify(body); // el MISMO string se transmite después, sin reserializar
+const canonical = `${timestamp}.${rawBody}`;
+const sig = crypto.createHmac('sha256', Buffer.from(secret, 'utf-8'))
   .update(canonical, 'utf-8')
   .digest('hex');
 ```
@@ -143,12 +174,20 @@ Verificar:
 - [ ] Status cambia a `running` cuando n8n lo inicia
 - [ ] Sin errores en los logs de Next.js
 
-### Paso 7 — Test: callback `execution_started`
+### Paso 7 — Test: callback `execution.started`
+
+> **Corrección (revisión de consistencia Phase 6):** el whitelist real de
+> `eventType` (`N8N_EVENT_TYPES` en `payload.schema.ts`) usa notación con
+> punto (`execution.started`, no `execution_started`). Un `eventType` con
+> guion bajo falla la validación Zod y responde `400`. También falta
+> `timestamp` (ISO 8601 con offset), requerido por el schema.
 
 n8n debe enviar a `POST /api/webhooks/n8n`:
 ```json
 {
-  "eventType": "execution_started",
+  "eventId": "<uuid único de este evento>",
+  "eventType": "execution.started",
+  "timestamp": "2026-08-06T12:00:00.000Z",
   "executionId": "<uuid>",
   "organizationId": "<uuid>",
   "automationId": "<uuid>",
@@ -161,11 +200,13 @@ Verificar:
 - [ ] Status de la ejecución cambia a `running` en UI
 - [ ] Log de la ejecución muestra "Execution running via n8n callback"
 
-### Paso 8 — Test: callback `execution_succeeded`
+### Paso 8 — Test: callback `execution.succeeded`
 
 ```json
 {
-  "eventType": "execution_succeeded",
+  "eventId": "<uuid único de este evento>",
+  "eventType": "execution.succeeded",
+  "timestamp": "2026-08-06T12:00:05.000Z",
   "executionId": "<uuid>",
   "organizationId": "<uuid>",
   "automationId": "<uuid>",
@@ -180,11 +221,13 @@ Verificar:
 - [ ] `completed_at` tiene timestamp
 - [ ] Si había alertas activas recuperables, se resuelven automáticamente
 
-### Paso 9 — Test: callback `execution_failed`
+### Paso 9 — Test: callback `execution.failed`
 
 ```json
 {
-  "eventType": "execution_failed",
+  "eventId": "<uuid único de este evento>",
+  "eventType": "execution.failed",
+  "timestamp": "2026-08-06T12:00:05.000Z",
   "executionId": "<uuid>",
   "organizationId": "<uuid>",
   "automationId": "<uuid>",
@@ -234,9 +277,9 @@ Verificar:
 Simular que n8n no responde al dispatch (timeout):
 
 Verificar:
-- [ ] Dispatch retorna `N8N_TIMEOUT` error después de `N8N_DISPATCH_TIMEOUT_MS` ms
+- [ ] Dispatch retorna error `EXTERNAL_SERVICE_ERROR` (reason: timeout) después de `N8N_DISPATCH_TIMEOUT_MS` ms (ver `n8n-webhook-dispatcher.ts`)
 - [ ] Se crea alerta de `dispatch_failed`
-- [ ] La ejecución queda en estado `failed` con `error_code: 'DISPATCH_TIMEOUT'`
+- [ ] La ejecución queda en estado `failed` con `error_code: 'DISPATCH_FAILED'` (el use case normaliza cualquier fallo de dispatch —incluido timeout— a este único código; ver `start-execution.use-case.ts`)
 
 ### Paso 14 — Test: cancelación (si la API de n8n lo soporta)
 
@@ -259,14 +302,16 @@ Si n8n no soporta cancelación remota:
 
 ```sql
 -- Verificar en Supabase Studio:
-SELECT id, level, message, context, occurred_at
+-- Corrección (revisión de consistencia Phase 6): la columna real es
+-- `metadata`, no `context` (context es solo el nombre a nivel de dominio/TS).
+SELECT id, level, event_type, message, metadata, occurred_at
 FROM automation_execution_logs
 ORDER BY occurred_at DESC
 LIMIT 20;
 ```
 
 Verificar:
-- [ ] Sin tokens JWT en el campo `context`
+- [ ] Sin tokens JWT en el campo `metadata`
 - [ ] Sin error_message completo (solo los primeros 200 chars en safeErrorMessage del incident)
 - [ ] Sin organizationId en mensajes (está en columna separada)
 - [ ] Sin datos PII en logs
@@ -296,3 +341,18 @@ Verificar:
 | 500 Internal | AUTOMATION_WEBHOOK_SECRET no configurado | Configurar variable de entorno |
 | N8N_TIMEOUT | n8n no responde | Verificar N8N_BASE_URL y que n8n está activo |
 | HMAC mismatch outgoing | n8n reconstruye el canonical string diferente | Verificar que n8n NO reformatea el JSON antes de firmar |
+
+---
+
+## Staging Integration (2026-08-05)
+
+### Estado actual
+- **N8N STAGING**: LOCAL N8N ONLY detectado — instancia staging cloud no identificada
+- **Instancia local**: `n8n-local/docker-compose.yml` con imagen `docker.n8n.io/n8nio/n8n:stable`
+- **URL local**: `http://localhost:5678`
+- **URL producción documentada**: `https://n8n.bopagency.com` (comentada en runbook)
+
+### Acción requerida
+Ver `PHASE_6_STAGING_INTEGRATION_PLAN.md` §4 para opciones de instancia staging.
+Ver `PHASE_6_STAGING_SMOKE_TEST_MATRIX.md` para los 20 cases de prueba a ejecutar.
+Ver `PHASE_6_STAGING_ENVIRONMENT_CHECKLIST.md` §5 para checklist de n8n staging.
