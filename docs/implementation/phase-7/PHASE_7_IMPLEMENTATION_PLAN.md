@@ -44,18 +44,22 @@
 - **Riesgos:** ninguno — es de solo lectura.
 - **Criterios de aceptación:** los tres documentos existen, están basados en evidencia citable (rutas de archivo, líneas), y el usuario aprueba explícitamente antes de avanzar a 7B.
 
-### 7B — Persistence
+### 7B — Persistence — ✅ IMPLEMENTADO (pendiente de revisión/aprobación — sin commit)
 - **Objetivo:** crear el esquema real (`campaigns`, `campaign_approvals`, `compliance_rules`) con multi-tenancy desde el día uno, e implementar `CampaignRepository` sobre Supabase con mapper y tests.
-- **Archivos/tablas principales:**
-  - Migración nueva `supabase/migrations/2026XXXXXXXXXX_phase7b_campaign_studio_schema.sql` — tres tablas + índices + RLS (ver §9) + triggers `set_updated_at` (reutilizar el helper existente) + trigger de auditoría `created_by`/`updated_by` (mismo patrón que `tasks`).
-  - Actualizar `Campaign`/`CampaignFilter` en `packages/domain/src/entities/campaign.ts` para añadir `organizationId: OrganizationId` (obligatorio, no opcional).
-  - Cambiar `CampaignRepository.delete` a soft-delete (`Result<void>` sigue igual, pero la implementación marca `deleted_at`, no `DELETE`), o renombrarlo `archive`/`softDelete` para ser explícito, igual que `softDeleteClient`.
-  - `packages/infrastructure/src/supabase/repositories/supabase-campaign.repository.ts` + `packages/infrastructure/src/supabase/mappers/campaign.mapper.ts`, siguiendo el patrón exacto de `supabase-metrics.repository.ts`/`metric.mapper.ts`.
-  - `packages/shared/src/schemas/campaign.schema.ts` (Zod) siguiendo el patrón minimalista de `automation.schema.ts` (nunca aceptar `organizationId` del cliente).
-  - Tests: `packages/domain/src/entities/__tests__/campaign.test.ts` si aplica, `packages/infrastructure/src/supabase/repositories/__tests__/supabase-campaign.repository.test.ts`, `.../mappers/__tests__/campaign.mapper.test.ts`.
-- **Dependencias:** ninguna externa; solo depende de que 7A esté aprobada.
-- **Riesgos:** ver `PHASE_7_RISK_REGISTER.md` (R-TECH-01, R-SEC-01).
-- **Criterios de aceptación:** migración re-ejecutable (idempotente, siguiendo el patrón `IF NOT EXISTS` / `DROP POLICY IF EXISTS` ya usado en el proyecto); `CampaignRepository` implementado y con tests pasando; `listCampaigns` funciona contra datos reales de staging; ningún dato de producción tocado (no se ejecuta en producción en esta subfase).
+- **Estado:** implementado en la rama `feat/phase-7-campaign-studio` sobre `1955ad0`. Detalle completo (schema exacto, decisiones de diseño, RLS/grants, deuda técnica) en `PHASE_7B_PERSISTENCE_REPORT.md`. **No se aplicó la migración a ningún Supabase (local ni remoto), no se ejecutó `git add`/`commit`** — los cambios quedan en el working tree para revisión, conforme a las restricciones de la tarea.
+- **Archivos/tablas creados:**
+  - `supabase/migrations/20260816130000_phase7b_campaign_studio_persistence.sql` — `campaigns`, `campaign_approvals`, `compliance_rules` + 4 enums + índices + RLS + triggers (reutiliza `check_client_organization_match`, `protect_child_immutable_fields`, `set_updated_at`; añade `manage_campaign_write` y `check_campaign_organization_match`, ambos siguiendo el patrón existente).
+  - `packages/domain/src/entities/campaign.ts` — `organizationId` añadido (obligatorio), más `brief`, `generatedContent`, `metadata`, `createdBy`/`updatedBy`, `submittedForReviewAt`/`approvedAt`/`rejectedAt`; `budget`/`currency`/`startDate`/`endDate` conservados de Phase 1. `canTransitionCampaign`/`getCampaignNextStates`/`isCampaignStatusTerminal` (invariante pura, patrón `canTransitionTask`).
+  - `packages/domain/src/entities/campaign-approval.ts`, `compliance-rule.ts` — tipos de dominio, sin repositorio (ver deuda técnica en el reporte).
+  - `packages/domain/src/repositories/campaign.repository.ts` — `delete()` retirado del contrato (sin concepto de borrado en las reglas de negocio fijadas); `findById`/`update` ahora requieren `organizationId` explícito (patrón `TaskRepository`/`ClientRepository`).
+  - `packages/infrastructure/src/supabase/repositories/supabase-campaign.repository.ts` + `packages/infrastructure/src/supabase/mappers/campaign.mapper.ts`, sobre el patrón de `supabase-task.repository.ts`/`task.mapper.ts`.
+  - `packages/shared/src/schemas/campaign.schema.ts` (Zod) — `organizationId`/`createdBy` nunca aceptados del schema.
+  - `apps/web/src/lib/supabase/types.ts` (el realmente usado por `server.ts`/`browser.ts`) y `database.types.ts` (orphaned, actualizado igualmente por completitud) — tipos `Campaign*`/`ComplianceRule*` añadidos a mano; **pendiente reemplazar por codegen real una vez aplicada la migración** (comando exacto en el reporte).
+  - Tests: dominio (20), schema Zod (19), mapper (12), repositorio (14), use case (8) — 73 tests nuevos, todos verdes. Detalle de ejecución (lint/typecheck/test por paquete) en el reporte.
+- **`createCampaignDraft`:** implementado de verdad (ya no es un stub `notImplemented`) — valida input, verifica que el cliente exista y pertenezca a la organización, crea la campaña en `draft` vía `CampaignRepository`. No llama IA, no llama n8n, no publica nada.
+- **Dependencias:** ninguna externa; solo dependía de que 7A estuviera aprobada.
+- **Riesgos:** ver `PHASE_7_RISK_REGISTER.md` (R-DOM-01, R-DOM-02 — ambos resueltos en esta subfase) y la sección "Cambios de estado sensibles" del reporte (mitigación de RLS para approved/rejected, deuda formal para la RPC dedicada de 7C).
+- **Criterios de aceptación:** migración re-ejecutable (idempotente); `CampaignRepository` implementado con tests pasando; `lint`/`typecheck`/`test` verdes en `domain`, `shared`, `application`, `infrastructure` y `apps/web` (typecheck); ningún dato de producción tocado, migración no aplicada a ningún Supabase — pendiente de que el usuario apruebe y aplique manualmente.
 
 ### 7C — Approval + Compliance
 - **Objetivo:** flujo `draft → review → approved/rejected` con audit trail, y tabla `compliance_rules` poblable (sin importar contenido real todavía, solo el mecanismo).

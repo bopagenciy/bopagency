@@ -62,6 +62,22 @@ export type { AcknowledgeAlertFormValues, ResolveAlertFormValues } from './schem
 export { taskStatusSchema, updateTaskStatusSchema } from './schemas/task.schema';
 export type { UpdateTaskStatusFormValues } from './schemas/task.schema';
 
+// Schemas — Campaigns (Phase 7B)
+export {
+  campaignIdSchema,
+  createCampaignDraftSchema,
+  updateCampaignDraftSchema,
+  campaignFilterSchema,
+  CAMPAIGN_OBJECTIVES,
+  CAMPAIGN_CURRENCIES,
+  CAMPAIGN_EDITABLE_STATUSES,
+} from './schemas/campaign.schema';
+export type {
+  CreateCampaignDraftFormValues,
+  UpdateCampaignDraftFormValues,
+  CampaignFilterFormValues,
+} from './schemas/campaign.schema';
+
 // Schemas — Automations (Phase 6E)
 export {
   automationIdSchema,

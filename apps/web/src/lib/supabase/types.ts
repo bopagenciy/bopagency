@@ -41,6 +41,26 @@ export type ClientIndustry =
 export type DocumentStatus = 'draft' | 'published' | 'archived';
 export type IntegrationStatus = 'active' | 'inactive' | 'error';
 
+// ─── Phase 7B — Campaign Studio aliases ────────────────────────────────────
+export type CampaignStatus =
+  | 'draft'
+  | 'review'
+  | 'approved'
+  | 'active'
+  | 'paused'
+  | 'completed'
+  | 'rejected';
+export type CampaignObjective =
+  | 'brand_awareness'
+  | 'reach'
+  | 'traffic'
+  | 'engagement'
+  | 'lead_generation'
+  | 'conversions'
+  | 'catalog_sales';
+export type CampaignApprovalAction = 'approved' | 'rejected';
+export type ComplianceRuleSeverity = 'critical' | 'high' | 'medium' | 'low';
+
 // ─── Row types (match exacto con columnas SQL) ─────────────────────────────
 
 export type ProfileRow = {
@@ -375,6 +395,149 @@ export type UserPreferencesUpdate = {
 
 // ─── Phase 6B Row types ───────────────────────────────────────────────────────
 
+// ─── Phase 7B Row types (Campaign Studio) ──────────────────────────────────
+
+export type CampaignRow = {
+  id: string;
+  organization_id: string;
+  client_id: string;
+  name: string;
+  platform: string;
+  objective: CampaignObjective;
+  status: CampaignStatus;
+  brief: string | null;
+  budget: number;
+  currency: string;
+  start_date: string | null;
+  end_date: string | null;
+  generated_content: Json | null;
+  metadata: Json;
+  created_by: string;
+  updated_by: string | null;
+  submitted_for_review_at: string | null;
+  approved_at: string | null;
+  rejected_at: string | null;
+  created_at: string;
+  updated_at: string;
+};
+
+export type CampaignApprovalRow = {
+  id: string;
+  organization_id: string;
+  campaign_id: string;
+  action: CampaignApprovalAction;
+  note: string | null;
+  actor_user_id: string;
+  metadata: Json;
+  created_at: string;
+};
+
+export type ComplianceRuleRow = {
+  id: string;
+  organization_id: string | null;
+  client_id: string | null;
+  platform: string | null;
+  jurisdiction: string | null;
+  rule_key: string;
+  title: string;
+  description: string;
+  severity: ComplianceRuleSeverity;
+  category: string;
+  active: boolean;
+  source: string | null;
+  metadata: Json;
+  created_at: string;
+  updated_at: string;
+};
+
+export type CampaignInsert = {
+  id?: string;
+  organization_id: string;
+  client_id: string;
+  name: string;
+  platform: string;
+  objective: CampaignObjective;
+  status?: CampaignStatus;
+  brief?: string | null;
+  budget: number;
+  currency?: string;
+  start_date?: string | null;
+  end_date?: string | null;
+  generated_content?: Json | null;
+  metadata?: Json;
+  created_by: string;
+  updated_by?: string | null;
+  submitted_for_review_at?: string | null;
+  approved_at?: string | null;
+  rejected_at?: string | null;
+  created_at?: string;
+  updated_at?: string;
+};
+
+export type CampaignApprovalInsert = {
+  id?: string;
+  organization_id: string;
+  campaign_id: string;
+  action: CampaignApprovalAction;
+  note?: string | null;
+  actor_user_id: string;
+  metadata?: Json;
+  created_at?: string;
+};
+
+export type ComplianceRuleInsert = {
+  id?: string;
+  organization_id?: string | null;
+  client_id?: string | null;
+  platform?: string | null;
+  jurisdiction?: string | null;
+  rule_key: string;
+  title: string;
+  description: string;
+  severity?: ComplianceRuleSeverity;
+  category?: string;
+  active?: boolean;
+  source?: string | null;
+  metadata?: Json;
+  created_at?: string;
+  updated_at?: string;
+};
+
+export type CampaignUpdate = {
+  name?: string;
+  platform?: string;
+  objective?: CampaignObjective;
+  status?: CampaignStatus;
+  brief?: string | null;
+  budget?: number;
+  currency?: string;
+  start_date?: string | null;
+  end_date?: string | null;
+  generated_content?: Json | null;
+  metadata?: Json;
+  updated_by?: string | null;
+  submitted_for_review_at?: string | null;
+  approved_at?: string | null;
+  rejected_at?: string | null;
+  updated_at?: string;
+};
+
+export type ComplianceRuleUpdate = {
+  platform?: string | null;
+  jurisdiction?: string | null;
+  title?: string;
+  description?: string;
+  severity?: ComplianceRuleSeverity;
+  category?: string;
+  active?: boolean;
+  source?: string | null;
+  metadata?: Json;
+  updated_at?: string;
+};
+
+// campaign_approvals es append-only: sin tipo Update (ni UPDATE ni DELETE
+// para authenticated — ver 20260816130000_phase7b_campaign_studio_persistence.sql).
+
 export type AutomationWebhookEventStatus = 'received' | 'processed' | 'failed';
 
 export type AutomationWebhookEventRow = {
@@ -584,6 +747,70 @@ export interface Database {
         Relationships: [
           {
             foreignKeyName: 'client_integrations_client_id_fkey';
+            columns: ['client_id'];
+            isOneToOne: false;
+            referencedRelation: 'clients';
+            referencedColumns: ['id'];
+          },
+        ];
+      };
+      // ─── Phase 7B tables (Campaign Studio) ─────────────────────────────────
+      campaigns: {
+        Row: CampaignRow;
+        Insert: CampaignInsert;
+        Update: CampaignUpdate;
+        Relationships: [
+          {
+            foreignKeyName: 'campaigns_organization_id_fkey';
+            columns: ['organization_id'];
+            isOneToOne: false;
+            referencedRelation: 'organizations';
+            referencedColumns: ['id'];
+          },
+          {
+            foreignKeyName: 'campaigns_client_id_fkey';
+            columns: ['client_id'];
+            isOneToOne: false;
+            referencedRelation: 'clients';
+            referencedColumns: ['id'];
+          },
+        ];
+      };
+      campaign_approvals: {
+        Row: CampaignApprovalRow;
+        Insert: CampaignApprovalInsert;
+        Update: Record<string, never>;
+        Relationships: [
+          {
+            foreignKeyName: 'campaign_approvals_organization_id_fkey';
+            columns: ['organization_id'];
+            isOneToOne: false;
+            referencedRelation: 'organizations';
+            referencedColumns: ['id'];
+          },
+          {
+            foreignKeyName: 'campaign_approvals_campaign_id_fkey';
+            columns: ['campaign_id'];
+            isOneToOne: false;
+            referencedRelation: 'campaigns';
+            referencedColumns: ['id'];
+          },
+        ];
+      };
+      compliance_rules: {
+        Row: ComplianceRuleRow;
+        Insert: ComplianceRuleInsert;
+        Update: ComplianceRuleUpdate;
+        Relationships: [
+          {
+            foreignKeyName: 'compliance_rules_organization_id_fkey';
+            columns: ['organization_id'];
+            isOneToOne: false;
+            referencedRelation: 'organizations';
+            referencedColumns: ['id'];
+          },
+          {
+            foreignKeyName: 'compliance_rules_client_id_fkey';
             columns: ['client_id'];
             isOneToOne: false;
             referencedRelation: 'clients';

@@ -40,7 +40,10 @@ export type {
   ListCampaignsDeps,
 } from './use-cases/campaigns/list-campaigns.use-case';
 export { createCampaignDraft } from './use-cases/campaigns/create-campaign-draft.use-case';
-export type { CreateCampaignDraftInput } from './use-cases/campaigns/create-campaign-draft.use-case';
+export type {
+  CreateCampaignDraftInput,
+  CreateCampaignDraftDeps,
+} from './use-cases/campaigns/create-campaign-draft.use-case';
 
 // Use cases — Alerts
 export { listAlerts } from './use-cases/alerts/list-alerts.use-case';

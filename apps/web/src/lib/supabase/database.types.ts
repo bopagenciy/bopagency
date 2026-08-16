@@ -652,6 +652,201 @@ export type Database = {
           },
         ];
       };
+      campaigns: {
+        Row: {
+          approved_at: string | null;
+          brief: string | null;
+          budget: number;
+          client_id: string;
+          created_at: string;
+          created_by: string;
+          currency: string;
+          end_date: string | null;
+          generated_content: Json | null;
+          id: string;
+          metadata: Json;
+          name: string;
+          objective: Database['public']['Enums']['campaign_objective'];
+          organization_id: string;
+          platform: string;
+          rejected_at: string | null;
+          start_date: string | null;
+          status: Database['public']['Enums']['campaign_status'];
+          submitted_for_review_at: string | null;
+          updated_at: string;
+          updated_by: string | null;
+        };
+        Insert: {
+          approved_at?: string | null;
+          brief?: string | null;
+          budget: number;
+          client_id: string;
+          created_at?: string;
+          created_by: string;
+          currency?: string;
+          end_date?: string | null;
+          generated_content?: Json | null;
+          id?: string;
+          metadata?: Json;
+          name: string;
+          objective: Database['public']['Enums']['campaign_objective'];
+          organization_id: string;
+          platform: string;
+          rejected_at?: string | null;
+          start_date?: string | null;
+          status?: Database['public']['Enums']['campaign_status'];
+          submitted_for_review_at?: string | null;
+          updated_at?: string;
+          updated_by?: string | null;
+        };
+        Update: {
+          approved_at?: string | null;
+          brief?: string | null;
+          budget?: number;
+          client_id?: string;
+          created_at?: string;
+          created_by?: string;
+          currency?: string;
+          end_date?: string | null;
+          generated_content?: Json | null;
+          id?: string;
+          metadata?: Json;
+          name?: string;
+          objective?: Database['public']['Enums']['campaign_objective'];
+          organization_id?: string;
+          platform?: string;
+          rejected_at?: string | null;
+          start_date?: string | null;
+          status?: Database['public']['Enums']['campaign_status'];
+          submitted_for_review_at?: string | null;
+          updated_at?: string;
+          updated_by?: string | null;
+        };
+        Relationships: [
+          {
+            foreignKeyName: 'campaigns_organization_id_fkey';
+            columns: ['organization_id'];
+            isOneToOne: false;
+            referencedRelation: 'organizations';
+            referencedColumns: ['id'];
+          },
+          {
+            foreignKeyName: 'campaigns_client_id_fkey';
+            columns: ['client_id'];
+            isOneToOne: false;
+            referencedRelation: 'clients';
+            referencedColumns: ['id'];
+          },
+        ];
+      };
+      campaign_approvals: {
+        Row: {
+          action: Database['public']['Enums']['campaign_approval_action'];
+          actor_user_id: string;
+          campaign_id: string;
+          created_at: string;
+          id: string;
+          metadata: Json;
+          note: string | null;
+          organization_id: string;
+        };
+        Insert: {
+          action: Database['public']['Enums']['campaign_approval_action'];
+          actor_user_id: string;
+          campaign_id: string;
+          created_at?: string;
+          id?: string;
+          metadata?: Json;
+          note?: string | null;
+          organization_id: string;
+        };
+        Update: Record<string, never>;
+        Relationships: [
+          {
+            foreignKeyName: 'campaign_approvals_organization_id_fkey';
+            columns: ['organization_id'];
+            isOneToOne: false;
+            referencedRelation: 'organizations';
+            referencedColumns: ['id'];
+          },
+          {
+            foreignKeyName: 'campaign_approvals_campaign_id_fkey';
+            columns: ['campaign_id'];
+            isOneToOne: false;
+            referencedRelation: 'campaigns';
+            referencedColumns: ['id'];
+          },
+        ];
+      };
+      compliance_rules: {
+        Row: {
+          active: boolean;
+          category: string;
+          client_id: string | null;
+          created_at: string;
+          description: string;
+          id: string;
+          jurisdiction: string | null;
+          metadata: Json;
+          organization_id: string | null;
+          platform: string | null;
+          rule_key: string;
+          severity: Database['public']['Enums']['compliance_rule_severity'];
+          source: string | null;
+          title: string;
+          updated_at: string;
+        };
+        Insert: {
+          active?: boolean;
+          category?: string;
+          client_id?: string | null;
+          created_at?: string;
+          description: string;
+          id?: string;
+          jurisdiction?: string | null;
+          metadata?: Json;
+          organization_id?: string | null;
+          platform?: string | null;
+          rule_key: string;
+          severity?: Database['public']['Enums']['compliance_rule_severity'];
+          source?: string | null;
+          title: string;
+          updated_at?: string;
+        };
+        Update: {
+          active?: boolean;
+          category?: string;
+          client_id?: string | null;
+          created_at?: string;
+          description?: string;
+          id?: string;
+          jurisdiction?: string | null;
+          metadata?: Json;
+          organization_id?: string | null;
+          platform?: string | null;
+          rule_key?: string;
+          severity?: Database['public']['Enums']['compliance_rule_severity'];
+          source?: string | null;
+          title?: string;
+          updated_at?: string;
+        };
+        Relationships: [
+          {
+            foreignKeyName: 'compliance_rules_organization_id_fkey';
+            columns: ['organization_id'];
+            isOneToOne: false;
+            referencedRelation: 'organizations';
+            referencedColumns: ['id'];
+          },
+          {
+            foreignKeyName: 'compliance_rules_client_id_fkey';
+            columns: ['client_id'];
+            isOneToOne: false;
+            referencedRelation: 'clients';
+            referencedColumns: ['id'];
+          },
+        ];
+      };
       clients: {
         Row: {
           created_at: string;
@@ -1469,7 +1664,18 @@ export type Database = {
       alert_severity: 'info' | 'warning' | 'critical';
       alert_status: 'active' | 'acknowledged' | 'snoozed' | 'resolved';
       automation_status: 'active' | 'paused' | 'error' | 'disabled' | 'inactive' | 'draft' | 'archived';
+      campaign_approval_action: 'approved' | 'rejected';
+      campaign_objective:
+        | 'brand_awareness'
+        | 'reach'
+        | 'traffic'
+        | 'engagement'
+        | 'lead_generation'
+        | 'conversions'
+        | 'catalog_sales';
+      campaign_status: 'draft' | 'review' | 'approved' | 'active' | 'paused' | 'completed' | 'rejected';
       client_status: 'active' | 'inactive' | 'onboarding' | 'churned';
+      compliance_rule_severity: 'critical' | 'high' | 'medium' | 'low';
       document_status: 'draft' | 'published' | 'archived';
       integration_status: 'active' | 'inactive' | 'error';
       membership_status: 'active' | 'invited' | 'suspended' | 'removed';
@@ -1614,7 +1820,19 @@ export const Constants = {
       alert_severity: ['info', 'warning', 'critical'],
       alert_status: ['active', 'acknowledged', 'snoozed', 'resolved'],
       automation_status: ['active', 'paused', 'error', 'disabled', 'inactive', 'draft', 'archived'],
+      campaign_approval_action: ['approved', 'rejected'],
+      campaign_objective: [
+        'brand_awareness',
+        'reach',
+        'traffic',
+        'engagement',
+        'lead_generation',
+        'conversions',
+        'catalog_sales',
+      ],
+      campaign_status: ['draft', 'review', 'approved', 'active', 'paused', 'completed', 'rejected'],
       client_status: ['active', 'inactive', 'onboarding', 'churned'],
+      compliance_rule_severity: ['critical', 'high', 'medium', 'low'],
       document_status: ['draft', 'published', 'archived'],
       integration_status: ['active', 'inactive', 'error'],
       membership_status: ['active', 'invited', 'suspended', 'removed'],

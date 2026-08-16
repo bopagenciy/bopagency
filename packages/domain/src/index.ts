@@ -32,7 +32,29 @@ export type {
   UpsertClientDocumentInput,
   CreateClientContactInput,
 } from './entities/client';
-export type { CampaignId, CampaignObjective, Campaign, CampaignFilter } from './entities/campaign';
+export type {
+  CampaignId,
+  CampaignObjective,
+  Campaign,
+  CampaignFilter,
+  CreateCampaignInput,
+  UpdateCampaignInput,
+} from './entities/campaign';
+export {
+  canTransitionCampaign,
+  getCampaignNextStates,
+  isCampaignStatusTerminal,
+} from './entities/campaign';
+export type {
+  CampaignApprovalId,
+  CampaignApprovalAction,
+  CampaignApproval,
+} from './entities/campaign-approval';
+export type {
+  ComplianceRuleId,
+  ComplianceRuleSeverity,
+  ComplianceRule,
+} from './entities/compliance-rule';
 export type { TaskId, TaskPriority, Task, TaskFilter } from './entities/task';
 export { canTransitionTask, getTaskNextStates, isTaskOverdue } from './entities/task';
 export type { AlertId, Alert, AlertFilter } from './entities/alert';

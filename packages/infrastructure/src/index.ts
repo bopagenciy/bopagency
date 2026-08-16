@@ -14,6 +14,9 @@ export { SupabaseMetricsRepository } from './supabase/repositories/supabase-metr
 export { SupabaseAlertRepository } from './supabase/repositories/supabase-alert.repository';
 export { SupabaseTaskRepository } from './supabase/repositories/supabase-task.repository';
 
+// Phase 7B repositories
+export { SupabaseCampaignRepository } from './supabase/repositories/supabase-campaign.repository';
+
 // Phase 6B repositories
 export { SupabaseAutomationRepository } from './supabase/repositories/supabase-automation.repository';
 export { SupabaseAutomationExecutionRepository } from './supabase/repositories/supabase-automation-execution.repository';
@@ -39,6 +42,10 @@ export { rowToAlert } from './supabase/mappers/alert.mapper';
 export type { AlertRow } from './supabase/mappers/alert.mapper';
 export { rowToTask } from './supabase/mappers/task.mapper';
 export type { TaskRow } from './supabase/mappers/task.mapper';
+
+// Phase 7B mappers
+export { rowToCampaign } from './supabase/mappers/campaign.mapper';
+export type { CampaignRow } from './supabase/mappers/campaign.mapper';
 
 // Phase 6B mappers
 export { rowToAutomation } from './supabase/mappers/automation.mapper';
