@@ -62,7 +62,7 @@ export type { AcknowledgeAlertFormValues, ResolveAlertFormValues } from './schem
 export { taskStatusSchema, updateTaskStatusSchema } from './schemas/task.schema';
 export type { UpdateTaskStatusFormValues } from './schemas/task.schema';
 
-// Schemas — Campaigns (Phase 7B/7C)
+// Schemas — Campaigns (Phase 7B/7C/7D)
 export {
   campaignIdSchema,
   createCampaignDraftSchema,
@@ -72,6 +72,8 @@ export {
   approveCampaignSchema,
   rejectCampaignSchema,
   complianceRuleFilterSchema,
+  generateCampaignDraftWithAiSchema,
+  regenerateCampaignContentSchema,
   CAMPAIGN_OBJECTIVES,
   CAMPAIGN_CURRENCIES,
   CAMPAIGN_EDITABLE_STATUSES,
@@ -84,7 +86,18 @@ export type {
   ApproveCampaignFormValues,
   RejectCampaignFormValues,
   ComplianceRuleFilterFormValues,
+  GenerateCampaignDraftWithAiFormValues,
+  RegenerateCampaignContentFormValues,
 } from './schemas/campaign.schema';
+
+// Schemas — Campaign generated content (Phase 7D)
+export {
+  campaignGeneratedContentSchema,
+  metaAdsGeneratedContentSchema,
+  googleAdsGeneratedContentSchema,
+  GENERATED_CONTENT_SCHEMA_VERSION,
+} from './schemas/campaign-generated-content.schema';
+export type { CampaignGeneratedContentFormValues } from './schemas/campaign-generated-content.schema';
 
 // Schemas — Automations (Phase 6E)
 export {

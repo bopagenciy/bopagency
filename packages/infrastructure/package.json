@@ -21,7 +21,8 @@
     "@bop-agency/shared": "*",
     "@bop-agency/domain": "*",
     "@bop-agency/application": "*",
-    "@bop-agency/automation-engine": "*"
+    "@bop-agency/automation-engine": "*",
+    "@bop-agency/ai-engine": "*"
   },
   "devDependencies": {
     "typescript": "^5.9.3",

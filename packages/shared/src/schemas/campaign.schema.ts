@@ -8,6 +8,15 @@
  *
  * Phase 7C añade submitCampaignForReviewSchema / approveCampaignSchema /
  * rejectCampaignSchema (campaignId + note) y complianceRuleFilterSchema.
+ *
+ * Phase 7D añade generateCampaignDraftWithAiSchema / regenerateCampaignContentSchema.
+ * `platform` aquí solo valida "es un AdPlatform válido" (forma) — la
+ * restricción de negocio "¿hay builder de generación implementado para esta
+ * plataforma?" (meta_ads/google_ads únicamente en 7D) es una regla de
+ * dominio, no de shape, y se aplica en el use case vía
+ * `isSupportedGenerationPlatform` (domain), retornando
+ * `unsupportedCampaignPlatform` — mismo criterio de capas ya usado en el
+ * resto del proyecto (Zod = forma, dominio = regla de negocio).
  */
 
 import { z } from 'zod';
@@ -133,3 +142,44 @@ export const complianceRuleFilterSchema = z.object({
 });
 
 export type ComplianceRuleFilterFormValues = z.infer<typeof complianceRuleFilterSchema>;
+
+// ─── generateCampaignDraftWithAiSchema — Phase 7D ──────────────────────────────
+// organizationId/actorUserId NUNCA aquí — siempre resueltos en el servidor
+// desde la sesión (mismo patrón que el resto de este archivo). `platform`
+// solo valida forma (AdPlatform válido) — el soporte real de generación
+// (meta_ads/google_ads en 7D) es una regla de dominio, ver comentario al
+// inicio del archivo y `isSupportedGenerationPlatform`.
+
+export const generateCampaignDraftWithAiSchema = z.object({
+  clientId: z.string().min(1, 'El cliente es requerido'),
+  platform: z.enum(AD_PLATFORMS),
+  objective: z.enum(CAMPAIGN_OBJECTIVES),
+  brief: z.string().trim().min(1, 'El brief es requerido para generar con IA').max(10000),
+  budget: z.coerce.number().min(0, 'El presupuesto no puede ser negativo'),
+  currency: z.enum(CAMPAIGN_CURRENCIES).default('COP'),
+  startDate: z.coerce.date().nullable().optional(),
+  endDate: z.coerce.date().nullable().optional(),
+  /** Idioma del contenido generado (ej. 'es', 'en'). Si se omite, el use case decide un default. */
+  language: z.string().trim().min(2).max(10).optional(),
+  /** Mercado/jurisdicción para contexto de compliance (ej. 'CO', 'MX', 'US'). */
+  market: z.string().trim().max(50).optional(),
+});
+
+export type GenerateCampaignDraftWithAiFormValues = z.infer<
+  typeof generateCampaignDraftWithAiSchema
+>;
+
+// ─── regenerateCampaignContentSchema — Phase 7D ────────────────────────────────
+// Reemplaza generated_content de una campaña que sigue en 'draft' (regla de
+// negocio #13). language/market son overrides opcionales — si se omiten, el
+// use case reutiliza los valores de la generación anterior (campaign.metadata.ai).
+
+export const regenerateCampaignContentSchema = z.object({
+  campaignId: campaignIdSchema,
+  language: z.string().trim().min(2).max(10).optional(),
+  market: z.string().trim().max(50).optional(),
+});
+
+export type RegenerateCampaignContentFormValues = z.infer<
+  typeof regenerateCampaignContentSchema
+>;

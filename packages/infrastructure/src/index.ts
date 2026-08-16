@@ -71,3 +71,8 @@ export { SupabaseExecutionLogRepository } from './supabase/repositories/supabase
 
 // Phase 6D — Dispatcher adapter
 export { N8nDispatcherAdapter } from './n8n/n8n-dispatcher-adapter';
+
+// Phase 7D — AI Campaign Builder
+export { ClaudeAPIProvider } from './ai/claude-api.provider';
+export { buildCampaignGenerationPrompt, CAMPAIGN_BUILDER_PROMPT_VERSION } from './ai/campaign-prompt-builder';
+export { CampaignGeneratorAdapter } from './ai/campaign-generator.adapter';

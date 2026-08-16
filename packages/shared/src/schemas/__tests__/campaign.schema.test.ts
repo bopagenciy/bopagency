@@ -6,6 +6,8 @@ import {
   createCampaignDraftSchema,
   updateCampaignDraftSchema,
   campaignFilterSchema,
+  generateCampaignDraftWithAiSchema,
+  regenerateCampaignContentSchema,
 } from '../campaign.schema';
 
 const baseValidInput = {
@@ -145,6 +147,114 @@ describe('campaignFilterSchema', () => {
 
   it('rechaza status inválido', () => {
     const result = campaignFilterSchema.safeParse({ status: 'launched' });
+    expect(result.success).toBe(false);
+  });
+});
+
+// ─── generateCampaignDraftWithAiSchema — Phase 7D ──────────────────────────────
+
+const baseAiInput = {
+  clientId: 'client-uuid-1',
+  platform: 'meta_ads',
+  objective: 'lead_generation',
+  brief: 'Cliente busca aumentar leads calificados en el área metropolitana.',
+  budget: 5000000,
+};
+
+describe('generateCampaignDraftWithAiSchema', () => {
+  it('acepta un payload mínimo válido', () => {
+    const result = generateCampaignDraftWithAiSchema.safeParse(baseAiInput);
+    expect(result.success).toBe(true);
+    if (result.success) {
+      expect(result.data.currency).toBe('COP'); // default
+    }
+  });
+
+  it('rechaza brief vacío (a diferencia de createCampaignDraftSchema, aquí es obligatorio)', () => {
+    const result = generateCampaignDraftWithAiSchema.safeParse({ ...baseAiInput, brief: '' });
+    expect(result.success).toBe(false);
+  });
+
+  it('rechaza brief ausente', () => {
+    const { brief, ...withoutBrief } = baseAiInput;
+    void brief;
+    const result = generateCampaignDraftWithAiSchema.safeParse(withoutBrief);
+    expect(result.success).toBe(false);
+  });
+
+  it('rechaza clientId vacío', () => {
+    const result = generateCampaignDraftWithAiSchema.safeParse({ ...baseAiInput, clientId: '' });
+    expect(result.success).toBe(false);
+  });
+
+  it('rechaza platform inválido', () => {
+    const result = generateCampaignDraftWithAiSchema.safeParse({
+      ...baseAiInput,
+      platform: 'myspace_ads',
+    });
+    expect(result.success).toBe(false);
+  });
+
+  it('acepta platform youtube_ads a nivel de forma (la restricción de soporte real es de dominio, no de este schema)', () => {
+    const result = generateCampaignDraftWithAiSchema.safeParse({
+      ...baseAiInput,
+      platform: 'youtube_ads',
+    });
+    expect(result.success).toBe(true);
+  });
+
+  it('rechaza budget negativo', () => {
+    const result = generateCampaignDraftWithAiSchema.safeParse({ ...baseAiInput, budget: -1 });
+    expect(result.success).toBe(false);
+  });
+
+  it('acepta language y market opcionales', () => {
+    const result = generateCampaignDraftWithAiSchema.safeParse({
+      ...baseAiInput,
+      language: 'en',
+      market: 'US',
+    });
+    expect(result.success).toBe(true);
+  });
+
+  it('no acepta ni requiere organizationId ni actorUserId en el schema', () => {
+    const result = generateCampaignDraftWithAiSchema.safeParse({
+      ...baseAiInput,
+      organizationId: 'org-uuid-1',
+      actorUserId: 'user-uuid-1',
+    });
+    expect(result.success).toBe(true);
+    if (result.success) {
+      expect(result.data).not.toHaveProperty('organizationId');
+      expect(result.data).not.toHaveProperty('actorUserId');
+    }
+  });
+});
+
+// ─── regenerateCampaignContentSchema — Phase 7D ────────────────────────────────
+
+describe('regenerateCampaignContentSchema', () => {
+  it('acepta solo campaignId', () => {
+    const result = regenerateCampaignContentSchema.safeParse({ campaignId: 'campaign-uuid-1' });
+    expect(result.success).toBe(true);
+  });
+
+  it('acepta overrides opcionales de language/market', () => {
+    const result = regenerateCampaignContentSchema.safeParse({
+      campaignId: 'campaign-uuid-1',
+      language: 'en',
+      market: 'MX',
+    });
+    expect(result.success).toBe(true);
+  });
+
+  it('rechaza campaignId vacío', () => {
+    const result = regenerateCampaignContentSchema.safeParse({ campaignId: '' });
+    expect(result.success).toBe(false);
+  });
+
+  it('rechaza campaignId ausente', () => {
+    const result = regenerateCampaignContentSchema.safeParse({});
     expect(result.success).toBe(false);
   });
 });

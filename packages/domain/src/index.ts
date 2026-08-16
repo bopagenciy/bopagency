@@ -46,6 +46,25 @@ export {
   isCampaignStatusTerminal,
 } from './entities/campaign';
 export type {
+  GeneratedContentSchemaVersion,
+  SupportedGenerationPlatform,
+  CreativeSuggestion,
+  MetaAdSetAudienceType,
+  MetaAdSetSuggestion,
+  MetaAdsGeneratedContent,
+  GoogleAdGroupSuggestion,
+  GoogleAdsGeneratedContent,
+  CampaignGeneratedContent,
+  AITokenUsage,
+  AIComplianceRuleReference,
+  AIGenerationMetadata,
+} from './entities/campaign-generated-content';
+export {
+  GENERATED_CONTENT_SCHEMA_VERSION,
+  SUPPORTED_GENERATION_PLATFORMS,
+  isSupportedGenerationPlatform,
+} from './entities/campaign-generated-content';
+export type {
   CampaignApprovalId,
   CampaignApprovalAction,
   CampaignApproval,

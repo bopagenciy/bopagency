@@ -239,6 +239,53 @@ describe('SupabaseCampaignRepository.create', () => {
       expect(result.error.code).toBe('INTERNAL_ERROR');
     }
   });
+
+  // ── Phase 7D: generatedContent → generated_content ────────────────────────
+
+  it('Phase 7D: reenvía generatedContent como generated_content en el insert cuando se provee (generateCampaignDraftWithAI)', async () => {
+    const row = makeCampaignRow({ generated_content: { schemaVersion: 'campaign-content-v1', platform: 'meta_ads' } });
+    const supabase = makeSupabaseMock({ data: row });
+    const repo = new SupabaseCampaignRepository(supabase as unknown as SupabaseClient);
+
+    await repo.create({
+      organizationId: ORG_ID,
+      clientId: CLIENT_ID,
+      name: 'AI draft',
+      platform: 'meta_ads',
+      objective: 'lead_generation',
+      budget: 5000000,
+      generatedContent: { schemaVersion: 'campaign-content-v1', platform: 'meta_ads' },
+      metadata: { ai: { provider: 'anthropic' } },
+      createdBy: 'user-uuid-1',
+    });
+
+    expect(supabase._chain.insert).toHaveBeenCalledWith(
+      expect.objectContaining({
+        generated_content: { schemaVersion: 'campaign-content-v1', platform: 'meta_ads' },
+        metadata: { ai: { provider: 'anthropic' } },
+      }),
+    );
+  });
+
+  it('Phase 7D: inserta generated_content: null cuando no se provee (createCampaignDraft, 7B)', async () => {
+    const row = makeCampaignRow();
+    const supabase = makeSupabaseMock({ data: row });
+    const repo = new SupabaseCampaignRepository(supabase as unknown as SupabaseClient);
+
+    await repo.create({
+      organizationId: ORG_ID,
+      clientId: CLIENT_ID,
+      name: 'Campaña de Verano',
+      platform: 'meta_ads',
+      objective: 'lead_generation',
+      budget: 5000000,
+      createdBy: 'user-uuid-1',
+    });
+
+    expect(supabase._chain.insert).toHaveBeenCalledWith(
+      expect.objectContaining({ generated_content: null }),
+    );
+  });
 });
 
 // ─── update ───────────────────────────────────────────────────────────────────
@@ -295,6 +342,51 @@ describe('SupabaseCampaignRepository.update', () => {
     await repo.update(CAMPAIGN_ID, ORG_ID, { updatedBy: 'user-uuid-1' });
 
     expect(supabase._chain.eq).toHaveBeenCalledWith('organization_id', ORG_ID);
+  });
+
+  // ── Phase 7D: generatedContent → generated_content ────────────────────────
+
+  it('Phase 7D: reenvía generatedContent como generated_content en el patch cuando se provee (regenerateCampaignContent)', async () => {
+    const row = makeCampaignRow({ generated_content: { schemaVersion: 'campaign-content-v1', platform: 'google_ads' } });
+    const supabase = makeSupabaseMock({ data: row });
+    const repo = new SupabaseCampaignRepository(supabase as unknown as SupabaseClient);
+
+    await repo.update(CAMPAIGN_ID, ORG_ID, {
+      generatedContent: { schemaVersion: 'campaign-content-v1', platform: 'google_ads' },
+      metadata: { ai: { provider: 'anthropic', generatedAt: '2026-08-16T00:00:00.000Z' } },
+      updatedBy: 'user-uuid-1',
+    });
+
+    expect(supabase._chain.update).toHaveBeenCalledWith(
+      expect.objectContaining({
+        generated_content: { schemaVersion: 'campaign-content-v1', platform: 'google_ads' },
+        metadata: { ai: { provider: 'anthropic', generatedAt: '2026-08-16T00:00:00.000Z' } },
+      }),
+    );
+  });
+
+  it('Phase 7D: NO incluye generated_content en el patch cuando no se provee (edición 7B normal — no debe borrar generated_content existente)', async () => {
+    const row = makeCampaignRow({ name: 'Nuevo nombre' });
+    const supabase = makeSupabaseMock({ data: row });
+    const repo = new SupabaseCampaignRepository(supabase as unknown as SupabaseClient);
+
+    await repo.update(CAMPAIGN_ID, ORG_ID, { name: 'Nuevo nombre', updatedBy: 'user-uuid-1' });
+
+    const updateMock = supabase._chain.update as ReturnType<typeof vi.fn>;
+    const patchArg = updateMock.mock.calls[0]?.[0] as Record<string, unknown>;
+    expect(patchArg).not.toHaveProperty('generated_content');
+  });
+
+  it('Phase 7D: permite explícitamente limpiar generated_content con null', async () => {
+    const row = makeCampaignRow({ generated_content: null });
+    const supabase = makeSupabaseMock({ data: row });
+    const repo = new SupabaseCampaignRepository(supabase as unknown as SupabaseClient);
+
+    await repo.update(CAMPAIGN_ID, ORG_ID, { generatedContent: null, updatedBy: 'user-uuid-1' });
+
+    expect(supabase._chain.update).toHaveBeenCalledWith(
+      expect.objectContaining({ generated_content: null }),
+    );
   });
 });
 

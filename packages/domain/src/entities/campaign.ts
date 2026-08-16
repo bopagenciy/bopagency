@@ -44,8 +44,11 @@ export type Campaign = {
   readonly startDate: Date | null;
   readonly endDate: Date | null;
   /**
-   * Contenido estructurado generado por IA (Phase 7D). NULL hasta entonces.
-   * Su sola presencia NUNCA implica aprobación automática (regla de negocio fijada).
+   * Contenido estructurado generado por IA (Phase 7D — ver
+   * `CampaignGeneratedContent` en `campaign-generated-content.ts`). NULL
+   * hasta entonces. Su sola presencia NUNCA implica aprobación automática
+   * (regla de negocio fijada — ver `generateCampaignDraftWithAI`, que SIEMPRE
+   * persiste en status 'draft', jamás 'review'/'approved').
    */
   readonly generatedContent: Record<string, unknown> | null;
   readonly metadata: Record<string, unknown>;
@@ -82,6 +85,12 @@ export type CreateCampaignInput = {
   readonly startDate?: Date | null;
   readonly endDate?: Date | null;
   readonly metadata?: Record<string, unknown>;
+  /**
+   * Phase 7D: contenido generado por IA, ya validado (Zod +
+   * discriminated union por plataforma) antes de llegar aquí. `createCampaignDraft`
+   * (7B, creación manual) nunca lo envía — solo `generateCampaignDraftWithAI`.
+   */
+  readonly generatedContent?: Record<string, unknown> | null;
   readonly createdBy: string;
 };
 
@@ -100,6 +109,12 @@ export type UpdateCampaignInput = {
   readonly startDate?: Date | null;
   readonly endDate?: Date | null;
   readonly metadata?: Record<string, unknown>;
+  /**
+   * Phase 7D: usado exclusivamente por `regenerateCampaignContent` para
+   * reemplazar el contenido generado de una campaña que sigue en 'draft'.
+   * Ya validado (mismo contrato que `CreateCampaignInput.generatedContent`).
+   */
+  readonly generatedContent?: Record<string, unknown> | null;
   /** Único status alcanzable vía update genérico (regla de negocio #5). */
   readonly status?: 'draft' | 'review';
   readonly updatedBy: string;

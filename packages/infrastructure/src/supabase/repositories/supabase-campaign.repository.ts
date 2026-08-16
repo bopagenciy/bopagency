@@ -151,6 +151,9 @@ export class SupabaseCampaignRepository implements CampaignRepository {
         currency: data.currency ?? 'COP',
         start_date: data.startDate ? toDateOnly(data.startDate) : null,
         end_date: data.endDate ? toDateOnly(data.endDate) : null,
+        // Phase 7D: generateCampaignDraftWithAI es el único caller que envía
+        // generatedContent en create() — createCampaignDraft (7B) nunca lo hace.
+        generated_content: data.generatedContent ?? null,
         metadata: data.metadata ?? {},
         created_by: data.createdBy,
         updated_by: data.createdBy,
@@ -209,6 +212,9 @@ export class SupabaseCampaignRepository implements CampaignRepository {
       patch.end_date = data.endDate ? toDateOnly(data.endDate) : null;
     }
     if (data.metadata !== undefined) patch.metadata = data.metadata;
+    // Phase 7D: regenerateCampaignContent es el único caller que envía
+    // generatedContent en update() — el resto de flujos de 7B/7C no lo tocan.
+    if (data.generatedContent !== undefined) patch.generated_content = data.generatedContent;
     if (data.status !== undefined) {
       patch.status = data.status;
       if (data.status === 'review') {

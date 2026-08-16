@@ -10,6 +10,12 @@ export const clientSlugTaken = (slug: string): AppError =>
 export const clientDeleted = (id: string): AppError =>
   createError('VALIDATION_ERROR', `Client has been deleted: ${id}`);
 
+// Phase 7D: distinto de clientDeleted — un cliente puede existir (no
+// soft-deleted) pero estar en status 'inactive'/'onboarding'/'churned', que
+// no debería consumir generación de IA. Ver generateCampaignDraftWithAI.
+export const clientInactive = (id: string): AppError =>
+  createError('VALIDATION_ERROR', `Client is not active: ${id}`);
+
 export const documentNotFound = (clientId: string, key: string): AppError =>
   notFound(`Document "${key}" not found for client: ${clientId}`);
 
@@ -25,6 +31,63 @@ export const campaignInvalidStatus = (from: string, to: string): AppError =>
 // Campaign approval errors — Phase 7C
 export const rejectionNoteRequired = (): AppError =>
   createError('VALIDATION_ERROR', 'A non-empty rejection note is required to reject a campaign.');
+
+// ─── AI Campaign Builder errors — Phase 7D ────────────────────────────────────
+//
+// Mapean fallos del flujo de generación (validación de input, plataforma no
+// soportada, salida de IA inválida, fallo del provider, timeout, rate limit)
+// a AppError tipado. El adapter de infraestructura (ClaudeAPIProvider /
+// CampaignGeneratorAdapter) NUNCA propaga mensajes crudos del proveedor ni
+// stack traces — solo un `safeReason` corto, ya saneado.
+
+export const unsupportedCampaignPlatform = (platform: string): AppError =>
+  createError(
+    'VALIDATION_ERROR',
+    `AI campaign generation is not supported for platform "${platform}" yet.`,
+  );
+
+export const campaignGenerationUnavailable = (safeReason: string): AppError =>
+  createError(
+    'EXTERNAL_SERVICE_ERROR',
+    `AI campaign generation is currently unavailable: ${safeReason}`,
+  );
+
+export const invalidAiOutput = (safeReason: string): AppError =>
+  createError(
+    'EXTERNAL_SERVICE_ERROR',
+    `AI provider returned output that could not be validated: ${safeReason}`,
+  );
+
+export const aiProviderFailure = (safeReason: string): AppError =>
+  createError('EXTERNAL_SERVICE_ERROR', `AI provider request failed: ${safeReason}`);
+
+export const aiGenerationTimeout = (): AppError =>
+  createError('EXTERNAL_SERVICE_ERROR', 'AI campaign generation request timed out.');
+
+export const aiRateLimited = (): AppError =>
+  createError('RATE_LIMITED', 'AI provider rate limit exceeded. Try again shortly.');
+
+// regenerateCampaignContent (§13) solo opera sobre campañas en 'draft'. No es
+// una transición de status (no hay "to" — la campaña permanece en 'draft'),
+// por eso NO reutiliza campaignInvalidStatus(from,to), que asume un grafo de
+// transición de dos estados.
+export const campaignRegenerationNotAllowed = (status: string): AppError =>
+  createError(
+    'VALIDATION_ERROR',
+    `Cannot regenerate AI content for a campaign in status "${status}". Only campaigns in "draft" can be regenerated.`,
+  );
+
+// Defensa adicional para regenerateCampaignContent: una campaña 'draft'
+// creada manualmente (createCampaignDraft, Phase 7B) puede no tener brief
+// (campo nullable en el dominio). generateCampaignDraftWithAI SIEMPRE
+// requiere un brief no vacío (Zod), así que cualquier campaña generada por
+// IA ya lo tiene garantizado — este error solo puede dispararse sobre una
+// campaña 'draft' creada sin IA.
+export const campaignBriefRequired = (id: string): AppError =>
+  createError(
+    'VALIDATION_ERROR',
+    `Campaign ${id} has no brief — a brief is required to generate or regenerate AI content.`,
+  );
 
 // Alert errors
 export const alertNotFound = (id: string): AppError => notFound(`Alert not found: ${id}`);

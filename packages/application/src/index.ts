@@ -77,6 +77,32 @@ export type {
   EvaluateCampaignComplianceDeps,
 } from './use-cases/campaigns/evaluate-campaign-compliance.use-case';
 
+// Use cases — Campaigns (Phase 7D — AI Campaign Builder)
+export {
+  generateCampaignDraftWithAI,
+  BRAND_PROFILE_DOCUMENT_KEY,
+  DEFAULT_GENERATION_LANGUAGE,
+} from './use-cases/campaigns/generate-campaign-draft-with-ai.use-case';
+export type {
+  GenerateCampaignDraftWithAiInput,
+  GenerateCampaignDraftWithAiDeps,
+} from './use-cases/campaigns/generate-campaign-draft-with-ai.use-case';
+export { regenerateCampaignContent } from './use-cases/campaigns/regenerate-campaign-content.use-case';
+export type {
+  RegenerateCampaignContentInput,
+  RegenerateCampaignContentDeps,
+} from './use-cases/campaigns/regenerate-campaign-content.use-case';
+
+// Phase 7D — Ports
+export type {
+  CampaignGeneratorPort,
+  CampaignGenerationClientContext,
+  CampaignGenerationComplianceRule,
+  GenerateCampaignInput,
+  GeneratedCampaignMetadata,
+  GeneratedCampaignResult,
+} from './ports/campaign-generator.port';
+
 // Use cases — Alerts
 export { listAlerts } from './use-cases/alerts/list-alerts.use-case';
 export type { ListAlertsInput, ListAlertsDeps } from './use-cases/alerts/list-alerts.use-case';
