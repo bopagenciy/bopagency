@@ -22,6 +22,10 @@ export const campaignNotFound = (id: string): AppError => notFound(`Campaign not
 export const campaignInvalidStatus = (from: string, to: string): AppError =>
   validationError(`Cannot transition campaign from "${from}" to "${to}"`);
 
+// Campaign approval errors — Phase 7C
+export const rejectionNoteRequired = (): AppError =>
+  createError('VALIDATION_ERROR', 'A non-empty rejection note is required to reject a campaign.');
+
 // Alert errors
 export const alertNotFound = (id: string): AppError => notFound(`Alert not found: ${id}`);
 

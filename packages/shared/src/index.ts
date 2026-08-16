@@ -62,12 +62,16 @@ export type { AcknowledgeAlertFormValues, ResolveAlertFormValues } from './schem
 export { taskStatusSchema, updateTaskStatusSchema } from './schemas/task.schema';
 export type { UpdateTaskStatusFormValues } from './schemas/task.schema';
 
-// Schemas — Campaigns (Phase 7B)
+// Schemas — Campaigns (Phase 7B/7C)
 export {
   campaignIdSchema,
   createCampaignDraftSchema,
   updateCampaignDraftSchema,
   campaignFilterSchema,
+  submitCampaignForReviewSchema,
+  approveCampaignSchema,
+  rejectCampaignSchema,
+  complianceRuleFilterSchema,
   CAMPAIGN_OBJECTIVES,
   CAMPAIGN_CURRENCIES,
   CAMPAIGN_EDITABLE_STATUSES,
@@ -76,6 +80,10 @@ export type {
   CreateCampaignDraftFormValues,
   UpdateCampaignDraftFormValues,
   CampaignFilterFormValues,
+  SubmitCampaignForReviewFormValues,
+  ApproveCampaignFormValues,
+  RejectCampaignFormValues,
+  ComplianceRuleFilterFormValues,
 } from './schemas/campaign.schema';
 
 // Schemas — Automations (Phase 6E)

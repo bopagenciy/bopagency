@@ -71,6 +71,8 @@ function makeCampaignRepo(overrides: Partial<CampaignRepository> = {}): Campaign
     findAll: vi.fn(),
     create: vi.fn().mockResolvedValue(ok(makeCampaign())),
     update: vi.fn(),
+    approve: vi.fn(),
+    reject: vi.fn(),
     ...overrides,
   };
 }

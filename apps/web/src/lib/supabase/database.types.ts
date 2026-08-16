@@ -750,6 +750,10 @@ export type Database = {
           note: string | null;
           organization_id: string;
         };
+        // NOTA (Phase 7C): desde 20260816140000_phase7c_campaign_approval_workflow.sql
+        // `authenticated` ya no tiene GRANT INSERT aquí (se retiró la policy
+        // campaign_approvals_insert) — la única escritura válida es a través
+        // de las RPCs SECURITY DEFINER approve_campaign/reject_campaign.
         Insert: {
           action: Database['public']['Enums']['campaign_approval_action'];
           actor_user_id: string;
@@ -1583,6 +1587,7 @@ export type Database = {
     };
     Functions: {
       acknowledge_alert: { Args: { p_alert_id: string }; Returns: undefined };
+      approve_campaign: { Args: { p_campaign_id: string }; Returns: undefined };
       can_manage_organization: { Args: { p_org_id: string }; Returns: boolean };
       create_organization_with_owner: {
         Args: { organization_name: string; organization_slug: string };
@@ -1594,6 +1599,10 @@ export type Database = {
         Returns: boolean;
       };
       is_organization_member: { Args: { p_org_id: string }; Returns: boolean };
+      reject_campaign: {
+        Args: { p_campaign_id: string; p_note: string };
+        Returns: undefined;
+      };
       resolve_alert: { Args: { p_alert_id: string }; Returns: undefined };
       soft_delete_client: {
         Args: { p_client_id: string };

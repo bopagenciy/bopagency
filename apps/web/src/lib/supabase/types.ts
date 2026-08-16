@@ -474,6 +474,12 @@ export type CampaignInsert = {
   updated_at?: string;
 };
 
+// NOTA (Phase 7C): esta forma sigue reflejando la tabla, pero desde
+// 20260816140000_phase7c_campaign_approval_workflow.sql el rol `authenticated`
+// ya NO tiene GRANT INSERT sobre campaign_approvals (se retiró la policy
+// campaign_approvals_insert) — la única vía de escritura son las RPCs
+// SECURITY DEFINER approve_campaign/reject_campaign. Este tipo queda para
+// uso interno de esas RPCs y para que el shape no se pierda si se regenera.
 export type CampaignApprovalInsert = {
   id?: string;
   organization_id: string;
@@ -860,6 +866,20 @@ export interface Database {
       create_organization_with_owner: {
         Args: { organization_name: string; organization_slug: string };
         Returns: string;
+      };
+      // ─── Phase 7C RPCs (campaign approval workflow) ──────────────────────
+      // SECURITY DEFINER — ver 20260816140000_phase7c_campaign_approval_workflow.sql.
+      // SupabaseCampaignRepository.approve/reject las invoca vía un cast a un
+      // tipo mínimo de cliente RPC (mismo patrón que acknowledge_alert/
+      // resolve_alert, que tampoco están listadas aquí) — este bloque documenta
+      // la forma real de la función para cuando este archivo se regenere.
+      approve_campaign: {
+        Args: { p_campaign_id: string };
+        Returns: undefined;
+      };
+      reject_campaign: {
+        Args: { p_campaign_id: string; p_note: string };
+        Returns: undefined;
       };
     };
   };

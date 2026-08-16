@@ -1,14 +1,19 @@
 /**
  * SupabaseCampaignRepository
  *
- * Implementación de CampaignRepository respaldada por Supabase — Phase 7B.
+ * Implementación de CampaignRepository respaldada por Supabase — Phase 7B
+ * (findById/findAll/create/update) + Phase 7C (approve/reject).
  * Todas las operaciones filtran por organization_id (multi-tenant).
  * Usa el cliente del usuario con RLS activo — nunca service_role en esta capa.
  *
- * Operaciones implementadas en Phase 7B: findById, findAll, create, update.
- * NO implementadas todavía (Phase 7C): approveCampaign, rejectCampaign
- * (se espera que usen una RPC dedicada, no este repositorio — ver la nota de
- * RLS en la migración). NO hay createCampaignWithAI (Phase 7D).
+ * approve/reject (Phase 7C):
+ * OBLIGATORIO usar las RPCs `approve_campaign`/`reject_campaign` — NO UPDATE
+ * directo. La policy `campaigns_update` (7B) impide que cualquier UPDATE
+ * genérico fije status='approved'/'rejected' (WITH CHECK status IN
+ * ('draft','review')); las RPCs son SECURITY DEFINER y son el único camino
+ * autorizado para esa transición — ver
+ * 20260816140000_phase7c_campaign_approval_workflow.sql. Mismo patrón que
+ * `SupabaseAlertRepository.acknowledge`/`resolve`.
  */
 
 import { ok, err } from '@bop-agency/shared';
@@ -28,6 +33,16 @@ import { rowToCampaign, type CampaignRow } from '../mappers/campaign.mapper';
 // ─── Constants ────────────────────────────────────────────────────────────────
 
 const DEFAULT_PAGE_SIZE = 20;
+
+// ─── RPC helper types (Supabase JS no tipa .rpc() con nuestros Database types
+// en esta capa — mismo criterio que SupabaseAlertRepository.acknowledge/resolve) ──
+
+type RpcCapableClient = {
+  rpc: (
+    fn: string,
+    args: Record<string, unknown>,
+  ) => Promise<{ data: unknown; error: { message?: string } | null }>;
+};
 
 // ─── Repository ───────────────────────────────────────────────────────────────
 
@@ -232,6 +247,62 @@ export class SupabaseCampaignRepository implements CampaignRepository {
       });
     }
   }
+
+  // ── approve — Phase 7C ────────────────────────────────────────────────────────
+
+  /**
+   * Aprueba una campaña en 'review' vía la RPC `approve_campaign`.
+   * Verifica primero que la campaña pertenezca a la organización (mismo
+   * criterio defensivo que SupabaseAlertRepository.acknowledge/resolve),
+   * luego llama a la RPC, y si tiene éxito recarga la campaña actualizada.
+   */
+  async approve(
+    id: CampaignId,
+    organizationId: OrganizationId,
+    _actorUserId: string,
+  ): Promise<Result<Campaign>> {
+    const existing = await this.findById(id, organizationId);
+    if (!existing.success) return existing;
+
+    const { error } = await (this.supabase as unknown as RpcCapableClient).rpc('approve_campaign', {
+      p_campaign_id: id,
+    });
+
+    if (error) {
+      return err(mapCampaignRpcError(error.message, 'Error al aprobar la campaña'));
+    }
+
+    return this.findById(id, organizationId);
+  }
+
+  // ── reject — Phase 7C ─────────────────────────────────────────────────────────
+
+  /**
+   * Rechaza una campaña en 'review' vía la RPC `reject_campaign`. `note` se
+   * envía tal cual — la validación de no-vacía ya ocurrió en capas
+   * anteriores (Zod + isValidRejectionNote en el use case); la RPC y el
+   * CHECK de BD son la última línea de defensa, no la primera.
+   */
+  async reject(
+    id: CampaignId,
+    organizationId: OrganizationId,
+    _actorUserId: string,
+    note: string,
+  ): Promise<Result<Campaign>> {
+    const existing = await this.findById(id, organizationId);
+    if (!existing.success) return existing;
+
+    const { error } = await (this.supabase as unknown as RpcCapableClient).rpc('reject_campaign', {
+      p_campaign_id: id,
+      p_note: note,
+    });
+
+    if (error) {
+      return err(mapCampaignRpcError(error.message, 'Error al rechazar la campaña'));
+    }
+
+    return this.findById(id, organizationId);
+  }
 }
 
 // ─── Helpers ──────────────────────────────────────────────────────────────────
@@ -262,4 +333,32 @@ function mapSafe<T>(rows: unknown[], mapper: (row: unknown) => T): T[] {
     }
   }
   return results;
+}
+
+/**
+ * Mapea el mensaje de error crudo de las RPCs approve_campaign/reject_campaign
+ * a un ErrorCode del proyecto, por coincidencia de substring — mismo criterio
+ * que SupabaseAlertRepository.acknowledge/resolve, extendido con CONFLICT
+ * (status actual != 'review') y VALIDATION_ERROR (nota de rechazo vacía),
+ * que las RPCs de campaigns sí pueden producir y las de alerts no.
+ */
+function mapCampaignRpcError(
+  rawMessage: string | undefined,
+  fallbackMessage: string,
+): { code: 'NOT_FOUND' | 'FORBIDDEN' | 'CONFLICT' | 'VALIDATION_ERROR' | 'INTERNAL_ERROR'; message: string } {
+  const msg = rawMessage ?? fallbackMessage;
+
+  if (msg.includes('not found')) {
+    return { code: 'NOT_FOUND', message: msg };
+  }
+  if (msg.includes('rejection note is required')) {
+    return { code: 'VALIDATION_ERROR', message: msg };
+  }
+  if (msg.includes('lacks admin/owner role') || msg.includes('authentication required')) {
+    return { code: 'FORBIDDEN', message: msg };
+  }
+  if (msg.includes('is not in review')) {
+    return { code: 'CONFLICT', message: msg };
+  }
+  return { code: 'INTERNAL_ERROR', message: msg };
 }

@@ -1,0 +1,294 @@
+/**
+ * rejectCampaign use case — tests unitarios (Phase 7C).
+ *
+ * Cubre: review → rejected OK con nota (admin/owner), viewer/operator/
+ * strategist denegados, rechazo sin nota / nota solo espacios en blanco
+ * (VALIDATION_ERROR, antes incluso de tocar el repositorio), actor
+ * no-miembro, campaña inexistente/otra organización, transición inválida,
+ * delegación a CampaignRepository.reject (RPC), y propagación de errores.
+ */
+
+import { describe, it, expect, vi } from 'vitest';
+import { rejectCampaign } from '../reject-campaign.use-case';
+import type { RejectCampaignInput } from '../reject-campaign.use-case';
+import { ok, err } from '@bop-agency/shared';
+import type {
+  Campaign,
+  CampaignId,
+  CampaignRepository,
+  OrganizationId,
+  OrganizationMember,
+  OrganizationRepository,
+  OrganizationRole,
+} from '@bop-agency/domain';
+import type { LoggerPort } from '../../../ports/logger.port';
+
+const ORG_ID = 'org-uuid-1' as OrganizationId;
+const OTHER_ORG_ID = 'org-uuid-2' as OrganizationId;
+const CAMPAIGN_ID = 'campaign-uuid-1' as CampaignId;
+const ACTOR_ID = 'user-uuid-1';
+
+function makeCampaign(overrides: Partial<Campaign> = {}): Campaign {
+  return {
+    id: CAMPAIGN_ID,
+    organizationId: ORG_ID,
+    clientId: 'client_1' as Campaign['clientId'],
+    name: 'Campaña de Verano',
+    platform: 'meta_ads',
+    objective: 'lead_generation',
+    status: 'review',
+    brief: null,
+    budget: 5000000,
+    currency: 'COP',
+    startDate: null,
+    endDate: null,
+    generatedContent: null,
+    metadata: {},
+    createdBy: 'user_1',
+    updatedBy: null,
+    submittedForReviewAt: new Date('2026-08-02'),
+    approvedAt: null,
+    rejectedAt: null,
+    createdAt: new Date('2026-08-01'),
+    updatedAt: new Date('2026-08-02'),
+    ...overrides,
+  };
+}
+
+function makeMember(
+  role: OrganizationRole,
+  overrides: Partial<OrganizationMember> = {},
+): OrganizationMember {
+  return {
+    id: 'member-1',
+    organizationId: ORG_ID,
+    userId: ACTOR_ID,
+    role,
+    status: 'active',
+    invitedBy: null,
+    joinedAt: new Date('2026-01-01'),
+    ...overrides,
+  };
+}
+
+function makeLogger(): LoggerPort {
+  return { debug: vi.fn(), info: vi.fn(), warn: vi.fn(), error: vi.fn() };
+}
+
+function makeCampaignRepo(overrides: Partial<CampaignRepository> = {}): CampaignRepository {
+  return {
+    findById: vi.fn().mockResolvedValue(ok(makeCampaign())),
+    findAll: vi.fn(),
+    create: vi.fn(),
+    update: vi.fn(),
+    approve: vi.fn(),
+    reject: vi
+      .fn()
+      .mockResolvedValue(ok(makeCampaign({ status: 'rejected', rejectedAt: new Date() }))),
+    ...overrides,
+  };
+}
+
+function makeOrgRepo(overrides: Partial<OrganizationRepository> = {}): OrganizationRepository {
+  return {
+    findById: vi.fn(),
+    findBySlug: vi.fn(),
+    findByUserId: vi.fn(),
+    create: vi.fn(),
+    update: vi.fn(),
+    findMembers: vi.fn(),
+    findMember: vi.fn().mockResolvedValue(ok(makeMember('admin'))),
+    addMember: vi.fn(),
+    updateMemberRole: vi.fn(),
+    removeMember: vi.fn(),
+    findInvitations: vi.fn(),
+    findInvitationByToken: vi.fn(),
+    createInvitation: vi.fn(),
+    acceptInvitation: vi.fn(),
+    cancelInvitation: vi.fn(),
+    ...overrides,
+  };
+}
+
+function makeInput(overrides: Partial<RejectCampaignInput> = {}): RejectCampaignInput {
+  return {
+    campaignId: CAMPAIGN_ID,
+    note: 'El presupuesto no cumple el mínimo del cliente.',
+    organizationId: ORG_ID,
+    actorUserId: ACTOR_ID,
+    ...overrides,
+  };
+}
+
+describe('rejectCampaign use case', () => {
+  it('rechaza review → rejected (admin) con nota, delegando en el repositorio (RPC)', async () => {
+    const campaignRepository = makeCampaignRepo();
+    const organizationRepository = makeOrgRepo({
+      findMember: vi.fn().mockResolvedValue(ok(makeMember('admin'))),
+    });
+
+    const result = await rejectCampaign(makeInput(), {
+      campaignRepository,
+      organizationRepository,
+      logger: makeLogger(),
+    });
+
+    expect(result.success).toBe(true);
+    expect(campaignRepository.reject).toHaveBeenCalledWith(
+      CAMPAIGN_ID,
+      ORG_ID,
+      ACTOR_ID,
+      'El presupuesto no cumple el mínimo del cliente.',
+    );
+  });
+
+  it('permite a owner rechazar', async () => {
+    const campaignRepository = makeCampaignRepo();
+    const organizationRepository = makeOrgRepo({
+      findMember: vi.fn().mockResolvedValue(ok(makeMember('owner'))),
+    });
+
+    const result = await rejectCampaign(makeInput(), {
+      campaignRepository,
+      organizationRepository,
+      logger: makeLogger(),
+    });
+
+    expect(result.success).toBe(true);
+  });
+
+  it.each(['viewer', 'operator', 'strategist'] as const)(
+    'rechaza a %s con FORBIDDEN',
+    async (role) => {
+      const campaignRepository = makeCampaignRepo();
+      const organizationRepository = makeOrgRepo({
+        findMember: vi.fn().mockResolvedValue(ok(makeMember(role))),
+      });
+
+      const result = await rejectCampaign(makeInput(), {
+        campaignRepository,
+        organizationRepository,
+        logger: makeLogger(),
+      });
+
+      expect(result.success).toBe(false);
+      if (!result.success) {
+        expect(result.error.code).toBe('FORBIDDEN');
+      }
+      expect(campaignRepository.reject).not.toHaveBeenCalled();
+    },
+  );
+
+  it('rechaza con VALIDATION_ERROR si la nota está vacía', async () => {
+    const campaignRepository = makeCampaignRepo();
+    const organizationRepository = makeOrgRepo();
+
+    const result = await rejectCampaign(makeInput({ note: '' }), {
+      campaignRepository,
+      organizationRepository,
+      logger: makeLogger(),
+    });
+
+    expect(result.success).toBe(false);
+    if (!result.success) {
+      expect(result.error.code).toBe('VALIDATION_ERROR');
+    }
+    expect(campaignRepository.reject).not.toHaveBeenCalled();
+    // Falla en el schema Zod antes de siquiera consultar membresía.
+    expect(organizationRepository.findMember).not.toHaveBeenCalled();
+  });
+
+  it('rechaza con VALIDATION_ERROR si la nota es solo espacios en blanco', async () => {
+    const campaignRepository = makeCampaignRepo();
+    const organizationRepository = makeOrgRepo();
+
+    const result = await rejectCampaign(makeInput({ note: '    ' }), {
+      campaignRepository,
+      organizationRepository,
+      logger: makeLogger(),
+    });
+
+    expect(result.success).toBe(false);
+    if (!result.success) {
+      expect(result.error.code).toBe('VALIDATION_ERROR');
+    }
+    expect(campaignRepository.reject).not.toHaveBeenCalled();
+  });
+
+  it('rechaza si el actor no es miembro de la organización', async () => {
+    const campaignRepository = makeCampaignRepo();
+    const organizationRepository = makeOrgRepo({
+      findMember: vi.fn().mockResolvedValue(err({ code: 'NOT_FOUND', message: 'not found' })),
+    });
+
+    const result = await rejectCampaign(makeInput(), {
+      campaignRepository,
+      organizationRepository,
+      logger: makeLogger(),
+    });
+
+    expect(result.success).toBe(false);
+    if (!result.success) {
+      expect(result.error.code).toBe('FORBIDDEN');
+    }
+    expect(campaignRepository.reject).not.toHaveBeenCalled();
+  });
+
+  it('retorna NOT_FOUND si la campaña no existe / es de otra organización', async () => {
+    const campaignRepository = makeCampaignRepo({
+      findById: vi.fn().mockResolvedValue(err({ code: 'NOT_FOUND', message: 'Campaign not found' })),
+    });
+    const organizationRepository = makeOrgRepo();
+
+    const result = await rejectCampaign(makeInput({ organizationId: OTHER_ORG_ID }), {
+      campaignRepository,
+      organizationRepository,
+      logger: makeLogger(),
+    });
+
+    expect(result.success).toBe(false);
+    if (!result.success) {
+      expect(result.error.code).toBe('NOT_FOUND');
+    }
+    expect(campaignRepository.reject).not.toHaveBeenCalled();
+  });
+
+  it('rechaza transición inválida si el status actual no es review', async () => {
+    const campaignRepository = makeCampaignRepo({
+      findById: vi.fn().mockResolvedValue(ok(makeCampaign({ status: 'draft' }))),
+    });
+    const organizationRepository = makeOrgRepo();
+
+    const result = await rejectCampaign(makeInput(), {
+      campaignRepository,
+      organizationRepository,
+      logger: makeLogger(),
+    });
+
+    expect(result.success).toBe(false);
+    if (!result.success) {
+      expect(result.error.code).toBe('VALIDATION_ERROR');
+    }
+    expect(campaignRepository.reject).not.toHaveBeenCalled();
+  });
+
+  it('propaga error del repositorio/RPC en reject', async () => {
+    const campaignRepository = makeCampaignRepo({
+      reject: vi.fn().mockResolvedValue(err({ code: 'CONFLICT', message: 'is not in review' })),
+    });
+    const organizationRepository = makeOrgRepo();
+    const logger = makeLogger();
+
+    const result = await rejectCampaign(makeInput(), {
+      campaignRepository,
+      organizationRepository,
+      logger,
+    });
+
+    expect(result.success).toBe(false);
+    if (!result.success) {
+      expect(result.error.code).toBe('CONFLICT');
+    }
+    expect(logger.error).toHaveBeenCalled();
+  });
+});

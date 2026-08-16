@@ -33,7 +33,7 @@ export type {
   UpsertClientDocumentDeps,
 } from './use-cases/clients/upsert-client-document.use-case';
 
-// Use cases — Campaigns
+// Use cases — Campaigns (Phase 7B)
 export { listCampaigns } from './use-cases/campaigns/list-campaigns.use-case';
 export type {
   ListCampaignsInput,
@@ -44,6 +44,38 @@ export type {
   CreateCampaignDraftInput,
   CreateCampaignDraftDeps,
 } from './use-cases/campaigns/create-campaign-draft.use-case';
+
+// Use cases — Campaigns (Phase 7C — approval workflow + compliance)
+export { submitCampaignForReview } from './use-cases/campaigns/submit-campaign-for-review.use-case';
+export type {
+  SubmitCampaignForReviewInput,
+  SubmitCampaignForReviewDeps,
+} from './use-cases/campaigns/submit-campaign-for-review.use-case';
+export { approveCampaign } from './use-cases/campaigns/approve-campaign.use-case';
+export type {
+  ApproveCampaignInput,
+  ApproveCampaignDeps,
+} from './use-cases/campaigns/approve-campaign.use-case';
+export { rejectCampaign } from './use-cases/campaigns/reject-campaign.use-case';
+export type {
+  RejectCampaignInput,
+  RejectCampaignDeps,
+} from './use-cases/campaigns/reject-campaign.use-case';
+export { listCampaignApprovals } from './use-cases/campaigns/list-campaign-approvals.use-case';
+export type {
+  ListCampaignApprovalsInput,
+  ListCampaignApprovalsDeps,
+} from './use-cases/campaigns/list-campaign-approvals.use-case';
+export { getApplicableComplianceRules } from './use-cases/campaigns/get-applicable-compliance-rules.use-case';
+export type {
+  GetApplicableComplianceRulesInput,
+  GetApplicableComplianceRulesDeps,
+} from './use-cases/campaigns/get-applicable-compliance-rules.use-case';
+export { evaluateCampaignCompliance } from './use-cases/campaigns/evaluate-campaign-compliance.use-case';
+export type {
+  EvaluateCampaignComplianceInput,
+  EvaluateCampaignComplianceDeps,
+} from './use-cases/campaigns/evaluate-campaign-compliance.use-case';
 
 // Use cases — Alerts
 export { listAlerts } from './use-cases/alerts/list-alerts.use-case';

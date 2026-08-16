@@ -50,10 +50,19 @@ export type {
   CampaignApprovalAction,
   CampaignApproval,
 } from './entities/campaign-approval';
+export { isValidRejectionNote } from './entities/campaign-approval';
 export type {
   ComplianceRuleId,
   ComplianceRuleSeverity,
   ComplianceRule,
+  ComplianceRuleFilter,
+  ComplianceRuleReference,
+  ComplianceViolation,
+  ComplianceEvaluationResult,
+} from './entities/compliance-rule';
+export {
+  resolveComplianceRulePrecedence,
+  evaluateCampaignCompliance,
 } from './entities/compliance-rule';
 export type { TaskId, TaskPriority, Task, TaskFilter } from './entities/task';
 export { canTransitionTask, getTaskNextStates, isTaskOverdue } from './entities/task';
@@ -125,6 +134,8 @@ export type { TemplateId, TemplateType, Template } from './entities/template';
 // Repositories
 export type { ClientRepository } from './repositories/client.repository';
 export type { CampaignRepository } from './repositories/campaign.repository';
+export type { CampaignApprovalRepository } from './repositories/campaign-approval.repository';
+export type { ComplianceRuleRepository } from './repositories/compliance-rule.repository';
 export type { AlertRepository, AlertCountBySeverity } from './repositories/alert.repository';
 export type { ReportRepository } from './repositories/report.repository';
 export type { TaskRepository, TaskCountByStatus } from './repositories/task.repository';

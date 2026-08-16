@@ -17,6 +17,10 @@ export { SupabaseTaskRepository } from './supabase/repositories/supabase-task.re
 // Phase 7B repositories
 export { SupabaseCampaignRepository } from './supabase/repositories/supabase-campaign.repository';
 
+// Phase 7C repositories
+export { SupabaseCampaignApprovalRepository } from './supabase/repositories/supabase-campaign-approval.repository';
+export { SupabaseComplianceRuleRepository } from './supabase/repositories/supabase-compliance-rule.repository';
+
 // Phase 6B repositories
 export { SupabaseAutomationRepository } from './supabase/repositories/supabase-automation.repository';
 export { SupabaseAutomationExecutionRepository } from './supabase/repositories/supabase-automation-execution.repository';
@@ -46,6 +50,12 @@ export type { TaskRow } from './supabase/mappers/task.mapper';
 // Phase 7B mappers
 export { rowToCampaign } from './supabase/mappers/campaign.mapper';
 export type { CampaignRow } from './supabase/mappers/campaign.mapper';
+
+// Phase 7C mappers
+export { rowToCampaignApproval } from './supabase/mappers/campaign-approval.mapper';
+export type { CampaignApprovalRow } from './supabase/mappers/campaign-approval.mapper';
+export { rowToComplianceRule } from './supabase/mappers/compliance-rule.mapper';
+export type { ComplianceRuleRow } from './supabase/mappers/compliance-rule.mapper';
 
 // Phase 6B mappers
 export { rowToAutomation } from './supabase/mappers/automation.mapper';

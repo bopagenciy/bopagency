@@ -11,9 +11,15 @@
  * documentado a `CampaignStatus`, no reintroducir un borrado — ver
  * PHASE_7B_PERSISTENCE_REPORT.md "Deuda técnica diferida a 7C".
  *
- * NO incluye approve/reject: pertenecen a Phase 7C y probablemente se
- * modelen como una RPC dedicada (no un UPDATE genérico vía este repositorio)
- * — ver la nota de diseño en la migración sobre RLS de campaigns.
+ * Phase 7C: agrega `approve`/`reject`. Ambos NO son UPDATE genéricos — igual
+ * que `AlertRepository.acknowledge`/`resolve`, delegan exclusivamente en las
+ * RPCs `approve_campaign`/`reject_campaign` (SECURITY DEFINER). La policy
+ * `campaigns_update` (7B) limita `WITH CHECK` a status IN ('draft','review')
+ * precisamente para que NINGÚN UPDATE genérico —tampoco a través de este
+ * repositorio— pueda fijar 'approved'/'rejected'; esa transición solo puede
+ * ocurrir dentro de la RPC, que corre con los privilegios del dueño de la
+ * función y por eso sí puede escribirla. Ver la migración
+ * 20260816140000_phase7c_campaign_approval_workflow.sql.
  */
 
 import type { Result, PaginatedResult, PaginationParams } from '@bop-agency/shared';
@@ -44,5 +50,25 @@ export interface CampaignRepository {
     id: CampaignId,
     organizationId: OrganizationId,
     data: UpdateCampaignInput,
+  ): Promise<Result<Campaign>>;
+
+  /**
+   * Aprueba una campaña en 'review' vía la RPC `approve_campaign`.
+   * La RPC (no este repositorio) verifica rol admin/owner, que el status
+   * actual sea 'review', y escribe `campaign_approvals` en la misma
+   * transacción. Retorna la campaña ya actualizada (status='approved').
+   */
+  approve(id: CampaignId, organizationId: OrganizationId, actorUserId: string): Promise<Result<Campaign>>;
+
+  /**
+   * Rechaza una campaña en 'review' vía la RPC `reject_campaign`.
+   * `note` es obligatoria (no vacía) — reforzado también por CHECK de BD y
+   * por la RPC. Retorna la campaña ya actualizada (status='rejected').
+   */
+  reject(
+    id: CampaignId,
+    organizationId: OrganizationId,
+    actorUserId: string,
+    note: string,
   ): Promise<Result<Campaign>>;
 }

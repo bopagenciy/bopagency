@@ -9,6 +9,9 @@
  * - create: inserta con status 'draft', mapea campos, propaga error de Supabase
  * - update: actualiza campos parciales, setea submitted_for_review_at al
  *   transicionar a 'review', no encontrado, error de Supabase propagado
+ * - approve/reject (Phase 7C): delegan a RPC (no UPDATE directo), verifican
+ *   la campaña primero, recargan la campaña tras éxito, mapean errores de la
+ *   RPC (not found / forbidden / conflict / validation / internal)
  * - tenant scope obligatorio (organization_id) en cada operación
  */
 
@@ -292,5 +295,153 @@ describe('SupabaseCampaignRepository.update', () => {
     await repo.update(CAMPAIGN_ID, ORG_ID, { updatedBy: 'user-uuid-1' });
 
     expect(supabase._chain.eq).toHaveBeenCalledWith('organization_id', ORG_ID);
+  });
+});
+
+// ─── approve (Phase 7C) — RPC ──────────────────────────────────────────────────
+
+describe('SupabaseCampaignRepository.approve', () => {
+  it('llama a RPC approve_campaign (no UPDATE directo) y recarga la campaña', async () => {
+    const findChain = makeQueryChain({ data: makeCampaignRow({ status: 'review' }) });
+    const reloadChain = makeQueryChain({ data: makeCampaignRow({ status: 'approved' }) });
+    const fromMock = vi.fn().mockReturnValueOnce(findChain).mockReturnValueOnce(reloadChain);
+    const rpcMock = vi.fn().mockResolvedValue({ data: null, error: null });
+    const supabase = { from: fromMock, rpc: rpcMock };
+    const repo = new SupabaseCampaignRepository(supabase as unknown as SupabaseClient);
+
+    const result = await repo.approve(CAMPAIGN_ID, ORG_ID, 'user-uuid-admin');
+
+    expect(rpcMock).toHaveBeenCalledWith('approve_campaign', { p_campaign_id: CAMPAIGN_ID });
+    expect(isOk(result)).toBe(true);
+    if (isOk(result)) {
+      expect(result.value.status).toBe('approved');
+    }
+  });
+
+  it('no llama a la RPC si la campaña no existe en la organización', async () => {
+    const findChain = makeQueryChain({ data: null, error: { message: 'not found' } });
+    const rpcMock = vi.fn();
+    const supabase = { from: vi.fn().mockReturnValue(findChain), rpc: rpcMock };
+    const repo = new SupabaseCampaignRepository(supabase as unknown as SupabaseClient);
+
+    const result = await repo.approve(CAMPAIGN_ID, ORG_ID, 'user-uuid-admin');
+
+    expect(isErr(result)).toBe(true);
+    if (isErr(result)) {
+      expect(result.error.code).toBe('NOT_FOUND');
+    }
+    expect(rpcMock).not.toHaveBeenCalled();
+  });
+
+  it('mapea "not found" del error de la RPC a NOT_FOUND', async () => {
+    const findChain = makeQueryChain({ data: makeCampaignRow() });
+    const rpcMock = vi.fn().mockResolvedValue({ data: null, error: { message: 'approve_campaign: campaign not found (id: x)' } });
+    const supabase = { from: vi.fn().mockReturnValue(findChain), rpc: rpcMock };
+    const repo = new SupabaseCampaignRepository(supabase as unknown as SupabaseClient);
+
+    const result = await repo.approve(CAMPAIGN_ID, ORG_ID, 'user-uuid-admin');
+
+    expect(isErr(result)).toBe(true);
+    if (isErr(result)) {
+      expect(result.error.code).toBe('NOT_FOUND');
+    }
+  });
+
+  it('mapea "lacks admin/owner role" del error de la RPC a FORBIDDEN', async () => {
+    const findChain = makeQueryChain({ data: makeCampaignRow() });
+    const rpcMock = vi
+      .fn()
+      .mockResolvedValue({ data: null, error: { message: 'approve_campaign: actor lacks admin/owner role (campaign_id: x, organization_id: y)' } });
+    const supabase = { from: vi.fn().mockReturnValue(findChain), rpc: rpcMock };
+    const repo = new SupabaseCampaignRepository(supabase as unknown as SupabaseClient);
+
+    const result = await repo.approve(CAMPAIGN_ID, ORG_ID, 'user-uuid-operator');
+
+    expect(isErr(result)).toBe(true);
+    if (isErr(result)) {
+      expect(result.error.code).toBe('FORBIDDEN');
+    }
+  });
+
+  it('mapea "is not in review" del error de la RPC a CONFLICT', async () => {
+    const findChain = makeQueryChain({ data: makeCampaignRow({ status: 'draft' }) });
+    const rpcMock = vi
+      .fn()
+      .mockResolvedValue({ data: null, error: { message: 'approve_campaign: campaign x is not in review (current status: draft)' } });
+    const supabase = { from: vi.fn().mockReturnValue(findChain), rpc: rpcMock };
+    const repo = new SupabaseCampaignRepository(supabase as unknown as SupabaseClient);
+
+    const result = await repo.approve(CAMPAIGN_ID, ORG_ID, 'user-uuid-admin');
+
+    expect(isErr(result)).toBe(true);
+    if (isErr(result)) {
+      expect(result.error.code).toBe('CONFLICT');
+    }
+  });
+
+  it('mapea un error desconocido a INTERNAL_ERROR', async () => {
+    const findChain = makeQueryChain({ data: makeCampaignRow() });
+    const rpcMock = vi.fn().mockResolvedValue({ data: null, error: { message: 'unexpected database error' } });
+    const supabase = { from: vi.fn().mockReturnValue(findChain), rpc: rpcMock };
+    const repo = new SupabaseCampaignRepository(supabase as unknown as SupabaseClient);
+
+    const result = await repo.approve(CAMPAIGN_ID, ORG_ID, 'user-uuid-admin');
+
+    expect(isErr(result)).toBe(true);
+    if (isErr(result)) {
+      expect(result.error.code).toBe('INTERNAL_ERROR');
+    }
+  });
+});
+
+// ─── reject (Phase 7C) — RPC ───────────────────────────────────────────────────
+
+describe('SupabaseCampaignRepository.reject', () => {
+  it('llama a RPC reject_campaign con la nota (no UPDATE directo) y recarga la campaña', async () => {
+    const findChain = makeQueryChain({ data: makeCampaignRow({ status: 'review' }) });
+    const reloadChain = makeQueryChain({ data: makeCampaignRow({ status: 'rejected' }) });
+    const fromMock = vi.fn().mockReturnValueOnce(findChain).mockReturnValueOnce(reloadChain);
+    const rpcMock = vi.fn().mockResolvedValue({ data: null, error: null });
+    const supabase = { from: fromMock, rpc: rpcMock };
+    const repo = new SupabaseCampaignRepository(supabase as unknown as SupabaseClient);
+
+    const result = await repo.reject(CAMPAIGN_ID, ORG_ID, 'user-uuid-admin', 'Presupuesto excesivo');
+
+    expect(rpcMock).toHaveBeenCalledWith('reject_campaign', {
+      p_campaign_id: CAMPAIGN_ID,
+      p_note: 'Presupuesto excesivo',
+    });
+    expect(isOk(result)).toBe(true);
+    if (isOk(result)) {
+      expect(result.value.status).toBe('rejected');
+    }
+  });
+
+  it('mapea "rejection note is required" del error de la RPC a VALIDATION_ERROR', async () => {
+    const findChain = makeQueryChain({ data: makeCampaignRow() });
+    const rpcMock = vi
+      .fn()
+      .mockResolvedValue({ data: null, error: { message: 'reject_campaign: rejection note is required' } });
+    const supabase = { from: vi.fn().mockReturnValue(findChain), rpc: rpcMock };
+    const repo = new SupabaseCampaignRepository(supabase as unknown as SupabaseClient);
+
+    const result = await repo.reject(CAMPAIGN_ID, ORG_ID, 'user-uuid-admin', '');
+
+    expect(isErr(result)).toBe(true);
+    if (isErr(result)) {
+      expect(result.error.code).toBe('VALIDATION_ERROR');
+    }
+  });
+
+  it('no llama a la RPC si la campaña no existe en la organización', async () => {
+    const findChain = makeQueryChain({ data: null, error: { message: 'not found' } });
+    const rpcMock = vi.fn();
+    const supabase = { from: vi.fn().mockReturnValue(findChain), rpc: rpcMock };
+    const repo = new SupabaseCampaignRepository(supabase as unknown as SupabaseClient);
+
+    const result = await repo.reject(CAMPAIGN_ID, ORG_ID, 'user-uuid-admin', 'nota');
+
+    expect(isErr(result)).toBe(true);
+    expect(rpcMock).not.toHaveBeenCalled();
   });
 });

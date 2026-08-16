@@ -42,12 +42,13 @@
 
 ## Riesgos Técnicos
 
-### R-TECH-01 — `CampaignStatus` ya en shared, pero sin validador de transición
+### R-TECH-01 — `CampaignStatus` ya en shared, pero sin validador de transición — ✅ RESUELTO en 7C
 **Severidad:** 🟠 Alto
 **Probabilidad:** Alta
 **Impacto:** `CAMPAIGN_STATUSES` incluye 7 estados (`draft, review, approved, active, paused, completed, rejected`) sin ninguna función que valide transiciones permitidas (ej. no debería poderse pasar de `draft` directo a `active`, o de `rejected` a `active`). El error de dominio `campaignInvalidStatus` ya existe (`domain.errors.ts`) pero no se usa en ningún lado.
 **Mitigación:** 7C debe definir explícitamente la máquina de estados válida (`draft → review → approved|rejected`, `approved → active → paused|completed`) y usar `campaignInvalidStatus` en el use case `approveCampaign`/`rejectCampaign`.
 **Acción requerida:** Resolver en 7C, con tests que verifiquen transiciones inválidas.
+**Resolución (7C):** `canTransitionCampaign`/`CAMPAIGN_TRANSITIONS` ya existían desde 7B con la máquina de estados completa (confirmado con evidencia: `campaign-transitions.test.ts` recorre los 7 estados y confirma `draft→approved`/`draft→rejected` inválidos y `rejected` terminal — no existe `rejected→draft`). 7C consume esa función en `submitCampaignForReview`/`approveCampaign`/`rejectCampaign` (verifica la transición ANTES de llamar al repositorio/RPC) y retorna `campaignInvalidStatus` cuando el status actual no permite la transición pedida — cubierto por tests en los tres use cases nuevos.
 
 ### R-TECH-02 — `listCampaigns` ya escrito contra un repositorio inexistente
 **Severidad:** 🟢 Bajo
@@ -88,12 +89,13 @@
 **Mitigación:** Reutilizar literalmente los helpers `is_organization_member()` y `has_organization_role()` ya existentes y probados (no reimplementar lógica de pertenencia). Añadir tests de RLS (si el proyecto los tiene para `clients`, replicar el mismo patrón de test para `campaigns`).
 **Acción requerida:** Confirmar con el usuario los roles mínimos exactos para crear vs. aprobar/rechazar (pendiente, ver `PHASE_7_IMPLEMENTATION_PLAN.md` §9) antes de escribir la migración de RLS en 7B/7C.
 
-### R-SEC-02 — Roles de aprobación indefinidos (decisión de negocio pendiente)
+### R-SEC-02 — Roles de aprobación indefinidos (decisión de negocio pendiente) — ✅ RESUELTO en 7C
 **Severidad:** 🟠 Alto
 **Probabilidad:** Alta — es una decisión no técnica que bloquea la migración de RLS
 **Impacto:** Si se implementa con una suposición incorrecta (ej. dejar que `operator` apruebe cuando el negocio quiere que solo `admin`/`owner` lo hagan), se necesita una migración correctiva después, con el riesgo de exponer temporalmente una superficie de aprobación más permisiva de lo debido.
 **Mitigación:** No escribir la política de `INSERT`/`UPDATE` sobre `campaign_approvals` sin confirmación explícita del usuario.
 **Acción requerida:** Pregunta abierta para el usuario antes de iniciar 7C (propuesta en el plan: crear = `operator`+, aprobar/rechazar = `admin`+).
+**Resolución (7C):** Se aplicó la matriz propuesta en el plan, sin desviación: `submitCampaignForReview` exige `operator`+ (viewer denegado); `approveCampaign`/`rejectCampaign` exigen `admin`+ (viewer/operator/strategist denegados). El chequeo se aplica en DOS capas independientes — en el use case (vía `hasMinimumRole` sobre `OrganizationRepository.findMember`) y dentro de la RPC `SECURITY DEFINER` (`has_organization_role(v_org_id, 'admin')`) — de forma que la RPC sigue siendo la autoridad final incluso si el use case tuviera un bug. Cubierto por tests explícitos de cada rol denegado/permitido en `approve-campaign.use-case.test.ts`/`reject-campaign.use-case.test.ts`, y por los 16 tests estáticos de `phase7c-migration-security.test.ts` sobre el cuerpo real de la RPC.
 
 ### R-SEC-03 — Prompt injection / fuga de contexto en `createCampaignWithAI`
 **Severidad:** 🟠 Alto
