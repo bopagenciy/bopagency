@@ -1,0 +1,196 @@
+import type { Metadata } from 'next';
+import { notFound } from 'next/navigation';
+import { Header } from '@/components/layout/Header';
+import { CampaignStatusBadge } from '@/components/campaigns/CampaignStatusBadge';
+import { CampaignApprovalPanel } from '@/components/campaigns/CampaignApprovalPanel';
+import { EditCampaignModal } from '@/components/campaigns/EditCampaignModal';
+import { RegenerateContentButton } from '@/components/campaigns/RegenerateContentButton';
+import { GeneratedContentView } from '@/components/campaigns/GeneratedContentView';
+import { ComplianceReview } from '@/components/campaigns/ComplianceReview';
+import { RepositoryErrorState } from '@/components/common/RepositoryErrorState';
+import { requireOrganization } from '@/lib/auth/server';
+import { createServerSupabaseClient } from '@/lib/supabase/server';
+import { createCampaignComposition } from '@/lib/composition/campaign.composition';
+import { OBJECTIVE_LABELS } from '@/lib/campaign-labels';
+import { PLATFORM_LABELS, isAIProviderId } from '@bop-agency/shared';
+import type { AdPlatform, AIProviderId } from '@bop-agency/shared';
+import type { OrganizationId, CampaignId } from '@bop-agency/domain';
+
+export const metadata: Metadata = { title: 'Detalle de campaña' };
+
+/**
+ * Phase 7D.1 — proveedor de IA con el que se generó el contenido actual.
+ * `campaign.metadata` es JSON libre, así que el valor se valida con
+ * `isAIProviderId` en lugar de castearse: un valor viejo o corrupto debe
+ * comportarse como "sin proveedor conocido", no romper el render.
+ */
+function readCampaignAiProvider(metadata: Record<string, unknown>): AIProviderId | null {
+  const ai = metadata['ai'];
+  if (ai === null || typeof ai !== 'object' || Array.isArray(ai)) return null;
+  const value = (ai as Record<string, unknown>)['provider'];
+  return isAIProviderId(value) ? value : null;
+}
+
+function formatBudget(budget: number, currency: string): string {
+  return new Intl.NumberFormat('es-CO', {
+    style: 'currency',
+    currency,
+    maximumFractionDigits: 0,
+  }).format(budget);
+}
+
+function formatDate(value: Date | string | null): string {
+  if (!value) return '—';
+  return new Date(value).toLocaleDateString('es-CO', {
+    day: '2-digit',
+    month: 'short',
+    year: 'numeric',
+  });
+}
+
+const APPROVAL_ACTION_LABELS: Record<string, string> = {
+  approved: 'Aprobada',
+  rejected: 'Rechazada',
+};
+
+type Props = { params: Promise<{ id: string }> };
+
+export default async function CampaignDetailPage({ params }: Props) {
+  const { id } = await params;
+  const { organization, membership } = await requireOrganization();
+
+  const supabase = await createServerSupabaseClient();
+  const { useCases } = createCampaignComposition(supabase);
+  const orgId = organization.id as OrganizationId;
+  const campaignId = id as CampaignId;
+
+  const campaignResult = await useCases.getCampaign({ campaignId, organizationId: orgId });
+
+  if (!campaignResult.success) {
+    if (campaignResult.error.code === 'NOT_FOUND') notFound();
+    return (
+      <>
+        <Header breadcrumbs={[{ label: 'Campañas', href: '/campaigns' }, { label: 'Detalle' }]} />
+        <div className="p-6 max-w-5xl mx-auto">
+          <RepositoryErrorState message="No se pudo cargar la campaña." />
+        </div>
+      </>
+    );
+  }
+
+  const campaign = campaignResult.value;
+
+  const [approvalsResult, complianceResult, clientRow] = await Promise.all([
+    useCases.listCampaignApprovals({ campaignId, organizationId: orgId }),
+    useCases.evaluateCampaignCompliance({ campaignId, organizationId: orgId }),
+    supabase.from('clients').select('id, name').eq('id', campaign.clientId).maybeSingle(),
+  ]);
+
+  const approvals = approvalsResult.success ? approvalsResult.value : [];
+  const compliance = complianceResult.success ? complianceResult.value : null;
+  const clientName = clientRow.data?.name ?? '—';
+
+  return (
+    <>
+      <Header
+        breadcrumbs={[
+          { label: 'Campañas', href: '/campaigns' },
+          { label: campaign.name },
+        ]}
+      />
+
+      <div className="p-6 max-w-5xl mx-auto space-y-6">
+        {/* Info card */}
+        <div className="bg-white rounded-xl border border-gray-200 p-6 space-y-4">
+          <div className="flex items-start justify-between gap-4">
+            <div>
+              <h1 className="text-lg font-semibold text-gray-900">{campaign.name}</h1>
+              <p className="text-sm text-gray-500 mt-1">Cliente: {clientName}</p>
+            </div>
+            <div className="flex items-center gap-2 shrink-0">
+              <EditCampaignModal campaign={campaign} userRole={membership.role} />
+              <CampaignStatusBadge status={campaign.status} />
+            </div>
+          </div>
+
+          <dl className="grid grid-cols-2 sm:grid-cols-4 gap-4 text-sm">
+            <div>
+              <dt className="text-gray-400 text-xs uppercase tracking-wide">Plataforma</dt>
+              <dd className="mt-1 font-medium text-gray-800">
+                {PLATFORM_LABELS[campaign.platform as AdPlatform] ?? campaign.platform}
+              </dd>
+            </div>
+            <div>
+              <dt className="text-gray-400 text-xs uppercase tracking-wide">Objetivo</dt>
+              <dd className="mt-1 font-medium text-gray-800">
+                {OBJECTIVE_LABELS[campaign.objective] ?? campaign.objective}
+              </dd>
+            </div>
+            <div>
+              <dt className="text-gray-400 text-xs uppercase tracking-wide">Presupuesto</dt>
+              <dd className="mt-1 font-medium text-gray-800">
+                {formatBudget(campaign.budget, campaign.currency)}
+              </dd>
+            </div>
+            <div>
+              <dt className="text-gray-400 text-xs uppercase tracking-wide">Vigencia</dt>
+              <dd className="mt-1 font-medium text-gray-800">
+                {formatDate(campaign.startDate)} – {formatDate(campaign.endDate)}
+              </dd>
+            </div>
+          </dl>
+
+          {campaign.brief && (
+            <div>
+              <h3 className="text-xs font-semibold text-gray-500 uppercase tracking-wide mb-1">Brief</h3>
+              <p className="text-sm text-gray-700 whitespace-pre-wrap">{campaign.brief}</p>
+            </div>
+          )}
+        </div>
+
+        {/* Approval workflow */}
+        <CampaignApprovalPanel campaign={campaign} userRole={membership.role} />
+
+        {/* Generated content */}
+        <div className="bg-white rounded-xl border border-gray-200 p-6 space-y-4">
+          <div className="flex items-center justify-between">
+            <h2 className="font-semibold text-gray-900">Contenido generado</h2>
+            <RegenerateContentButton
+              campaignId={campaign.id}
+              status={campaign.status}
+              userRole={membership.role}
+              currentProvider={readCampaignAiProvider(campaign.metadata)}
+            />
+          </div>
+          <GeneratedContentView content={campaign.generatedContent} />
+        </div>
+
+        {/* Compliance */}
+        <div className="bg-white rounded-xl border border-gray-200 p-6 space-y-3">
+          <h2 className="font-semibold text-gray-900">Revisión de compliance</h2>
+          <ComplianceReview evaluation={compliance} />
+        </div>
+
+        {/* Audit trail */}
+        {approvals.length > 0 && (
+          <div className="bg-white rounded-xl border border-gray-200 p-6 space-y-3">
+            <h2 className="font-semibold text-gray-900">Historial de decisiones</h2>
+            <ul className="space-y-3">
+              {approvals.map((approval) => (
+                <li key={approval.id} className="text-sm border-l-2 border-gray-200 pl-3">
+                  <div className="flex items-center gap-2">
+                    <span className="font-medium text-gray-800">
+                      {APPROVAL_ACTION_LABELS[approval.action] ?? approval.action}
+                    </span>
+                    <span className="text-gray-400 text-xs">{formatDate(approval.createdAt)}</span>
+                  </div>
+                  {approval.note && <p className="text-gray-600 mt-0.5">{approval.note}</p>}
+                </li>
+              ))}
+            </ul>
+          </div>
+        )}
+      </div>
+    </>
+  );
+}

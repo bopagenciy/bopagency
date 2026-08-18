@@ -46,12 +46,14 @@ function anthropicSuccessBody(overrides: Record<string, unknown> = {}) {
 beforeEach(() => {
   vi.unstubAllEnvs();
   vi.stubEnv('ANTHROPIC_API_KEY', API_KEY);
+  // 7D.1.1: backoff a 0 para que los tests de reintento no duerman.
+  vi.stubEnv('CAMPAIGN_AI_RETRY_BASE_DELAY_MS', '0');
   vi.stubGlobal('fetch', vi.fn());
 });
 
 describe('ClaudeAPIProvider.complete', () => {
   it('A1: retorna ok(AIResponse) mapeado correctamente en un request exitoso', async () => {
-    const mockFetch = vi.fn().mockResolvedValueOnce(
+    const mockFetch = vi.fn().mockResolvedValue(
       new Response(JSON.stringify(anthropicSuccessBody()), { status: 200 }),
     );
     vi.stubGlobal('fetch', mockFetch);
@@ -69,7 +71,7 @@ describe('ClaudeAPIProvider.complete', () => {
   });
 
   it('A2: envía el mensaje system separado de messages (Anthropic Messages API)', async () => {
-    const mockFetch = vi.fn().mockResolvedValueOnce(
+    const mockFetch = vi.fn().mockResolvedValue(
       new Response(JSON.stringify(anthropicSuccessBody()), { status: 200 }),
     );
     vi.stubGlobal('fetch', mockFetch);
@@ -86,7 +88,7 @@ describe('ClaudeAPIProvider.complete', () => {
   it('A3: usa ANTHROPIC_API_KEY/ANTHROPIC_MODEL/ANTHROPIC_API_VERSION del entorno', async () => {
     vi.stubEnv('ANTHROPIC_MODEL', 'claude-custom-model');
     vi.stubEnv('ANTHROPIC_API_VERSION', '2024-01-01');
-    const mockFetch = vi.fn().mockResolvedValueOnce(
+    const mockFetch = vi.fn().mockResolvedValue(
       new Response(JSON.stringify(anthropicSuccessBody()), { status: 200 }),
     );
     vi.stubGlobal('fetch', mockFetch);
@@ -104,7 +106,7 @@ describe('ClaudeAPIProvider.complete', () => {
   });
 
   it('A4: NUNCA expone la API key en el resultado ni en errores', async () => {
-    const mockFetch = vi.fn().mockResolvedValueOnce(new Response('server error', { status: 500 }));
+    const mockFetch = vi.fn().mockResolvedValue(new Response('server error', { status: 500 }));
     vi.stubGlobal('fetch', mockFetch);
 
     const provider = new ClaudeAPIProvider();
@@ -130,7 +132,7 @@ describe('ClaudeAPIProvider.complete', () => {
   });
 
   it('A6: 429 retorna err RATE_LIMITED', async () => {
-    const mockFetch = vi.fn().mockResolvedValueOnce(new Response('{}', { status: 429 }));
+    const mockFetch = vi.fn().mockResolvedValue(new Response('{}', { status: 429 }));
     vi.stubGlobal('fetch', mockFetch);
 
     const provider = new ClaudeAPIProvider();
@@ -141,7 +143,7 @@ describe('ClaudeAPIProvider.complete', () => {
   });
 
   it('A7: 5xx retorna err EXTERNAL_SERVICE_ERROR sin exponer el body crudo del proveedor', async () => {
-    const mockFetch = vi.fn().mockResolvedValueOnce(
+    const mockFetch = vi.fn().mockResolvedValue(
       new Response(JSON.stringify({ error: { type: 'api_error', message: 'detalle interno sensible' } }), {
         status: 500,
       }),
@@ -159,7 +161,7 @@ describe('ClaudeAPIProvider.complete', () => {
   });
 
   it('A8: timeout (AbortError) retorna err EXTERNAL_SERVICE_ERROR con reason=timeout', async () => {
-    const mockFetch = vi.fn().mockImplementationOnce(() => {
+    const mockFetch = vi.fn().mockImplementation(() => {
       const error = new Error('The operation was aborted');
       error.name = 'AbortError';
       return Promise.reject(error);
@@ -177,7 +179,7 @@ describe('ClaudeAPIProvider.complete', () => {
   });
 
   it('A9: error de red inesperado retorna err EXTERNAL_SERVICE_ERROR', async () => {
-    const mockFetch = vi.fn().mockRejectedValueOnce(new Error('network down'));
+    const mockFetch = vi.fn().mockRejectedValue(new Error('network down'));
     vi.stubGlobal('fetch', mockFetch);
 
     const provider = new ClaudeAPIProvider();
@@ -188,7 +190,7 @@ describe('ClaudeAPIProvider.complete', () => {
   });
 
   it('A10: mapea finishReason max_tokens y desconocido → error', async () => {
-    const mockFetchMaxTokens = vi.fn().mockResolvedValueOnce(
+    const mockFetchMaxTokens = vi.fn().mockResolvedValue(
       new Response(JSON.stringify(anthropicSuccessBody({ stop_reason: 'max_tokens' })), { status: 200 }),
     );
     vi.stubGlobal('fetch', mockFetchMaxTokens);
@@ -196,7 +198,7 @@ describe('ClaudeAPIProvider.complete', () => {
     const result1 = await provider.complete(BASE_REQUEST);
     expect(result1.success && result1.value.finishReason).toBe('max_tokens');
 
-    const mockFetchUnknown = vi.fn().mockResolvedValueOnce(
+    const mockFetchUnknown = vi.fn().mockResolvedValue(
       new Response(JSON.stringify(anthropicSuccessBody({ stop_reason: 'tool_use' })), { status: 200 }),
     );
     vi.stubGlobal('fetch', mockFetchUnknown);
@@ -206,7 +208,7 @@ describe('ClaudeAPIProvider.complete', () => {
 
   it('A11: request.model explícito tiene prioridad sobre ANTHROPIC_MODEL', async () => {
     vi.stubEnv('ANTHROPIC_MODEL', 'claude-env-default');
-    const mockFetch = vi.fn().mockResolvedValueOnce(
+    const mockFetch = vi.fn().mockResolvedValue(
       new Response(JSON.stringify(anthropicSuccessBody()), { status: 200 }),
     );
     vi.stubGlobal('fetch', mockFetch);

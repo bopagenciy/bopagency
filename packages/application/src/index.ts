@@ -45,6 +45,13 @@ export type {
   CreateCampaignDraftDeps,
 } from './use-cases/campaigns/create-campaign-draft.use-case';
 
+// Use cases — Campaigns (Phase 7E — single-campaign read, needed by the detail UI)
+export { getCampaign } from './use-cases/campaigns/get-campaign.use-case';
+export type {
+  GetCampaignInput,
+  GetCampaignDeps,
+} from './use-cases/campaigns/get-campaign.use-case';
+
 // Use cases — Campaigns (Phase 7C — approval workflow + compliance)
 export { submitCampaignForReview } from './use-cases/campaigns/submit-campaign-for-review.use-case';
 export type {
@@ -66,6 +73,13 @@ export type {
   ListCampaignApprovalsInput,
   ListCampaignApprovalsDeps,
 } from './use-cases/campaigns/list-campaign-approvals.use-case';
+
+// Use cases — Campaigns (Phase 7E, cierre — draft edit flow)
+export { editCampaignDraft } from './use-cases/campaigns/edit-campaign-draft.use-case';
+export type {
+  EditCampaignDraftInput,
+  EditCampaignDraftDeps,
+} from './use-cases/campaigns/edit-campaign-draft.use-case';
 export { getApplicableComplianceRules } from './use-cases/campaigns/get-applicable-compliance-rules.use-case';
 export type {
   GetApplicableComplianceRulesInput,

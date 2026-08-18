@@ -15,6 +15,9 @@
       "@bop-agency/application": [
         "../application/src/index.ts"
       ],
+      "@bop-agency/ai-engine": [
+        "../ai-engine/src/index.ts"
+      ],
       "@bop-agency/automation-engine": [
         "../automation-engine/src/index.ts"
       ]

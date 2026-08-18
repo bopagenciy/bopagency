@@ -1,3 +1,4 @@
+import type { AIProviderId } from '@bop-agency/shared';
 import type { ComplianceRuleId, ComplianceRuleSeverity } from './compliance-rule';
 
 /**
@@ -138,7 +139,14 @@ export type AIComplianceRuleReference = {
 };
 
 export type AIGenerationMetadata = {
-  readonly provider: string;
+  /**
+   * Phase 7D.1 — tipado como `AIProviderId` (antes `string`). La lista viva
+   * en @bop-agency/shared es la fuente única; ningún punto del proyecto
+   * escribe aquí un string libre. Los valores ya persistidos por Phase 7D son
+   * siempre 'anthropic', que sigue siendo un AIProviderId válido — no hay
+   * necesidad de migración de datos.
+   */
+  readonly provider: AIProviderId;
   readonly model: string;
   readonly promptVersion: string;
   readonly schemaVersion: GeneratedContentSchemaVersion;

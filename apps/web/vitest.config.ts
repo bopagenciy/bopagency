@@ -35,6 +35,10 @@ export default defineConfig({
         __dirname,
         '../../packages/infrastructure/src/index.ts',
       ),
+      '@bop-agency/ai-engine': path.resolve(
+        __dirname,
+        '../../packages/ai-engine/src/index.ts',
+      ),
     },
   },
 });

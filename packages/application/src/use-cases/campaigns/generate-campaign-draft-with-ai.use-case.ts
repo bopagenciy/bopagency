@@ -72,7 +72,7 @@
  */
 
 import { ok, err, isOk } from '@bop-agency/shared';
-import type { Result } from '@bop-agency/shared';
+import type { Result, AIProviderId } from '@bop-agency/shared';
 import type {
   Campaign,
   CampaignId,
@@ -91,6 +91,7 @@ import {
   unsupportedCampaignPlatform,
   invalidAiOutput,
   isSupportedGenerationPlatform,
+  resolveAiCampaignName,
   evaluateCampaignCompliance,
   hasMinimumRole,
   insufficientRole,
@@ -110,10 +111,16 @@ export const BRAND_PROFILE_DOCUMENT_KEY = 'brand-profile';
  */
 export const DEFAULT_GENERATION_LANGUAGE = 'es';
 
-const CAMPAIGN_NAME_MAX_LENGTH = 200;
 
 export type GenerateCampaignDraftWithAiInput = {
   readonly clientId: string;
+  /**
+   * Phase 7D.1.1 — nombre de campaña OPCIONAL. Si el usuario lo escribe en el
+   * wizard, se preserva tal cual (fuente de verdad); si no, se deriva un título
+   * conciso del contenido generado. Nunca se usa el párrafo de concepto
+   * completo como nombre.
+   */
+  readonly name?: string;
   readonly platform: string;
   readonly objective: string;
   readonly brief: string;
@@ -123,6 +130,19 @@ export type GenerateCampaignDraftWithAiInput = {
   readonly endDate?: Date | null;
   readonly language?: string;
   readonly market?: string;
+  /**
+   * Phase 7D.1 — proveedor de IA a usar. OPCIONAL: si se omite, el adapter de
+   * infraestructura resuelve `CAMPAIGN_AI_DEFAULT_PROVIDER` server-side.
+   *
+   * Este use case NO decide nada por proveedor (sin if/else, sin conocer
+   * clases de provider, sin leer `process.env`): solo valida que el valor
+   * pertenezca al enum cerrado (Zod) y lo propaga al puerto. Toda la decisión
+   * vive en `createCampaignAIProvider` (infrastructure) — §5/§12.
+   *
+   * El MODELO nunca forma parte del input: se resuelve server-side por
+   * proveedor (§12/§19).
+   */
+  readonly provider?: AIProviderId;
   /** SIEMPRE resuelto en el servidor desde la sesión — nunca del cliente. */
   readonly organizationId: OrganizationId;
   /** Actor autenticado — obtenido de la sesión del servidor, nunca del cliente. */
@@ -138,14 +158,24 @@ export type GenerateCampaignDraftWithAiDeps = {
   logger: LoggerPort;
 };
 
-function deriveCampaignName(content: CampaignGeneratedContent): string {
-  const concept = content.campaignConcept.trim();
-  if (concept.length === 0) {
-    return `${content.platform} — AI draft`;
-  }
-  return concept.length > CAMPAIGN_NAME_MAX_LENGTH
-    ? `${concept.slice(0, CAMPAIGN_NAME_MAX_LENGTH - 1)}…`
-    : concept;
+/**
+ * Nombre final de la campaña generada.
+ *
+ * Phase 7D.1.1 — la regla vive en dominio (`resolveAiCampaignName`), no aquí:
+ * "nombre del usuario > título conciso derivado del concepto > fallback
+ * determinístico". Antes este use case usaba `campaignConcept` COMPLETO
+ * truncado a 200 caracteres, lo que producía nombres de campaña que eran un
+ * párrafo entero (defecto observado en el smoke real).
+ */
+function buildCampaignName(
+  content: CampaignGeneratedContent,
+  userProvidedName: string | undefined,
+): string {
+  return resolveAiCampaignName({
+    userProvidedName,
+    concept: content.campaignConcept,
+    fallback: `${content.platform} — AI draft`,
+  });
 }
 
 export async function generateCampaignDraftWithAI(
@@ -237,6 +267,7 @@ export async function generateCampaignDraftWithAI(
     endDate: data.endDate ?? null,
     language,
     ...(data.market !== undefined && { market: data.market }),
+    ...(data.provider !== undefined && { provider: data.provider }),
     clientContext: {
       name: client.name,
       industry: client.industry,
@@ -275,7 +306,7 @@ export async function generateCampaignDraftWithAI(
     id: 'pending-generation' as CampaignId,
     organizationId: input.organizationId,
     clientId: client.id,
-    name: deriveCampaignName(content),
+    name: buildCampaignName(content, data.name),
     platform: data.platform,
     objective: data.objective,
     status: 'draft',
@@ -321,7 +352,7 @@ export async function generateCampaignDraftWithAI(
   const createResult = await deps.campaignRepository.create({
     organizationId: input.organizationId,
     clientId: client.id,
-    name: deriveCampaignName(content),
+    name: buildCampaignName(content, data.name),
     platform: data.platform,
     objective: data.objective,
     brief: data.brief,

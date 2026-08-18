@@ -101,8 +101,30 @@
 - **Riesgos:** R-TECH-03, R-SEC-03, R-SEC-04 — **resueltos en esta subfase**, ver `PHASE_7_RISK_REGISTER.md`. Riesgos nuevos/diferidos para 7E/7F documentados también en el risk register (plataformas no soportadas más allá de `meta_ads`/`google_ads`, sin historial de regeneraciones, doble constante de versión de schema, suite de tests de `apps/web` no verificada end-to-end en esta sesión).
 - **Criterios de aceptación:** dado un brief válido, el use case produce una campaña **en estado `draft`** con `generated_content` validado por Zod, sin llamar nunca a ninguna API externa de publicación; errores del proveedor de IA se manejan como `Result` de error, no excepciones sin capturar (mapeados a errores de dominio específicos: rate limit, timeout, no configurado, salida inválida); todos los tests usan el `AIProvider`/`CampaignGeneratorPort` mockeado o fake (nunca golpear la API real).
 
-### 7E — Campaign Studio UI
+### 7D.1 — Multi-provider AI foundation — ✅ IMPLEMENTADO (pendiente de revisión/aprobación — sin commit)
+- **Objetivo:** permitir que Campaign Studio genere/regenere con **OpenAI**, **Google Gemini** o **Anthropic Claude**, seleccionable por campaña/generación, sin cambiar `CampaignGeneratorPort`, el schema de `generated_content`, compliance, el workflow de aprobación ni el comportamiento de persistencia.
+- **Estado:** implementado en la rama `feat/phase-7-campaign-studio` sobre `5605823` (7D), junto al working tree de 7E. Detalle completo en `PHASE_7D1_MULTI_PROVIDER_AI_REPORT.md`. **Sin migración (ninguna necesaria), sin `git add`/commit, sin dependencias nuevas.**
+- **Piezas principales:**
+  - `packages/shared/src/constants/ai-providers.ts` — fuente única de `AI_PROVIDER_IDS` / `AIProviderId` / `AI_PROVIDER_LABELS` / `isAIProviderId` / `DEFAULT_AI_PROVIDER_ID`.
+  - `packages/infrastructure/src/ai/ai-provider-config.ts` — ÚNICO punto de lectura de env de IA (`CAMPAIGN_AI_DEFAULT_PROVIDER`, `*_API_KEY`, `*_MODEL`, `ANTHROPIC_API_VERSION`, `CAMPAIGN_AI_TIMEOUT_MS`). Ninguna variable con prefijo `NEXT_PUBLIC_`.
+  - `packages/infrastructure/src/ai/campaign-ai-provider.factory.ts` — `createCampaignAIProvider(providerId?)`, ÚNICO switch por proveedor del repo.
+  - `packages/infrastructure/src/ai/openai-api.provider.ts` y `gemini-api.provider.ts` — `fetch` nativo + `AbortController`, salida JSON estructurada, usage mapeado, errores saneados. **Cero SDKs nuevos.**
+  - `packages/infrastructure/src/ai/provider-http.ts` — factorías de error compartidas por los tres proveedores (mismo `code`/`details.reason` que 7D).
+  - `ClaudeAPIProvider` **conservado** (mismo nombre, misma suite de tests verde) + alias `AnthropicAPIProvider`.
+  - `CampaignGeneratorAdapter` resuelve el proveedor **por llamada** y conserva la forma de constructor de 7D.
+  - `GenerateCampaignInput.provider?: AIProviderId` (el puerto NO cambia de firma); `provider` opcional en `generateCampaignDraftWithAiSchema`/`regenerateCampaignContentSchema` (`z.enum` cerrado).
+  - UI 7E: `AIProviderSelect` en el wizard (solo modo IA) y en el detalle al regenerar (default = proveedor original de la campaña). **Sin selector de modelo.**
+  - Errores normalizados vía `AppError.details.aiErrorKind` (`AI_PROVIDER_NOT_CONFIGURED`, `AI_RATE_LIMITED`, `AI_TIMEOUT`, `AI_EXTERNAL_SERVICE_ERROR`, `AI_INVALID_OUTPUT`, `AI_UNSUPPORTED_PROVIDER`) — sin ampliar el union cerrado `ErrorCode`.
+- **Migraciones:** NINGUNA. `campaign.metadata.ai` (JSONB, desde 7B) ya alojaba `provider`/`model`; los datos de 7D tienen `provider: 'anthropic'`, válido como `AIProviderId`.
+- **Sin fallback automático** entre proveedores y **sin compare mode** — ambos diferidos deliberadamente, con el punto de extensión documentado.
+- **Tests:** 49 nuevos; suite completa ejecutada: 1432 tests verdes en `shared` (93), `domain` (217), `application` (302), `infrastructure` (474) y `apps/web` (346). `tsc --noEmit` y `eslint` limpios en los cinco paquetes.
+- **Dependencias:** ninguna nueva (`package.json`/`package-lock.json` sin cambios).
+- **Riesgos:** R-SEC-05, R-SEC-06, R-OPS-01, R-TECH-10, R-TECH-11 nuevos; R-TECH-12 resuelto. Ver `PHASE_7_RISK_REGISTER.md`.
+- **Criterios de aceptación:** el usuario puede elegir OpenAI / Gemini / Anthropic al generar y al regenerar; el `generated_content` de los tres pasa por el mismo Zod antes de persistir; `metadata.ai` registra qué IA generó cada campaña; un proveedor sin configurar produce un error explícito (nunca un cambio silencioso de proveedor); ninguna key, modelo ni URL de API se acepta desde el browser.
+
+### 7E — Campaign Studio UI — ✅ IMPLEMENTADO (pendiente de revisión/aprobación — sin commit)
 - **Objetivo:** reemplazar los placeholders `UnderConstruction` con la experiencia real: listado por cliente, wizard de creación (brief → generación IA → revisión), página de detalle con `CampaignApprovalPanel`.
+- **Estado:** implementado en la rama `feat/phase-7-campaign-studio` sobre `5605823` (7D). Detalle completo (archivos, decisiones de diseño, verificación tsc/eslint, limitaciones de entorno para correr `vitest` en esta sesión) en `PHASE_7E_CAMPAIGN_STUDIO_UI_REPORT.md`. No se creó ninguna migración (no era necesaria), no se ejecutó `git add`/`commit`.
 - **Archivos/tablas principales:**
   - `apps/web/src/app/(protected)/campaigns/page.tsx` (reescribir, conectar a `listCampaigns` real vía composition root).
   - `apps/web/src/app/(protected)/campaigns/new/page.tsx` (wizard conectado a `generateCampaignDraftWithAI`/`regenerateCampaignContent`).

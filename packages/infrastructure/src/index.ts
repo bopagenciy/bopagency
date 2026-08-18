@@ -73,6 +73,24 @@ export { SupabaseExecutionLogRepository } from './supabase/repositories/supabase
 export { N8nDispatcherAdapter } from './n8n/n8n-dispatcher-adapter';
 
 // Phase 7D — AI Campaign Builder
-export { ClaudeAPIProvider } from './ai/claude-api.provider';
+export { ClaudeAPIProvider, AnthropicAPIProvider } from './ai/claude-api.provider';
 export { buildCampaignGenerationPrompt, CAMPAIGN_BUILDER_PROMPT_VERSION } from './ai/campaign-prompt-builder';
 export { CampaignGeneratorAdapter } from './ai/campaign-generator.adapter';
+export type { CampaignAIProviderResolver } from './ai/campaign-generator.adapter';
+
+// Phase 7D.1 — Multi-provider AI foundation
+export { OpenAIAPIProvider } from './ai/openai-api.provider';
+export { GeminiAPIProvider } from './ai/gemini-api.provider';
+export { createCampaignAIProvider } from './ai/campaign-ai-provider.factory';
+export type {
+  ResolvedCampaignAIProvider,
+  CampaignAIProviderFactory,
+} from './ai/campaign-ai-provider.factory';
+export {
+  resolveAIProviderConfig,
+  resolveDefaultProviderId,
+  getCampaignAiTimeoutMs,
+  DEFAULT_MODELS,
+  DEFAULT_CAMPAIGN_AI_TIMEOUT_MS,
+} from './ai/ai-provider-config';
+export type { AIProviderConfig } from './ai/ai-provider-config';

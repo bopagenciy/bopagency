@@ -120,6 +120,92 @@ export type UpdateCampaignInput = {
   readonly updatedBy: string;
 };
 
+// ─── Campaign name rules — Phase 7D.1.1 ───────────────────────────────────────
+//
+// PROBLEMA OBSERVADO EN EL SMOKE: la generación con IA producía nombres de
+// campaña absurdamente largos, porque `generateCampaignDraftWithAI` usaba el
+// `campaignConcept` COMPLETO (un párrafo narrativo) truncado a 200 caracteres.
+// El resultado llenaba la tabla y el detalle con una frase entera.
+//
+// Regla fijada:
+//   1. Si el usuario proporcionó un nombre, ESE es el nombre. Punto.
+//   2. Si no, se deriva un título CONCISO del concepto generado: se recorta en
+//      el primer límite de oración/cláusula y se acota a
+//      `AI_DERIVED_CAMPAIGN_NAME_MAX_LENGTH`, cortando en frontera de palabra.
+//   3. Si no queda nada utilizable, se usa un fallback determinístico.
+//
+// No requiere ningún cambio en el schema de `generated_content`: se deriva del
+// `campaignConcept` que ya existe.
+
+/** Límite duro, alineado con el CHECK de BD `char_length(name) BETWEEN 1 AND 200`. */
+export const CAMPAIGN_NAME_MAX_LENGTH = 200;
+
+/**
+ * Límite para nombres DERIVADOS por IA. Deliberadamente muy por debajo del
+ * límite de BD: un título de campaña debe caber en una celda de tabla y en un
+ * breadcrumb, no ocupar dos líneas.
+ */
+export const AI_DERIVED_CAMPAIGN_NAME_MAX_LENGTH = 80;
+
+/** Separadores donde se corta un concepto narrativo para quedarse con el titular. */
+const SENTENCE_BOUNDARY = /[.!?;\n\r]|\s[—–]\s|:\s/;
+
+function collapseWhitespace(value: string): string {
+  return value.replace(/\s+/g, ' ').trim();
+}
+
+function truncateAtWordBoundary(value: string, maxLength: number): string {
+  if (value.length <= maxLength) return value;
+  const hardCut = value.slice(0, maxLength - 1);
+  const lastSpace = hardCut.lastIndexOf(' ');
+  // Solo se respeta la frontera de palabra si no deja un título ridículamente
+  // corto (p. ej. una primera "palabra" de 70 caracteres sin espacios).
+  const base = lastSpace > maxLength * 0.5 ? hardCut.slice(0, lastSpace) : hardCut;
+  return `${base.trimEnd()}…`;
+}
+
+/**
+ * Deriva un nombre de campaña conciso a partir del concepto generado por IA.
+ *
+ * @param concept  `campaignConcept` del contenido generado (puede ser un párrafo).
+ * @param fallback Nombre determinístico si el concepto no aporta nada usable.
+ */
+export function deriveCampaignNameFromConcept(concept: string, fallback: string): string {
+  // El corte se busca sobre el texto ORIGINAL (solo trim), no sobre el ya
+  // colapsado: un salto de línea es un límite de titular válido y se perdería
+  // si antes se convirtiera en un espacio.
+  const raw = (concept ?? '').trim();
+  if (raw.length === 0) return fallback;
+
+  const boundaryMatch = SENTENCE_BOUNDARY.exec(raw);
+  const headline =
+    boundaryMatch && boundaryMatch.index > 0
+      ? collapseWhitespace(raw.slice(0, boundaryMatch.index))
+      : collapseWhitespace(raw);
+
+  const candidate = headline.length > 0 ? headline : collapseWhitespace(raw);
+  const concise = truncateAtWordBoundary(candidate, AI_DERIVED_CAMPAIGN_NAME_MAX_LENGTH);
+  return concise.length > 0 ? concise : fallback;
+}
+
+/**
+ * Nombre final de una campaña creada vía IA. El nombre del usuario, si existe,
+ * SIEMPRE gana — la IA nunca sobrescribe una decisión explícita del usuario.
+ */
+export function resolveAiCampaignName(params: {
+  readonly userProvidedName?: string | undefined;
+  readonly concept: string;
+  readonly fallback: string;
+}): string {
+  const userName = params.userProvidedName?.trim() ?? '';
+  if (userName.length > 0) {
+    return userName.length > CAMPAIGN_NAME_MAX_LENGTH
+      ? truncateAtWordBoundary(userName, CAMPAIGN_NAME_MAX_LENGTH)
+      : userName;
+  }
+  return deriveCampaignNameFromConcept(params.concept, params.fallback);
+}
+
 // ─── Transition rules ─────────────────────────────────────────────────────────
 //
 // Grafo de transiciones válidas de CampaignStatus.

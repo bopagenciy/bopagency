@@ -19,17 +19,6 @@ export type DemoClient = {
   _demo: true;
 };
 
-export type DemoCampaign = {
-  id: string;
-  clientId: string;
-  name: string;
-  platform: 'meta' | 'google' | 'youtube';
-  status: 'draft' | 'review' | 'approved' | 'paused';
-  budget: number;
-  currency: 'COP';
-  _demo: true;
-};
-
 export type DemoAlert = {
   id: string;
   title: string;
@@ -85,39 +74,13 @@ export const demoClients: DemoClient[] = [
 ];
 
 // ─── Demo Campaigns ────────────────────────────────────────────────────────
-
-export const demoCampaigns: DemoCampaign[] = [
-  {
-    id: 'demo-camp-01',
-    clientId: 'demo-client-01',
-    name: 'Campaña de Ejemplo — Temporada Alta',
-    platform: 'meta',
-    status: 'draft',
-    budget: 5000000,
-    currency: 'COP',
-    _demo: true,
-  },
-  {
-    id: 'demo-camp-02',
-    clientId: 'demo-client-01',
-    name: 'Campaña de Ejemplo — Remarketing',
-    platform: 'google',
-    status: 'review',
-    budget: 2000000,
-    currency: 'COP',
-    _demo: true,
-  },
-  {
-    id: 'demo-camp-03',
-    clientId: 'demo-client-02',
-    name: 'Campaña de Ejemplo — Captación',
-    platform: 'meta',
-    status: 'approved',
-    budget: 3000000,
-    currency: 'COP',
-    _demo: true,
-  },
-];
+//
+// Retirado en Phase 7E: Campaign Studio (`/campaigns`) ahora se conecta a
+// datos reales vía `listCampaigns`/`createCampaignComposition` — ver
+// apps/web/src/app/(protected)/campaigns/page.tsx. `demoCampaigns`/
+// `DemoCampaign` no tenían ningún caller fuera de este archivo (confirmado
+// antes de retirarlos), así que se eliminan en vez de dejarlos como código
+// muerto (PHASE_7_IMPLEMENTATION_PLAN.md §7E).
 
 // ─── Demo Alerts ───────────────────────────────────────────────────────────
 

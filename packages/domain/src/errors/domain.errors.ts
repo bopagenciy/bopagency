@@ -40,32 +40,91 @@ export const rejectionNoteRequired = (): AppError =>
 // CampaignGeneratorAdapter) NUNCA propaga mensajes crudos del proveedor ni
 // stack traces — solo un `safeReason` corto, ya saneado.
 
+// ─── Modelo de error normalizado de IA — Phase 7D.1 ───────────────────────────
+//
+// `ErrorCode` (@bop-agency/shared) es un union cerrado usado por TODO el
+// proyecto (Result<T>, mapError de las Server Actions, etc.); ampliarlo con
+// códigos específicos de IA obligaría a revisar cada `switch`/`if` sobre
+// `AppError.code` en Phases 1–7 y rompería el contrato ya verificado de 7C/7D/7E.
+//
+// En su lugar, 7D.1 normaliza el fallo de IA en una dimensión ADITIVA:
+// `AppError.details.aiErrorKind`. El `code` sigue siendo el mismo que en 7D
+// (EXTERNAL_SERVICE_ERROR / RATE_LIMITED / VALIDATION_ERROR), así que ningún
+// consumidor existente cambia de comportamiento; quien necesite distinguir el
+// tipo exacto de fallo de IA (observabilidad, futuro fallback, futuro compare
+// mode) lee `aiErrorKind` con `getAiErrorKind()`.
+//
+// SEGURIDAD: `details` NUNCA contiene API keys, headers de autorización, el
+// body crudo del proveedor ni stack traces — solo el kind normalizado y, como
+// máximo, el providerId (que no es secreto).
+
+export const AI_ERROR_KINDS = [
+  'AI_PROVIDER_NOT_CONFIGURED',
+  'AI_RATE_LIMITED',
+  'AI_TIMEOUT',
+  'AI_EXTERNAL_SERVICE_ERROR',
+  'AI_INVALID_OUTPUT',
+  'AI_UNSUPPORTED_PROVIDER',
+] as const;
+
+export type AIErrorKind = (typeof AI_ERROR_KINDS)[number];
+
+/** Lee `AppError.details.aiErrorKind` de forma segura (details es `unknown`). */
+export function getAiErrorKind(error: AppError): AIErrorKind | null {
+  const details = error.details;
+  if (details === null || typeof details !== 'object') return null;
+  const value = (details as Record<string, unknown>)['aiErrorKind'];
+  return typeof value === 'string' && (AI_ERROR_KINDS as readonly string[]).includes(value)
+    ? (value as AIErrorKind)
+    : null;
+}
+
 export const unsupportedCampaignPlatform = (platform: string): AppError =>
   createError(
     'VALIDATION_ERROR',
     `AI campaign generation is not supported for platform "${platform}" yet.`,
   );
 
+/**
+ * Phase 7D.1 — el providerId solicitado no corresponde a ningún proveedor
+ * implementado. `providerId` se incluye en el mensaje solo tras haber sido
+ * verificado como string corto por el caller; nunca es un secreto.
+ */
+export const aiUnsupportedProvider = (providerId: string): AppError =>
+  createError(
+    'VALIDATION_ERROR',
+    `AI provider "${providerId}" is not supported.`,
+    { aiErrorKind: 'AI_UNSUPPORTED_PROVIDER' satisfies AIErrorKind },
+  );
+
 export const campaignGenerationUnavailable = (safeReason: string): AppError =>
   createError(
     'EXTERNAL_SERVICE_ERROR',
     `AI campaign generation is currently unavailable: ${safeReason}`,
+    { aiErrorKind: 'AI_PROVIDER_NOT_CONFIGURED' satisfies AIErrorKind },
   );
 
 export const invalidAiOutput = (safeReason: string): AppError =>
   createError(
     'EXTERNAL_SERVICE_ERROR',
     `AI provider returned output that could not be validated: ${safeReason}`,
+    { aiErrorKind: 'AI_INVALID_OUTPUT' satisfies AIErrorKind },
   );
 
 export const aiProviderFailure = (safeReason: string): AppError =>
-  createError('EXTERNAL_SERVICE_ERROR', `AI provider request failed: ${safeReason}`);
+  createError('EXTERNAL_SERVICE_ERROR', `AI provider request failed: ${safeReason}`, {
+    aiErrorKind: 'AI_EXTERNAL_SERVICE_ERROR' satisfies AIErrorKind,
+  });
 
 export const aiGenerationTimeout = (): AppError =>
-  createError('EXTERNAL_SERVICE_ERROR', 'AI campaign generation request timed out.');
+  createError('EXTERNAL_SERVICE_ERROR', 'AI campaign generation request timed out.', {
+    aiErrorKind: 'AI_TIMEOUT' satisfies AIErrorKind,
+  });
 
 export const aiRateLimited = (): AppError =>
-  createError('RATE_LIMITED', 'AI provider rate limit exceeded. Try again shortly.');
+  createError('RATE_LIMITED', 'AI provider rate limit exceeded. Try again shortly.', {
+    aiErrorKind: 'AI_RATE_LIMITED' satisfies AIErrorKind,
+  });
 
 // regenerateCampaignContent (§13) solo opera sobre campañas en 'draft'. No es
 // una transición de status (no hay "to" — la campaña permanece en 'draft'),
@@ -83,6 +142,16 @@ export const campaignRegenerationNotAllowed = (status: string): AppError =>
 // requiere un brief no vacío (Zod), así que cualquier campaña generada por
 // IA ya lo tiene garantizado — este error solo puede dispararse sobre una
 // campaña 'draft' creada sin IA.
+// editCampaignDraft (auditoría de completitud Phase 7E) solo opera sobre
+// campañas en 'draft'. Igual que `campaignRegenerationNotAllowed`, no es una
+// transición de status (no hay "to" — la campaña permanece en 'draft'), por
+// eso no reutiliza `campaignInvalidStatus(from,to)`.
+export const campaignEditNotAllowed = (status: string): AppError =>
+  createError(
+    'VALIDATION_ERROR',
+    `Cannot edit campaign in status "${status}". Only campaigns in "draft" can be edited.`,
+  );
+
 export const campaignBriefRequired = (id: string): AppError =>
   createError(
     'VALIDATION_ERROR',

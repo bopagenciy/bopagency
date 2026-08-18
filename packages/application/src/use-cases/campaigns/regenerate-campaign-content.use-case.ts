@@ -40,7 +40,8 @@
  */
 
 import { ok, err, isOk } from '@bop-agency/shared';
-import type { Result } from '@bop-agency/shared';
+import type { Result, AIProviderId } from '@bop-agency/shared';
+import { isAIProviderId } from '@bop-agency/shared';
 import type {
   Campaign,
   CampaignId,
@@ -73,6 +74,15 @@ export type RegenerateCampaignContentInput = {
   readonly campaignId: string;
   readonly language?: string;
   readonly market?: string;
+  /**
+   * Phase 7D.1 — proveedor de IA a usar en ESTA regeneración. Si se omite, se
+   * reutiliza el proveedor de la generación anterior
+   * (`campaign.metadata.ai.provider`); si esa metadata no existe o no es un
+   * proveedor válido, el adapter resuelve el default del servidor. Este use
+   * case no conoce ningún proveedor concreto: solo lee un dato ya persistido y
+   * lo propaga (§5/§12).
+   */
+  readonly provider?: AIProviderId;
   /** SIEMPRE resuelto en el servidor desde la sesión — nunca del cliente. */
   readonly organizationId: OrganizationId;
   /** Actor autenticado — obtenido de la sesión del servidor, nunca del cliente. */
@@ -87,6 +97,19 @@ export type RegenerateCampaignContentDeps = {
   campaignGeneratorPort: CampaignGeneratorPort;
   logger: LoggerPort;
 };
+
+/**
+ * Phase 7D.1 — proveedor de la generación anterior, si quedó registrado en
+ * `campaign.metadata.ai.provider`. Se valida con `isAIProviderId` en vez de
+ * castear: la metadata es JSON libre en BD y podría contener un valor viejo o
+ * corrupto, que nunca debe llegar a la factoría como si fuera un id válido.
+ */
+function readPreviousAiProvider(campaign: Campaign): AIProviderId | undefined {
+  const ai = campaign.metadata['ai'];
+  if (ai === null || typeof ai !== 'object' || Array.isArray(ai)) return undefined;
+  const value = (ai as Record<string, unknown>)['provider'];
+  return isAIProviderId(value) ? value : undefined;
+}
 
 /** Lee `campaign.metadata.ai.<field>` de forma segura (metadata es JSON no tipado). */
 function readPreviousAiMetadataField(campaign: Campaign, field: 'language' | 'market'): string | undefined {
@@ -191,6 +214,9 @@ export async function regenerateCampaignContent(
   const language =
     data.language ?? readPreviousAiMetadataField(campaign, 'language') ?? DEFAULT_GENERATION_LANGUAGE;
   const market = data.market ?? readPreviousAiMetadataField(campaign, 'market');
+  // Sin override explícito, se repite el proveedor con el que se generó antes
+  // — regenerar no debe cambiar de proveedor por accidente.
+  const provider = data.provider ?? readPreviousAiProvider(campaign);
 
   // 10. Regeneración vía IA.
   const generation = await deps.campaignGeneratorPort.generate({
@@ -203,6 +229,7 @@ export async function regenerateCampaignContent(
     endDate: campaign.endDate,
     language,
     ...(market !== undefined && { market }),
+    ...(provider !== undefined && { provider }),
     clientContext: {
       name: client.name,
       industry: client.industry,

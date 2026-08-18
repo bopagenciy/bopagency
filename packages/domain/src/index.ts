@@ -41,6 +41,12 @@ export type {
   UpdateCampaignInput,
 } from './entities/campaign';
 export {
+  CAMPAIGN_NAME_MAX_LENGTH,
+  AI_DERIVED_CAMPAIGN_NAME_MAX_LENGTH,
+  deriveCampaignNameFromConcept,
+  resolveAiCampaignName,
+} from './entities/campaign';
+export {
   canTransitionCampaign,
   getCampaignNextStates,
   isCampaignStatusTerminal,

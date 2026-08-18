@@ -16,6 +16,9 @@ export {
   METRIC_PLATFORM_LABELS,
 } from './constants/platforms';
 export type { AdPlatform, MetricPlatform } from './constants/platforms';
+// AI providers (Phase 7D.1 — fuente única de provider ids/labels)
+export { AI_PROVIDER_IDS, AI_PROVIDER_LABELS, DEFAULT_AI_PROVIDER_ID, isAIProviderId } from './constants/ai-providers';
+export type { AIProviderId } from './constants/ai-providers';
 export {
   TASK_STATUSES,
   CAMPAIGN_STATUSES,
@@ -78,6 +81,8 @@ export {
   CAMPAIGN_CURRENCIES,
   CAMPAIGN_EDITABLE_STATUSES,
 } from './schemas/campaign.schema';
+// Phase 7D.1.1 — regla de coerción estricta de dinero (cierra el bug de budget $0)
+export { budgetAmountSchema, parseBudgetAmount } from './schemas/campaign.schema';
 export type {
   CreateCampaignDraftFormValues,
   UpdateCampaignDraftFormValues,

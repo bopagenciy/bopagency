@@ -22,6 +22,7 @@
 
 import type { Result } from '@bop-agency/shared';
 import type { AdPlatform } from '@bop-agency/shared';
+import type { AIProviderId } from '@bop-agency/shared';
 import type { CampaignGeneratedContent, GeneratedContentSchemaVersion } from '@bop-agency/domain';
 
 // ─── Input ────────────────────────────────────────────────────────────────────
@@ -70,6 +71,21 @@ export type GenerateCampaignInput = {
   readonly market?: string;
   readonly clientContext: CampaignGenerationClientContext;
   readonly complianceRules: readonly CampaignGenerationComplianceRule[];
+  /**
+   * Phase 7D.1 — proveedor de IA solicitado para ESTA generación. Opcional:
+   * si se omite, el adapter resuelve `CAMPAIGN_AI_DEFAULT_PROVIDER`
+   * server-side.
+   *
+   * La interfaz `CampaignGeneratorPort` NO cambia (sigue siendo
+   * `generate(input)`); solo se amplía el input con un campo opcional, así que
+   * ninguna implementación ni caller existente se rompe.
+   *
+   * El use case se limita a propagar este valor — NUNCA decide qué proveedor
+   * usar ni conoce sus nombres de clase (§5/§12). El `model` NO forma parte de
+   * este input a propósito: se resuelve server-side por proveedor y jamás se
+   * acepta desde el browser (§12/§19).
+   */
+  readonly provider?: AIProviderId;
 };
 
 // ─── Output ───────────────────────────────────────────────────────────────────
@@ -83,7 +99,8 @@ export type GenerateCampaignInput = {
  * `regenerate-campaign-content.use-case.ts`.
  */
 export type GeneratedCampaignMetadata = {
-  readonly provider: string;
+  /** Phase 7D.1 — tipado como AIProviderId (fuente única en @bop-agency/shared). */
+  readonly provider: AIProviderId;
   readonly model: string;
   readonly promptVersion: string;
   readonly schemaVersion: GeneratedContentSchemaVersion;

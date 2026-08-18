@@ -173,6 +173,97 @@
 
 ---
 
+## Riesgos añadidos en Phase 7D.1 — Multi-provider AI foundation
+
+### R-SEC-05 — Secreto de proveedor de IA en texto plano dentro del repositorio
+**Severidad:** 🔴 Alto
+**Probabilidad:** Ya ocurrió (observado durante 7D.1)
+**Impacto:** Durante la sesión de 7D.1 apareció el archivo `Api Gemini key.txt` en la raíz del repositorio, **untracked y NO cubierto por `.gitignore`**. Cualquier `git add -A` / `git add .` lo incluiría en un commit, filtrando una API key de Google Gemini al historial de git (donde borrarla después no basta: hay que reescribir historial y rotar la key). Su contenido no fue leído durante la implementación de 7D.1.
+**Mitigación:** Con 7D.1 el lugar correcto para esa key es la variable `GEMINI_API_KEY` en `.env.local` (server-only, ya ignorada por git y documentada en `apps/web/.env.example`). El código nunca lee keys desde archivos del repositorio: `ai-provider-config.ts` es el único punto de lectura y solo usa `process.env`.
+**Acción requerida (usuario, ANTES de cualquier commit):** mover el archivo fuera del repositorio, trasladar el valor a `GEMINI_API_KEY` en `.env.local`, y rotar la key si estuvo expuesta en disco compartido o sincronizado.
+
+### R-SEC-06 — Superficie de configuración multiplicada por tres proveedores
+**Severidad:** 🟡 Medio
+**Probabilidad:** Media
+**Impacto:** Con un solo proveedor había una API key que proteger; ahora hay tres (`OPENAI_API_KEY`, `GEMINI_API_KEY`, `ANTHROPIC_API_KEY`). Un error de configuración (usar el prefijo `NEXT_PUBLIC_`, o pasar la key por el body de una Server Action) filtraría el secreto al browser.
+**Mitigación implementada:** (1) `ai-provider-config.ts` es el ÚNICO archivo que lee esas variables; (2) el `AIProviderConfig` que devuelve la factoría **no contiene la API key** — cada provider la lee de `process.env` en el instante de la llamada, así que nunca viaja por el grafo de objetos; (3) las Server Actions aceptan del cliente **solo** un `provider` validado contra un enum cerrado, nunca key, modelo ni URL de API (tests `S4`/`S5`); (4) sweep de `NEXT_PUBLIC_` sobre todo `src` con cero coincidencias relacionadas con IA.
+**Acción requerida:** Ninguna en código. Al desplegar, verificar que las tres variables se configuran como server-side secrets del hosting, nunca como variables públicas de build.
+
+### R-OPS-01 — Fallo por proveedor mal configurado no tiene fallback automático (decisión deliberada)
+**Severidad:** 🟡 Medio
+**Probabilidad:** Media
+**Impacto:** Si `CAMPAIGN_AI_DEFAULT_PROVIDER` apunta a un proveedor sin API key, **toda** generación falla con un error de configuración; no se intenta otro proveedor. Un `CAMPAIGN_AI_DEFAULT_PROVIDER` con un typo tampoco cae al default: falla explícitamente.
+**Mitigación:** Es el comportamiento buscado (§16 de 7D.1: observabilidad y predictibilidad por encima de disponibilidad). El mensaje de error nombra la variable exacta que falta (`missing GEMINI_API_KEY`), y la UI lo muestra saneado. El usuario puede cambiar de proveedor en el momento desde el selector, sin redeploy.
+**Acción requerida:** Ninguna. Si más adelante se prioriza disponibilidad sobre predictibilidad, implementar el fallback como decorador del resolver (ver §22 de `PHASE_7D1_MULTI_PROVIDER_AI_REPORT.md`) y registrar en `metadata.ai` qué proveedor falló.
+
+### R-TECH-10 — Diferencias de calidad/formato entre proveedores para el mismo prompt
+**Severidad:** 🟡 Medio
+**Probabilidad:** Alta
+**Impacto:** El prompt es único para los tres proveedores (decisión de diseño §11). OpenAI y Gemini tienen modos de salida JSON nativos (`response_format` / `responseMimeType`); Anthropic no, y depende de la instrucción del prompt. Es esperable que la tasa de "output que no cumple el schema" y la calidad del copy difieran entre proveedores para el mismo brief.
+**Mitigación:** La validación es idéntica para los tres (`campaignGeneratedContentSchema.safeParse`), así que un output malo **nunca se persiste** — falla con `AI_INVALID_OUTPUT`. `metadata.ai.provider` + `model` + `latencyMs` + `tokenUsage` quedan persistidos en cada campaña, lo que permite comparar proveedores con datos reales antes de fijar un default definitivo.
+**Acción requerida:** Al probar "Generar con IA" en local, ejecutar el mismo brief con los tres proveedores y comparar resultado, latencia y coste antes de decidir el `CAMPAIGN_AI_DEFAULT_PROVIDER` de producción.
+
+### R-TECH-11 — Regenerar con otro proveedor destruye el resultado anterior
+**Severidad:** 🟡 Medio
+**Probabilidad:** Alta
+**Impacto:** Agrava R-TECH-07 (ausencia de historial de regeneraciones). Con multi-provider, la acción natural "a ver cómo lo hace OpenAI" **sobrescribe** el `generated_content` y el `metadata.ai` producidos por el proveedor anterior, sin dejar rastro ni forma de volver.
+**Mitigación parcial:** La UI de regeneración usa por defecto el **mismo** proveedor de la campaña (`Mismo proveedor (…)`); cambiar de proveedor exige abrir "Opciones" y elegirlo explícitamente, y el texto de ayuda advierte que no se conserva historial.
+**Acción requerida:** Decidir en 7F/7G si se implementa historial de generaciones (tabla `campaign_generations` append-only) o el "compare mode" de §17, que resolvería este caso de uso sin destruir nada.
+
+### R-TECH-12 — Resolución de `@bop-agency/ai-engine` estaba rota en tsconfig (RESUELTO en 7D.1)
+**Severidad:** 🟢 Bajo (ya resuelto)
+**Probabilidad:** N/A
+**Impacto:** `packages/infrastructure/tsconfig.json` y `apps/web/tsconfig.json` no declaraban el path mapping de `@bop-agency/ai-engine`, produciendo `TS2307` más una cascada de `TS18046`/`TS7006` en los archivos de IA de 7D. El reporte de 7E lo atribuyó a symlinks rotos del sandbox; la causa real era configuración faltante.
+**Mitigación:** Path mapping añadido en ambos `tsconfig.json` y alias equivalente en los dos `vitest.config.ts`. `tsc --noEmit` queda limpio en los cinco paquetes.
+**Acción requerida:** Ninguna. Documentado para que la nota correspondiente de `PHASE_7E_CAMPAIGN_STUDIO_UI_REPORT.md` §3 no se lea como un problema aún abierto.
+
+---
+
+## Riesgos añadidos/resueltos en Phase 7D.1.1 — correcciones del smoke real (Gemini)
+
+### R-OPS-02 — Latencia del proveedor de IA superior al timeout (RESUELTO/MITIGADO en 7D.1.1)
+**Severidad:** 🟠 Alto → 🟢 Bajo tras la mitigación
+**Probabilidad:** Alta (ya ocurrió)
+**Impacto:** En el smoke real con Gemini, la generación inicial funcionó pero la REGENERACIÓN abortó con `AI campaign generation request timed out.` a los 30 s. Sin reintentos, cualquier pico de latencia o 5xx transitorio del proveedor se convertía en un fallo definitivo visible para el usuario, con la campaña bloqueada en su contenido anterior.
+**Mitigación implementada:** (1) timeout por intento subido de 30 000 a 60 000 ms; (2) hasta 3 intentos totales con backoff exponencial (500 ms, 1000 ms) SOLO ante 429/5xx/red/timeout; (3) `AbortController` nuevo por intento; (4) cota dura de tiempo total (`CAMPAIGN_AI_TOTAL_BUDGET_MS`, default = 2× el timeout) para que la Server Action no se eternice; (5) copy de error accionable en vez del texto técnico.
+**Acción requerida (usuario):** `apps/web/.env.local` tiene `CAMPAIGN_AI_TIMEOUT_MS=30000`, que **prevalece sobre el default de código**. Subirlo a `60000` o eliminar la línea, y repetir el smoke de regeneración.
+
+### R-DATA-01 — Coerción permisiva de dinero producía presupuestos $0 silenciosos (RESUELTO en 7D.1.1)
+**Severidad:** 🔴 Alto → 🟢 Bajo tras la corrección
+**Probabilidad:** Ya ocurrió
+**Impacto:** Una campaña generada con IA quedó persistida con presupuesto **$0** pese a haberse ingresado uno en el formulario. Causa raíz: `z.coerce.number()` convierte `null`, `''`, `false` y `[]` en `0`, y `0` pasa `.min(0)` sin error. Cualquier forma en que el importe no llegara como número real al servidor se persistía como un presupuesto de cero **legítimo**, sin ningún error visible. En un producto que gestiona presupuesto publicitario de clientes, un importe silenciosamente erróneo es un fallo de datos serio, no cosmético.
+**Mitigación implementada:** `budgetAmountSchema` (coerción estricta: rechaza `null`/`undefined`/`''`/booleanos/arrays/objetos/`NaN`/`Infinity`) sustituye a `z.coerce.number()` en los tres schemas de campaña; el formulario exige `budget > 0`; el importe nunca se deriva del contenido generado por IA. Cubierto por 13 tests de schema y 6 de regresión end-to-end en la capa de aplicación.
+**Limitación documentada:** no se pudo reproducir el INSERT exacto que produjo el 0 (habría requerido consultar el Supabase local del usuario, fuera de alcance). Lo que está probado es que la vía de conversión silenciosa está cerrada; si reapareciera, ahora fallaría con un error de validación visible en vez de persistir un dato erróneo.
+**Acción requerida:** revisar si alguna campaña ya creada en local quedó con `budget = 0` y corregirla o descartarla antes de dar 7E por buena.
+
+### R-UX-02 — Nombre de campaña derivado de un párrafo narrativo (RESUELTO en 7D.1.1)
+**Severidad:** 🟡 Medio → 🟢 Bajo
+**Probabilidad:** Alta (ocurría en cada generación sin nombre)
+**Impacto:** El nombre se derivaba del `campaignConcept` COMPLETO truncado a 200 caracteres, llenando tabla, breadcrumb y detalle con una frase entera.
+**Mitigación implementada:** regla de dominio `resolveAiCampaignName` — nombre del usuario (ahora ofrecible también en modo IA, opcional) > titular conciso derivado del concepto (corte por oración/cláusula, máx. 80 caracteres en frontera de palabra) > fallback determinístico. Sin cambios en el schema de `generated_content`.
+
+### R-UX-03 — Errores técnicos de IA expuestos al usuario final (RESUELTO en 7D.1.1)
+**Severidad:** 🟡 Medio → 🟢 Bajo
+**Probabilidad:** Alta
+**Impacto:** El usuario veía cadenas como `AI campaign generation request timed out.` o `AI provider request failed: status 503 (UNAVAILABLE)` — saneadas de secretos, pero técnicas, en inglés y sin indicar qué hacer. Amplía R-UX-01 (que solo cubría "no filtrar el error crudo del LLM").
+**Mitigación implementada:** `mapError` traduce por `aiErrorKind` (no por el texto del mensaje) a copy accionable en español. Los `details` internos (`provider`, `statusCode`, `attempts`, `aiErrorKind`) quedan en logs y tests, nunca en la respuesta al cliente.
+
+### R-TECH-13 — Modelos por defecto de OpenAI y Anthropic sin verificar
+**Severidad:** 🟡 Medio
+**Probabilidad:** Alta
+**Impacto:** `DEFAULT_MODELS.gemini` se corrigió a `gemini-3.6-flash` porque es el identificador **verificado en el smoke real**. `DEFAULT_MODELS.anthropic` (`claude-3-5-sonnet-20241022`, heredado de 7D) y `DEFAULT_MODELS.openai` (`gpt-4o-mini`) **no se han ejercitado nunca contra la API real** y es probable que al menos el de Anthropic esté obsoleto. Si alguien selecciona esos proveedores sin fijar `*_MODEL` en el entorno, obtendrá un 404/400 del proveedor — que, por diseño, NO se reintenta.
+**Mitigación:** no se cambiaron a ciegas (la propia revisión de 7D.1.1 lo prohíbe explícitamente). Están anotados en el código y en `apps/web/.env.example` con la advertencia correspondiente.
+**Acción requerida:** antes de usar `openai` o `anthropic` en serio, fijar `OPENAI_MODEL` / `ANTHROPIC_MODEL` en el entorno y hacer un smoke igual que con Gemini; después, actualizar la constante con el valor verificado.
+
+### R-OPS-03 — Coste de los reintentos
+**Severidad:** 🟢 Bajo
+**Probabilidad:** Media
+**Impacto:** Reintentar un timeout puede implicar que el proveedor facture también la llamada abortada. En el peor caso, una generación cuesta hasta 3 llamadas.
+**Mitigación:** el máximo está acotado por arriba a 3 intentos (un valor mayor en el entorno se ignora), solo se reintentan errores transitorios (nunca 4xx, que se repetirían idénticos), y `CAMPAIGN_AI_MAX_ATTEMPTS=1` desactiva los reintentos por completo si se prioriza el coste.
+**Acción requerida:** ninguna. Revisar `metadata.ai.latencyMs` y el consumo del proveedor tras unas semanas de uso real para calibrar timeout e intentos con datos.
+
+---
+
 ## Resumen ejecutivo de riesgos que bloquean el inicio de 7B
 
 1. **R-DOM-01** (`organizationId` faltante) — debe resolverse en el diseño antes de escribir la migración.
