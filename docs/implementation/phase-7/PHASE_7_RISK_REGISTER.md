@@ -296,3 +296,52 @@
 2. **R-SEC-02** (roles de aprobación indefinidos) — requiere una respuesta del usuario antes de escribir RLS completo (se puede empezar 7B con las tablas y dejar las policies de `campaign_approvals` como último paso de 7B, una vez confirmados los roles).
 
 Ningún otro riesgo listado bloquea el inicio de 7B; el resto se mitiga durante las subfases correspondientes (7C–7G) según lo indicado.
+
+---
+
+## Cierre Phase 7G — clasificación final de riesgos (2026-08-23)
+
+Revisión de todos los riesgos de Phase 7 al cierre de 7G (HEAD `0a93419`).
+No se borra el historial de ningún riesgo — esta tabla es un resumen de
+estado final, el detalle completo de cada riesgo sigue en su sección
+original arriba. Ver `docs/implementation/phase-7/PHASE_7_CLOSURE_REPORT.md`
+para el detalle de verificación de cada uno.
+
+| Riesgo | Estado final | Nota |
+|---|---|---|
+| R-DOM-01 | DEFERRED | Riesgo de diseño de dominio general (`Campaign` sin `organizationId` en la entidad), mitigado a nivel de tabla/RLS desde 7B; relevante para fases futuras, no bloquea Phase 7. |
+| R-DOM-02 | DEFERRED | `CampaignRepository.delete()` físico — sin cambios en 7G, contexto para fases futuras. |
+| R-DOM-03 | DEFERRED | Confusión de nombres `campaigns` vs `client_metrics.campaigns` — documental, sin impacto funcional verificado. |
+| R-TECH-01 | CLOSED | Resuelto en 7C (`canTransitionCampaign`), verificado. |
+| R-TECH-02 | CLOSED | Resuelto en 7B (repositorio real implementado). |
+| R-TECH-03 | CLOSED | Resuelto en 7D (validación estructurada de salida IA), verificado. |
+| R-TECH-04 | MITIGATED | Idempotencia vía `alert_key` (atómico) y signature tags (check-then-act, trade-off aceptado desde 6F). |
+| R-TECH-05 | CLOSED | Ruta real `(protected)` ya es la usada en todo el código. |
+| R-SEC-01 | CLOSED | RLS de `campaigns`/`campaign_approvals`/`compliance_rules` verificada línea por línea en 7G §7 — alcance correcto, sin hallazgos. |
+| R-SEC-02 | CLOSED | Roles de aprobación (`admin`+) confirmados en las RPCs (7C), verificados de nuevo en 7G §7.3. |
+| R-SEC-03 | CLOSED | Resuelto en 7D (prompt injection / fuga de contexto). |
+| R-SEC-04 | CLOSED | Resuelto en 7D (control de costo de llamadas IA). |
+| R-PROD-01 | DEFERRED | Publicación real a Meta/Google/YouTube queda fuera de Phase 7 por diseño — confirmado que ningún código actual la dispara (7G §10). |
+| R-PROD-02 | DEFERRED | Duplicación de reglas de compliance entre agente y guía maestra — documental, sin impacto de seguridad. |
+| R-TECH-06 | MITIGATED | Solo meta_ads/google_ads tienen builder — limitación de alcance conocida, no defecto. |
+| R-TECH-07 | DEFERRED | Sin historial de regeneraciones — aceptado, UX conocida. |
+| R-TECH-08 | DEFERRED | Duplicación de `GENERATED_CONTENT_SCHEMA_VERSION` — cosmético, sin impacto funcional verificado. |
+| R-TECH-09 | MITIGATED | Suite de `apps/web` sí se verificó (1432 tests, entorno con red) en 7D.1 — riesgo mitigado, no eliminado por la limitación de entorno persistente de este puente. |
+| R-ENV-01 | DEFERRED | `.git/index.lock` no se puede eliminar vía el puente — informativo, no tocado, sin impacto en ningún commit real. |
+| R-SEC-05 | MITIGATED | Secretos de proveedor de IA — barrido de 7G §11 sin hallazgos reales, solo fixtures sintéticos de test. |
+| R-SEC-06 | MITIGATED | Superficie de configuración por 3 proveedores — diseño aceptado, con env vars server-side únicamente. |
+| R-OPS-01 | MITIGATED | Sin fallback automático entre proveedores — decisión deliberada, documentada. |
+| R-TECH-10 | MITIGATED | Diferencias de calidad entre proveedores — aceptado, fuera de alcance de Phase 7. |
+| R-TECH-11 | DEFERRED | Regenerar con otro proveedor sobrescribe resultado anterior — aceptado, agrava R-TECH-07. |
+| R-TECH-12 | CLOSED | Resuelto en 7D.1 (path mapping de `@bop-agency/ai-engine`). |
+| R-OPS-02 | CLOSED | Resuelto/mitigado en 7D.1.1 (timeout 60s, reintentos con backoff). |
+| R-DATA-01 | CLOSED | Resuelto en 7D.1.1 (coerción estricta de dinero). |
+| R-UX-02 | CLOSED | Resuelto en 7D.1.1 (`resolveAiCampaignName`). |
+| R-UX-03 | CLOSED | Resuelto en 7D.1.1 (`mapError` por `aiErrorKind`). |
+| R-TECH-13 | DEFERRED | Modelo default de Anthropic sin verificar en smoke real — no bloquea Phase 7 (instrucción explícita del usuario), documentado en 7G §12. |
+| R-OPS-03 | MITIGATED | Costo de reintentos — tope duro de 3 intentos, aceptado. |
+| R-TECH-14 | DEFERRED | `TaskRepository` sin historial completo — afecta `CampaignAutomationActivity`, auditado en 7G §13 sin defecto de seguridad, solo limitación de alcance. |
+| R-OPS-04 | DEFERRED | Alertas de fallo de IA se reabren en cada reintento — trade-off heredado de 6F, aceptado. |
+| R-TECH-15 | CLOSED | Bug real de `created_by` no-UUID — corregido, verificado por smoke real 4/4 PASS y por tests con asserts explícitos sobre el valor recibido. |
+
+**Ningún riesgo queda en estado OPEN bloqueante para el merge de Phase 7.**
