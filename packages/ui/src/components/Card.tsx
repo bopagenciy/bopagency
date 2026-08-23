@@ -10,7 +10,7 @@ export function Card({ children, padding = 'md', className = '', ...props }: Car
   return (
     <div
       {...props}
-      className={`bg-white rounded-lg border border-gray-200 shadow-sm ${paddingClass} ${className}`}
+      className={`bg-card text-card-foreground rounded-lg border border-border shadow-sm ${paddingClass} ${className}`}
     >
       {children}
     </div>
@@ -24,7 +24,7 @@ export function CardHeader({
   children: ReactNode;
   className?: string;
 }) {
-  return <div className={`px-5 py-4 border-b border-gray-100 ${className}`}>{children}</div>;
+  return <div className={`px-5 py-4 border-b border-border ${className}`}>{children}</div>;
 }
 
 export function CardBody({

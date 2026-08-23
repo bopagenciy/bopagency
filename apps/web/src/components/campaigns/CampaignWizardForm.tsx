@@ -134,7 +134,7 @@ export function CampaignWizardForm({ clients }: CampaignWizardFormProps) {
       )}
 
       {/* Modo de creación */}
-      <div className="bg-white rounded-xl border border-gray-200 p-6 space-y-3">
+      <div className="bg-white rounded-xl border border-border p-6 space-y-3">
         <h2 className="font-semibold text-gray-900">Modo de creación</h2>
         <div className="flex flex-col sm:flex-row gap-3">
           <button
@@ -173,7 +173,7 @@ export function CampaignWizardForm({ clients }: CampaignWizardFormProps) {
       </div>
 
       {/* Datos base */}
-      <div className="bg-white rounded-xl border border-gray-200 p-6 space-y-4">
+      <div className="bg-white rounded-xl border border-border p-6 space-y-4">
         <h2 className="font-semibold text-gray-900">Datos base</h2>
 
         <div className="grid grid-cols-1 sm:grid-cols-2 gap-4">
@@ -186,7 +186,7 @@ export function CampaignWizardForm({ clients }: CampaignWizardFormProps) {
               value={clientId}
               onChange={(e) => setClientId(e.target.value)}
               required
-              className="w-full px-3 py-2 border border-gray-200 rounded-lg text-sm focus:outline-none focus:ring-2 focus:ring-red-500"
+              className="w-full px-3 py-2 border border-border rounded-lg text-sm focus:outline-none focus:ring-2 focus:ring-primary"
             >
               {clients.map((c) => (
                 <option key={c.id} value={c.id}>
@@ -204,7 +204,7 @@ export function CampaignWizardForm({ clients }: CampaignWizardFormProps) {
               id="platform"
               value={platform}
               onChange={(e) => setPlatform(e.target.value as AdPlatform)}
-              className="w-full px-3 py-2 border border-gray-200 rounded-lg text-sm focus:outline-none focus:ring-2 focus:ring-red-500"
+              className="w-full px-3 py-2 border border-border rounded-lg text-sm focus:outline-none focus:ring-2 focus:ring-primary"
             >
               {AD_PLATFORMS.map((p) => (
                 <option key={p} value={p}>
@@ -246,7 +246,7 @@ export function CampaignWizardForm({ clients }: CampaignWizardFormProps) {
                   ? 'Ej: Temporada alta — Meta Ads'
                   : 'Si lo dejas vacío, la IA propone un título corto'
               }
-              className="w-full px-3 py-2 border border-gray-200 rounded-lg text-sm focus:outline-none focus:ring-2 focus:ring-red-500"
+              className="w-full px-3 py-2 border border-border rounded-lg text-sm focus:outline-none focus:ring-2 focus:ring-primary"
             />
           </div>
 
@@ -258,7 +258,7 @@ export function CampaignWizardForm({ clients }: CampaignWizardFormProps) {
               id="objective"
               value={objective}
               onChange={(e) => setObjective(e.target.value as CampaignObjective)}
-              className="w-full px-3 py-2 border border-gray-200 rounded-lg text-sm focus:outline-none focus:ring-2 focus:ring-red-500"
+              className="w-full px-3 py-2 border border-border rounded-lg text-sm focus:outline-none focus:ring-2 focus:ring-primary"
             >
               {CAMPAIGN_OBJECTIVES.map((o) => (
                 <option key={o} value={o}>
@@ -282,12 +282,12 @@ export function CampaignWizardForm({ clients }: CampaignWizardFormProps) {
                 onChange={(e) => setBudget(e.target.value)}
                 required
                 placeholder="5000000"
-                className="w-full px-3 py-2 border border-gray-200 rounded-lg text-sm focus:outline-none focus:ring-2 focus:ring-red-500"
+                className="w-full px-3 py-2 border border-border rounded-lg text-sm focus:outline-none focus:ring-2 focus:ring-primary"
               />
               <select
                 value={currency}
                 onChange={(e) => setCurrency(e.target.value)}
-                className="px-3 py-2 border border-gray-200 rounded-lg text-sm focus:outline-none focus:ring-2 focus:ring-red-500"
+                className="px-3 py-2 border border-border rounded-lg text-sm focus:outline-none focus:ring-2 focus:ring-primary"
                 aria-label="Moneda"
               >
                 {CAMPAIGN_CURRENCIES.map((c) => (
@@ -308,7 +308,7 @@ export function CampaignWizardForm({ clients }: CampaignWizardFormProps) {
               type="date"
               value={startDate}
               onChange={(e) => setStartDate(e.target.value)}
-              className="w-full px-3 py-2 border border-gray-200 rounded-lg text-sm focus:outline-none focus:ring-2 focus:ring-red-500"
+              className="w-full px-3 py-2 border border-border rounded-lg text-sm focus:outline-none focus:ring-2 focus:ring-primary"
             />
           </div>
 
@@ -321,14 +321,14 @@ export function CampaignWizardForm({ clients }: CampaignWizardFormProps) {
               type="date"
               value={endDate}
               onChange={(e) => setEndDate(e.target.value)}
-              className="w-full px-3 py-2 border border-gray-200 rounded-lg text-sm focus:outline-none focus:ring-2 focus:ring-red-500"
+              className="w-full px-3 py-2 border border-border rounded-lg text-sm focus:outline-none focus:ring-2 focus:ring-primary"
             />
           </div>
         </div>
       </div>
 
       {/* Brief / contexto para IA */}
-      <div className="bg-white rounded-xl border border-gray-200 p-6 space-y-4">
+      <div className="bg-white rounded-xl border border-border p-6 space-y-4">
         <h2 className="font-semibold text-gray-900">
           Brief {mode === 'ai' && <span className="text-red-500">*</span>}
         </h2>
@@ -339,7 +339,7 @@ export function CampaignWizardForm({ clients }: CampaignWizardFormProps) {
           onChange={(e) => setBrief(e.target.value)}
           required={mode === 'ai'}
           placeholder="Describe el producto/servicio, la audiencia, el tono deseado, promociones vigentes y cualquier restricción relevante..."
-          className="w-full px-3 py-2 border border-gray-200 rounded-lg text-sm focus:outline-none focus:ring-2 focus:ring-red-500 resize-y"
+          className="w-full px-3 py-2 border border-border rounded-lg text-sm focus:outline-none focus:ring-2 focus:ring-primary resize-y"
         />
 
         {mode === 'ai' && (
@@ -362,7 +362,7 @@ export function CampaignWizardForm({ clients }: CampaignWizardFormProps) {
                 value={language}
                 onChange={(e) => setLanguage(e.target.value)}
                 placeholder="es"
-                className="w-full px-3 py-2 border border-gray-200 rounded-lg text-sm focus:outline-none focus:ring-2 focus:ring-red-500"
+                className="w-full px-3 py-2 border border-border rounded-lg text-sm focus:outline-none focus:ring-2 focus:ring-primary"
               />
             </div>
             <div>
@@ -375,7 +375,7 @@ export function CampaignWizardForm({ clients }: CampaignWizardFormProps) {
                 value={market}
                 onChange={(e) => setMarket(e.target.value)}
                 placeholder="CO, MX, US..."
-                className="w-full px-3 py-2 border border-gray-200 rounded-lg text-sm focus:outline-none focus:ring-2 focus:ring-red-500"
+                className="w-full px-3 py-2 border border-border rounded-lg text-sm focus:outline-none focus:ring-2 focus:ring-primary"
               />
             </div>
           </div>
@@ -387,7 +387,7 @@ export function CampaignWizardForm({ clients }: CampaignWizardFormProps) {
         <button
           type="submit"
           disabled={isPending}
-          className="px-6 py-2.5 bg-red-600 text-white rounded-lg text-sm font-medium hover:bg-red-700 disabled:opacity-50 transition-colors"
+          className="px-6 py-2.5 bg-primary text-primary-foreground rounded-lg text-sm font-medium hover:bg-primary-hover disabled:opacity-50 transition-colors"
         >
           {isPending
             ? mode === 'ai'

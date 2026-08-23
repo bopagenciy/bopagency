@@ -65,7 +65,7 @@ export function OrganizationSwitcher({
         aria-haspopup="listbox"
         aria-label="Seleccionar organización"
         disabled={isPending}
-        className="flex items-center gap-2 px-3 py-1.5 text-sm border border-gray-200 rounded-md hover:bg-gray-50 transition-colors text-gray-700 max-w-[220px] disabled:opacity-50 focus:outline-none focus:ring-2 focus:ring-red-500 focus:ring-offset-1"
+        className="flex items-center gap-2 px-3 py-1.5 text-sm border border-border rounded-md hover:bg-muted transition-colors text-foreground max-w-[220px] disabled:opacity-50 focus:outline-none focus:ring-2 focus:ring-primary focus:ring-offset-1"
       >
         <span className="truncate">{activeOrg?.name ?? 'Seleccionar organización'}</span>
         {isPending ? (
@@ -83,7 +83,7 @@ export function OrganizationSwitcher({
         <div
           role="listbox"
           aria-label="Lista de organizaciones"
-          className="absolute right-0 mt-1 min-w-[220px] bg-white border border-gray-200 rounded-lg shadow-lg z-50 overflow-hidden"
+          className="absolute right-0 mt-1 min-w-[220px] bg-card border border-border rounded-lg shadow-lg z-50 overflow-hidden"
         >
           {organizations.length === 0 ? (
             <p className="px-4 py-3 text-sm text-gray-500">Sin organizaciones activas</p>
@@ -98,8 +98,8 @@ export function OrganizationSwitcher({
                   aria-selected={isActive}
                   onClick={() => handleSwitchOrg(org.id)}
                   disabled={isPending}
-                  className={`w-full text-left px-4 py-2.5 text-sm flex items-center gap-2 hover:bg-gray-50 transition-colors disabled:opacity-50 focus:outline-none focus:bg-gray-50 ${
-                    isActive ? 'text-red-600 font-medium' : 'text-gray-700'
+                  className={`w-full text-left px-4 py-2.5 text-sm flex items-center gap-2 hover:bg-muted transition-colors disabled:opacity-50 focus:outline-none focus:bg-muted ${
+                    isActive ? 'text-primary font-medium' : 'text-foreground'
                   }`}
                 >
                   <span className="w-3 shrink-0 text-xs">{isActive ? '✓' : ''}</span>

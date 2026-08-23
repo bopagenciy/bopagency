@@ -12,24 +12,24 @@ type HeaderProps = {
 
 export function Header({ breadcrumbs = [], title, actions }: HeaderProps) {
   return (
-    <header className="bg-white border-b border-gray-200 px-6 py-4">
+    <header className="bg-background border-b border-border px-6 py-4">
       <div className="flex items-center justify-between">
         {/* Migas de pan */}
-        <div className="flex items-center gap-1 text-sm text-gray-500">
+        <div className="flex items-center gap-1 text-sm text-muted-foreground">
           {breadcrumbs.map((crumb, i) => (
             <span key={i} className="flex items-center gap-1">
-              {i > 0 && <span className="text-gray-300">/</span>}
+              {i > 0 && <span className="text-border">/</span>}
               {crumb.href ? (
-                <a href={crumb.href} className="hover:text-gray-900 transition-colors">
+                <a href={crumb.href} className="hover:text-foreground transition-colors">
                   {crumb.label}
                 </a>
               ) : (
-                <span className="text-gray-900 font-medium">{crumb.label}</span>
+                <span className="text-foreground font-semibold text-base">{crumb.label}</span>
               )}
             </span>
           ))}
           {title && breadcrumbs.length === 0 && (
-            <span className="text-gray-900 font-medium">{title}</span>
+            <span className="text-foreground font-semibold text-base">{title}</span>
           )}
         </div>
         {/* Slot de acciones */}

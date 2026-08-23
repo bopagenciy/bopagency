@@ -42,7 +42,7 @@ export function AutomationSignalsWidget({ data }: AutomationSignalsWidgetProps) 
         </h2>
         <Link
           href="/automations"
-          className="text-xs text-red-600 hover:text-red-700 transition-colors"
+          className="text-xs text-primary hover:text-primary-hover transition-colors"
           aria-label="Ver todas las automatizaciones"
         >
           Ver todas →

@@ -83,7 +83,7 @@ export function CampaignApprovalPanel({ campaign, userRole }: CampaignApprovalPa
   }
 
   return (
-    <div className="bg-white rounded-xl border border-gray-200 p-6 space-y-4">
+    <div className="bg-white rounded-xl border border-border p-6 space-y-4">
       <h2 className="font-semibold text-gray-900">Flujo de aprobación</h2>
 
       {error && (
@@ -147,7 +147,7 @@ export function CampaignApprovalPanel({ campaign, userRole }: CampaignApprovalPa
             onChange={(e) => setNote(e.target.value)}
             required
             placeholder="Explica por qué se rechaza esta campaña..."
-            className="w-full px-3 py-2 border border-gray-200 rounded-lg text-sm focus:outline-none focus:ring-2 focus:ring-red-500 resize-y"
+            className="w-full px-3 py-2 border border-border rounded-lg text-sm focus:outline-none focus:ring-2 focus:ring-primary resize-y"
           />
           <div className="flex items-center gap-2">
             <button

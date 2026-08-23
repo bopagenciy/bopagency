@@ -20,9 +20,9 @@ export function Textarea({ label, error, className = '', id, rows = 4, ...props 
         {...props}
         className={[
           'block w-full rounded-md border px-3 py-2 text-sm shadow-sm',
-          'focus:outline-none focus:ring-2 focus:ring-red-500 focus:border-red-500',
+          'focus:outline-none focus:ring-2 focus:ring-primary focus:border-primary',
           'disabled:bg-gray-50 disabled:cursor-not-allowed',
-          error ? 'border-red-300 bg-red-50' : 'border-gray-300 bg-white',
+          error ? 'border-red-300 bg-red-50' : 'border-border bg-background',
           className,
         ].join(' ')}
       />

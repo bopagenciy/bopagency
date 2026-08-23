@@ -30,7 +30,7 @@ export function CampaignsTable({ campaigns, clientNames }: CampaignsTableProps) 
   }
 
   return (
-    <div className="overflow-x-auto rounded-xl border border-gray-200 bg-white">
+    <div className="overflow-x-auto rounded-xl border border-border bg-card">
       <table className="w-full text-sm" aria-label="Lista de campañas">
         <thead>
           <tr className="border-b border-gray-100 bg-gray-50">
@@ -56,7 +56,7 @@ export function CampaignsTable({ campaigns, clientNames }: CampaignsTableProps) 
               <td className="px-4 py-3">
                 <Link
                   href={`/campaigns/${campaign.id}`}
-                  className="font-medium text-gray-900 hover:text-red-600 transition-colors"
+                  className="font-medium text-gray-900 hover:text-primary transition-colors"
                 >
                   {campaign.name}
                 </Link>

@@ -122,7 +122,7 @@ export function EditCampaignModal({ campaign, userRole }: EditCampaignModalProps
           aria-label="Editar campaña"
           className="fixed inset-0 z-50 flex items-center justify-center bg-black/40 p-4"
         >
-          <div className="bg-white rounded-xl shadow-xl w-full max-w-2xl max-h-[90vh] overflow-y-auto p-6 space-y-4">
+          <div className="bg-card rounded-xl shadow-xl w-full max-w-2xl max-h-[90vh] overflow-y-auto p-6 space-y-4">
             <div className="flex items-center justify-between">
               <h2 className="font-semibold text-gray-900">Editar campaña</h2>
               <button
@@ -165,7 +165,7 @@ export function EditCampaignModal({ campaign, userRole }: EditCampaignModalProps
                     value={name}
                     onChange={(e) => setName(e.target.value)}
                     required
-                    className="w-full px-3 py-2 border border-gray-200 rounded-lg text-sm focus:outline-none focus:ring-2 focus:ring-red-500"
+                    className="w-full px-3 py-2 border border-border rounded-lg text-sm focus:outline-none focus:ring-2 focus:ring-primary"
                   />
                 </div>
 
@@ -177,7 +177,7 @@ export function EditCampaignModal({ campaign, userRole }: EditCampaignModalProps
                     id="edit-platform"
                     value={platform}
                     onChange={(e) => setPlatform(e.target.value as AdPlatform)}
-                    className="w-full px-3 py-2 border border-gray-200 rounded-lg text-sm focus:outline-none focus:ring-2 focus:ring-red-500"
+                    className="w-full px-3 py-2 border border-border rounded-lg text-sm focus:outline-none focus:ring-2 focus:ring-primary"
                   >
                     {AD_PLATFORMS.map((p) => (
                       <option key={p} value={p}>
@@ -195,7 +195,7 @@ export function EditCampaignModal({ campaign, userRole }: EditCampaignModalProps
                     id="edit-objective"
                     value={objective}
                     onChange={(e) => setObjective(e.target.value as CampaignObjective)}
-                    className="w-full px-3 py-2 border border-gray-200 rounded-lg text-sm focus:outline-none focus:ring-2 focus:ring-red-500"
+                    className="w-full px-3 py-2 border border-border rounded-lg text-sm focus:outline-none focus:ring-2 focus:ring-primary"
                   >
                     {CAMPAIGN_OBJECTIVES.map((o) => (
                       <option key={o} value={o}>
@@ -218,12 +218,12 @@ export function EditCampaignModal({ campaign, userRole }: EditCampaignModalProps
                       value={budget}
                       onChange={(e) => setBudget(e.target.value)}
                       required
-                      className="w-full px-3 py-2 border border-gray-200 rounded-lg text-sm focus:outline-none focus:ring-2 focus:ring-red-500"
+                      className="w-full px-3 py-2 border border-border rounded-lg text-sm focus:outline-none focus:ring-2 focus:ring-primary"
                     />
                     <select
                       value={currency}
                       onChange={(e) => setCurrency(e.target.value)}
-                      className="px-3 py-2 border border-gray-200 rounded-lg text-sm focus:outline-none focus:ring-2 focus:ring-red-500"
+                      className="px-3 py-2 border border-border rounded-lg text-sm focus:outline-none focus:ring-2 focus:ring-primary"
                       aria-label="Moneda"
                     >
                       {CAMPAIGN_CURRENCIES.map((c) => (
@@ -244,7 +244,7 @@ export function EditCampaignModal({ campaign, userRole }: EditCampaignModalProps
                     type="date"
                     value={startDate}
                     onChange={(e) => setStartDate(e.target.value)}
-                    className="w-full px-3 py-2 border border-gray-200 rounded-lg text-sm focus:outline-none focus:ring-2 focus:ring-red-500"
+                    className="w-full px-3 py-2 border border-border rounded-lg text-sm focus:outline-none focus:ring-2 focus:ring-primary"
                   />
                 </div>
 
@@ -257,7 +257,7 @@ export function EditCampaignModal({ campaign, userRole }: EditCampaignModalProps
                     type="date"
                     value={endDate}
                     onChange={(e) => setEndDate(e.target.value)}
-                    className="w-full px-3 py-2 border border-gray-200 rounded-lg text-sm focus:outline-none focus:ring-2 focus:ring-red-500"
+                    className="w-full px-3 py-2 border border-border rounded-lg text-sm focus:outline-none focus:ring-2 focus:ring-primary"
                   />
                 </div>
 
@@ -270,7 +270,7 @@ export function EditCampaignModal({ campaign, userRole }: EditCampaignModalProps
                     rows={5}
                     value={brief}
                     onChange={(e) => setBrief(e.target.value)}
-                    className="w-full px-3 py-2 border border-gray-200 rounded-lg text-sm focus:outline-none focus:ring-2 focus:ring-red-500 resize-y"
+                    className="w-full px-3 py-2 border border-border rounded-lg text-sm focus:outline-none focus:ring-2 focus:ring-primary resize-y"
                   />
                 </div>
               </div>
@@ -279,7 +279,7 @@ export function EditCampaignModal({ campaign, userRole }: EditCampaignModalProps
                 <button
                   type="submit"
                   disabled={isPending}
-                  className="px-4 py-2 bg-red-600 text-white text-sm font-medium rounded-lg hover:bg-red-700 disabled:opacity-50 transition-colors"
+                  className="px-4 py-2 bg-primary text-primary-foreground text-sm font-medium rounded-lg hover:bg-primary-hover disabled:opacity-50 transition-colors"
                 >
                   {isPending ? 'Guardando…' : 'Guardar cambios'}
                 </button>

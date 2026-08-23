@@ -40,7 +40,7 @@ export function TaskStatusAction({ task }: TaskStatusActionProps) {
       onChange={handleChange}
       defaultValue=""
       disabled={isPending}
-      className="text-xs border border-gray-200 rounded px-2 py-1 bg-white text-gray-700 focus:outline-none focus:ring-2 focus:ring-red-500 disabled:opacity-50 cursor-pointer"
+      className="text-xs border border-gray-200 rounded px-2 py-1 bg-white text-gray-700 focus:outline-none focus:ring-2 focus:ring-primary disabled:opacity-50 cursor-pointer"
       aria-label={`Cambiar estado de ${task.title}`}
       aria-busy={isPending}
     >

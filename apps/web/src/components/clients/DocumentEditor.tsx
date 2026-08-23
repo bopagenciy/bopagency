@@ -84,7 +84,7 @@ export function DocumentEditor({
             type="text"
             required
             defaultValue={defaultTitle}
-            className="w-full px-3 py-2 border border-gray-200 rounded-lg text-sm focus:outline-none focus:ring-2 focus:ring-red-500"
+            className="w-full px-3 py-2 border border-gray-200 rounded-lg text-sm focus:outline-none focus:ring-2 focus:ring-primary"
           />
         </div>
 
@@ -96,7 +96,7 @@ export function DocumentEditor({
             id="status"
             name="status"
             defaultValue={defaultStatus}
-            className="px-3 py-2 border border-gray-200 rounded-lg text-sm focus:outline-none focus:ring-2 focus:ring-red-500"
+            className="px-3 py-2 border border-gray-200 rounded-lg text-sm focus:outline-none focus:ring-2 focus:ring-primary"
           >
             {(['draft', 'published', 'archived'] as DocumentStatus[]).map((s) => (
               <option key={s} value={s}>
@@ -115,7 +115,7 @@ export function DocumentEditor({
             name="category"
             type="text"
             defaultValue={defaultCategory}
-            className="px-3 py-2 border border-gray-200 rounded-lg text-sm focus:outline-none focus:ring-2 focus:ring-red-500"
+            className="px-3 py-2 border border-gray-200 rounded-lg text-sm focus:outline-none focus:ring-2 focus:ring-primary"
           />
         </div>
       </div>
@@ -131,7 +131,7 @@ export function DocumentEditor({
           onChange={(e) => setContent(e.target.value)}
           rows={20}
           placeholder="Escribe el contenido del documento aquí..."
-          className="w-full px-3 py-2 border border-gray-200 rounded-lg text-sm font-mono focus:outline-none focus:ring-2 focus:ring-red-500 resize-y"
+          className="w-full px-3 py-2 border border-gray-200 rounded-lg text-sm font-mono focus:outline-none focus:ring-2 focus:ring-primary resize-y"
         />
       </div>
 
@@ -139,7 +139,7 @@ export function DocumentEditor({
         <button
           type="submit"
           disabled={isPending}
-          className="px-6 py-2.5 bg-red-600 text-white rounded-lg text-sm font-medium hover:bg-red-700 disabled:opacity-50 transition-colors"
+          className="px-6 py-2.5 bg-primary text-primary-foreground rounded-lg text-sm font-medium hover:bg-primary-hover disabled:opacity-50 transition-colors"
         >
           {isPending ? 'Guardando...' : 'Guardar documento'}
         </button>

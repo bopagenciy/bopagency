@@ -39,7 +39,7 @@ export function CampaignAutomationActivity({ task }: CampaignAutomationActivityP
   if (!task) return null;
 
   return (
-    <div className="bg-white rounded-xl border border-gray-200 p-6 space-y-3">
+    <div className="bg-white rounded-xl border border-border p-6 space-y-3">
       <h2 className="font-semibold text-gray-900">Actividad / Automatización</h2>
       <div className="flex items-center justify-between gap-4 rounded-lg border border-gray-100 bg-gray-50 px-4 py-3">
         <div>

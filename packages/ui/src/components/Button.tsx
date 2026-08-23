@@ -11,12 +11,25 @@ type ButtonProps = ButtonHTMLAttributes<HTMLButtonElement> & {
   children: ReactNode;
 };
 
+/**
+ * Variantes — Phase 8A.0 (Branding & Theming Foundation).
+ *
+ * `primary` usa el naranja corporativo (`--primary`, ver globals.css) — NO
+ * un hex hardcodeado. `danger` sigue usando el rojo semántico de Tailwind
+ * (destructivo/error) deliberadamente separado de la marca — ver principio
+ * F del mandato de 8A.0 ("brand colors and semantic colors are different
+ * concepts").
+ */
 const variantClasses: Record<ButtonVariant, string> = {
-  primary: 'bg-red-600 text-white hover:bg-red-700 focus:ring-red-500 disabled:bg-red-300',
-  secondary: 'bg-gray-100 text-gray-900 hover:bg-gray-200 focus:ring-gray-500 disabled:bg-gray-50',
-  ghost: 'bg-transparent text-gray-700 hover:bg-gray-100 focus:ring-gray-500',
-  danger: 'bg-red-50 text-red-700 border border-red-200 hover:bg-red-100 focus:ring-red-500',
-  outline: 'bg-white text-gray-700 border border-gray-300 hover:bg-gray-50 focus:ring-gray-500',
+  primary:
+    'bg-primary text-primary-foreground hover:bg-primary-hover focus:ring-primary disabled:bg-primary/40',
+  secondary:
+    'bg-secondary text-secondary-foreground hover:bg-muted focus:ring-primary disabled:opacity-50 border border-border',
+  ghost: 'bg-transparent text-foreground hover:bg-muted focus:ring-primary',
+  danger:
+    'bg-destructive/10 text-destructive border border-destructive/30 hover:bg-destructive/20 focus:ring-destructive',
+  outline:
+    'bg-background text-foreground border border-border hover:bg-muted focus:ring-primary',
 };
 
 const sizeClasses: Record<ButtonSize, string> = {

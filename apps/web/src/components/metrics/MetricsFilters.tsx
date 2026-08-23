@@ -39,7 +39,7 @@ export function MetricsFilters({ platform, period, periodOptions }: MetricsFilte
       <select
         value={platform}
         onChange={(e) => updateFilter('platform', e.target.value)}
-        className="px-3 py-2 border border-gray-200 rounded-lg text-sm focus:outline-none focus:ring-2 focus:ring-red-500 bg-white"
+        className="px-3 py-2 border border-gray-200 rounded-lg text-sm focus:outline-none focus:ring-2 focus:ring-primary bg-white"
         aria-label="Filtrar por plataforma"
       >
         <option value="">Todas las plataformas</option>
@@ -54,7 +54,7 @@ export function MetricsFilters({ platform, period, periodOptions }: MetricsFilte
         <select
           value={period}
           onChange={(e) => updateFilter('period', e.target.value)}
-          className="px-3 py-2 border border-gray-200 rounded-lg text-sm focus:outline-none focus:ring-2 focus:ring-red-500 bg-white"
+          className="px-3 py-2 border border-gray-200 rounded-lg text-sm focus:outline-none focus:ring-2 focus:ring-primary bg-white"
           aria-label="Filtrar por período"
         >
           <option value="">Todos los períodos</option>

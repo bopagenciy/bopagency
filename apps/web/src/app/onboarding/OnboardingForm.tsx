@@ -69,13 +69,13 @@ export function OnboardingForm({ userId: _userId }: OnboardingFormProps) {
   return (
     <form onSubmit={handleSubmit} className="space-y-4">
       {error && (
-        <div className="p-3 rounded-lg bg-red-950 border border-red-800 text-red-300 text-sm">
+        <div className="p-3 rounded-lg bg-red-50 border border-red-200 text-red-700 text-sm">
           {error}
         </div>
       )}
 
       <div>
-        <label htmlFor="name" className="block text-sm font-medium text-gray-300 mb-1.5">
+        <label htmlFor="name" className="block text-sm font-medium text-foreground mb-1.5">
           Nombre de la organización
         </label>
         <input
@@ -85,16 +85,16 @@ export function OnboardingForm({ userId: _userId }: OnboardingFormProps) {
           value={name}
           onChange={(e) => handleNameChange(e.target.value)}
           placeholder="Bop Agency"
-          className="w-full px-3 py-2 rounded-lg bg-gray-800 border border-gray-700 text-white placeholder-gray-500 text-sm focus:outline-none focus:ring-2 focus:ring-red-500 focus:border-transparent"
+          className="w-full px-3 py-2 rounded-lg bg-background border border-border text-foreground placeholder-muted-foreground text-sm focus:outline-none focus:ring-2 focus:ring-primary focus:border-transparent"
         />
       </div>
 
       <div>
-        <label htmlFor="slug" className="block text-sm font-medium text-gray-300 mb-1.5">
+        <label htmlFor="slug" className="block text-sm font-medium text-foreground mb-1.5">
           Identificador URL
         </label>
         <div className="flex items-center gap-2">
-          <span className="text-gray-500 text-sm shrink-0">bopagency.co/</span>
+          <span className="text-muted-foreground text-sm shrink-0">bopagency.co/</span>
           <input
             id="slug"
             type="text"
@@ -104,16 +104,16 @@ export function OnboardingForm({ userId: _userId }: OnboardingFormProps) {
             placeholder="bop-agency"
             pattern="[a-z0-9-]+"
             title="Solo letras minúsculas, números y guiones"
-            className="flex-1 px-3 py-2 rounded-lg bg-gray-800 border border-gray-700 text-white placeholder-gray-500 text-sm focus:outline-none focus:ring-2 focus:ring-red-500 focus:border-transparent"
+            className="flex-1 px-3 py-2 rounded-lg bg-background border border-border text-foreground placeholder-muted-foreground text-sm focus:outline-none focus:ring-2 focus:ring-primary focus:border-transparent"
           />
         </div>
-        <p className="mt-1 text-xs text-gray-500">Solo letras minúsculas, números y guiones.</p>
+        <p className="mt-1 text-xs text-muted-foreground">Solo letras minúsculas, números y guiones.</p>
       </div>
 
       <button
         type="submit"
         disabled={isPending || !name.trim() || !slug.trim()}
-        className="w-full py-2.5 px-4 rounded-lg bg-red-600 hover:bg-red-500 disabled:bg-gray-700 disabled:cursor-not-allowed text-white text-sm font-medium transition-colors"
+        className="w-full py-2.5 px-4 rounded-lg bg-primary hover:bg-primary-hover disabled:bg-muted disabled:cursor-not-allowed text-primary-foreground text-sm font-medium transition-colors"
       >
         {isPending ? 'Creando organización…' : 'Crear organización y continuar →'}
       </button>

@@ -132,7 +132,7 @@ export function SettingsClient({
                   value={fullName}
                   onChange={(e) => setFullName(e.target.value)}
                   placeholder="Tu nombre"
-                  className="w-full px-3 py-2 rounded-lg border border-gray-300 text-sm focus:outline-none focus:ring-2 focus:ring-red-500 focus:border-transparent"
+                  className="w-full px-3 py-2 rounded-lg border border-gray-300 text-sm focus:outline-none focus:ring-2 focus:ring-primary focus:border-transparent"
                 />
               </div>
 
@@ -154,7 +154,7 @@ export function SettingsClient({
               <button
                 type="submit"
                 disabled={isPending}
-                className="px-4 py-2 rounded-lg bg-red-600 hover:bg-red-500 disabled:bg-gray-300 text-white text-sm font-medium transition-colors"
+                className="px-4 py-2 rounded-lg bg-primary hover:bg-primary-hover disabled:bg-gray-300 text-primary-foreground text-sm font-medium transition-colors"
               >
                 {isPending ? 'Guardando…' : 'Guardar perfil'}
               </button>
@@ -198,7 +198,7 @@ export function SettingsClient({
           )}
         </div>
         <div className="mt-3">
-          <a href="/onboarding" className="text-sm text-red-600 hover:text-red-500 font-medium">
+          <a href="/onboarding" className="text-sm text-primary hover:text-primary-hover font-medium">
             + Crear nueva organización
           </a>
         </div>
@@ -227,7 +227,7 @@ export function SettingsClient({
                   id="language"
                   value={language}
                   onChange={(e) => setLanguage(e.target.value)}
-                  className="w-full px-3 py-2 rounded-lg border border-gray-300 text-sm focus:outline-none focus:ring-2 focus:ring-red-500 bg-white"
+                  className="w-full px-3 py-2 rounded-lg border border-gray-300 text-sm focus:outline-none focus:ring-2 focus:ring-primary bg-white"
                 >
                   <option value="es">Español</option>
                   <option value="en">English</option>
@@ -242,7 +242,7 @@ export function SettingsClient({
                   id="timezone"
                   value={timezone}
                   onChange={(e) => setTimezone(e.target.value)}
-                  className="w-full px-3 py-2 rounded-lg border border-gray-300 text-sm focus:outline-none focus:ring-2 focus:ring-red-500 bg-white"
+                  className="w-full px-3 py-2 rounded-lg border border-gray-300 text-sm focus:outline-none focus:ring-2 focus:ring-primary bg-white"
                 >
                   <option value="America/Bogota">América/Bogotá (UTC-5)</option>
                   <option value="America/New_York">América/Nueva York (UTC-5/-4)</option>
@@ -262,8 +262,8 @@ export function SettingsClient({
                 role="switch"
                 aria-checked={emailNotifications}
                 onClick={() => setEmailNotifications((v) => !v)}
-                className={`relative inline-flex h-5 w-9 items-center rounded-full transition-colors focus:outline-none focus:ring-2 focus:ring-red-500 focus:ring-offset-1 ${
-                  emailNotifications ? 'bg-red-600' : 'bg-gray-300'
+                className={`relative inline-flex h-5 w-9 items-center rounded-full transition-colors focus:outline-none focus:ring-2 focus:ring-primary focus:ring-offset-1 ${
+                  emailNotifications ? 'bg-primary' : 'bg-gray-300'
                 }`}
               >
                 <span
@@ -279,7 +279,7 @@ export function SettingsClient({
               <button
                 type="submit"
                 disabled={isPending}
-                className="px-4 py-2 rounded-lg bg-red-600 hover:bg-red-500 disabled:bg-gray-300 text-white text-sm font-medium transition-colors"
+                className="px-4 py-2 rounded-lg bg-primary hover:bg-primary-hover disabled:bg-gray-300 text-primary-foreground text-sm font-medium transition-colors"
               >
                 {isPending ? 'Guardando…' : 'Guardar preferencias'}
               </button>

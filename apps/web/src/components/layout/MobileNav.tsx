@@ -1,6 +1,7 @@
 'use client';
 
 import { useState } from 'react';
+import Image from 'next/image';
 import Link from 'next/link';
 import { usePathname } from 'next/navigation';
 import { OrganizationSwitcher } from './OrganizationSwitcher';
@@ -35,17 +36,25 @@ export function MobileNav({
   return (
     <>
       {/* Barra superior móvil */}
-      <div className="lg:hidden flex items-center justify-between px-4 py-3 bg-gray-900 text-white">
+      <div className="lg:hidden flex items-center justify-between px-4 py-3 bg-sidebar text-sidebar-foreground">
         <div className="flex items-center gap-2">
-          <div className="w-7 h-7 rounded bg-red-500 flex items-center justify-center text-white font-bold text-xs">
-            B
+          {/* Micro-polish: mismo asset recortado + contenedor no-cuadrado
+              (60x32) que Sidebar.tsx, ver comentario ahí. */}
+          <div className="shrink-0 w-[60px] h-8 rounded bg-white/95 flex items-center justify-center overflow-hidden p-0.5">
+            <Image
+              src="/brand/bopagency-logo-trimmed.png"
+              alt="Bop Agency"
+              width={60}
+              height={32}
+              className="w-full h-full object-contain"
+            />
           </div>
           <span className="font-semibold text-sm">Bop Agency</span>
         </div>
 
         <div className="flex items-center gap-2">
           {/* Selector de org en móvil */}
-          <div className="[&_button]:border-gray-600 [&_button]:text-gray-300 [&_button]:hover:bg-gray-800 [&>div>div]:bg-gray-800 [&>div>div]:border-gray-700 [&>div>div_button]:text-gray-300">
+          <div className="[&_button]:border-sidebar-border [&_button]:text-sidebar-muted [&_button]:hover:bg-sidebar-hover [&>div>div]:bg-sidebar-hover [&>div>div]:border-sidebar-border [&>div>div_button]:text-sidebar-muted">
             <OrganizationSwitcher
               organizations={organizations}
               activeOrganizationId={activeOrganizationId}
@@ -58,7 +67,7 @@ export function MobileNav({
           {/* Botón hamburguesa */}
           <button
             onClick={() => setOpen(!open)}
-            className="p-2 rounded-md hover:bg-gray-800 transition-colors"
+            className="p-2 rounded-md hover:bg-sidebar-hover transition-colors focus:outline-none focus:ring-2 focus:ring-primary-accent"
             aria-label="Toggle navigation"
             aria-expanded={open}
           >
@@ -69,7 +78,7 @@ export function MobileNav({
 
       {/* Drawer de navegación móvil */}
       {open && (
-        <div className="lg:hidden bg-gray-900 text-white border-t border-gray-700">
+        <div className="lg:hidden bg-sidebar text-sidebar-foreground border-t border-sidebar-border">
           <nav className="px-3 py-3 space-y-1">
             {navItems.map((item) => {
               const isActive = pathname === item.href;
@@ -78,10 +87,10 @@ export function MobileNav({
                   key={item.href}
                   href={item.href}
                   onClick={() => setOpen(false)}
-                  className={`flex items-center gap-3 px-3 py-2.5 rounded-md text-sm transition-colors ${
+                  className={`flex items-center gap-3 px-3 py-2.5 rounded-r-md text-sm transition-colors border-l-[3px] outline-none focus-visible:ring-2 focus-visible:ring-primary-accent focus-visible:ring-offset-2 focus-visible:ring-offset-sidebar ${
                     isActive
-                      ? 'bg-red-600 text-white'
-                      : 'text-gray-300 hover:bg-gray-800 hover:text-white'
+                      ? 'bg-primary-accent/15 border-primary-accent text-sidebar-foreground font-medium'
+                      : 'border-transparent text-sidebar-muted hover:bg-sidebar-hover hover:text-sidebar-foreground'
                   }`}
                 >
                   <span>{item.icon}</span>
