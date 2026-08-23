@@ -1,5 +1,5 @@
 /**
- * submitCampaignForReview — Phase 7C.
+ * submitCampaignForReview — Phase 7C. Automation hook — Phase 7F.
  *
  * Transición draft → review. NO usa una RPC: la policy `campaigns_update`
  * (Phase 7B) ya permite que un UPDATE genérico fije el nuevo status a
@@ -22,11 +22,24 @@
  * 5. Persiste vía CampaignRepository.update (setea submitted_for_review_at
  *    automáticamente — ver SupabaseCampaignRepository.update).
  * 6. NO toca approved_at/rejected_at. NO crea campaign_approvals todavía.
+ * 7. Phase 7F — POST-COMMIT, best-effort: dispara
+ *    `evaluateCampaignAutomation('campaign_review_requested')`, que crea una
+ *    tarea operativa para owner/admin ("Revisar campaña: <name>"),
+ *    deduplicada por firma. Un fallo aquí NUNCA revierte ni afecta el
+ *    resultado de la transición ya persistida (ver
+ *    `evalCampaignAutomationSilently`).
  */
 
 import { ok, err, isOk } from '@bop-agency/shared';
 import type { Result } from '@bop-agency/shared';
-import type { Campaign, CampaignId, CampaignRepository, OrganizationRepository } from '@bop-agency/domain';
+import type {
+  AlertRepository,
+  Campaign,
+  CampaignId,
+  CampaignRepository,
+  OrganizationRepository,
+  TaskRepository,
+} from '@bop-agency/domain';
 import type { OrganizationId } from '@bop-agency/domain';
 import {
   canTransitionCampaign,
@@ -37,6 +50,7 @@ import {
 } from '@bop-agency/domain';
 import { submitCampaignForReviewSchema } from '@bop-agency/shared';
 import type { LoggerPort } from '../../ports/logger.port';
+import { evalCampaignAutomationSilently } from './campaign-automation-dispatch';
 
 export type SubmitCampaignForReviewInput = {
   readonly campaignId: string;
@@ -49,6 +63,9 @@ export type SubmitCampaignForReviewInput = {
 export type SubmitCampaignForReviewDeps = {
   campaignRepository: CampaignRepository;
   organizationRepository: OrganizationRepository;
+  /** Phase 7F — opcional para no romper callers/tests preexistentes que no lo pasen. */
+  alertRepository?: AlertRepository;
+  taskRepository?: TaskRepository;
   logger: LoggerPort;
 };
 
@@ -110,5 +127,21 @@ export async function submitCampaignForReview(
     organizationId: input.organizationId,
     actorUserId: input.actorUserId,
   });
+
+  // 5. Phase 7F — side effect interno, post-commit, best-effort. El status ya
+  //    quedó confirmado arriba; esto NUNCA lo revierte.
+  await evalCampaignAutomationSilently(
+    {
+      organizationId: input.organizationId,
+      campaignId,
+      campaignName: updateResult.value.name,
+      clientId: updateResult.value.clientId,
+      actorUserId: input.actorUserId,
+      automationType: 'campaign_review_requested',
+      occurredAt: new Date(),
+    },
+    deps,
+  );
+
   return ok(updateResult.value);
 }

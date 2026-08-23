@@ -136,12 +136,22 @@
 - **Riesgos:** R-UX-01 (exponer error interno del LLM al usuario final).
 - **Criterios de aceptación:** un usuario con rol suficiente puede crear una campaña, verla en `review`, y otro usuario con rol de aprobación puede aprobarla o rechazarla con nota, todo contra Supabase de staging (no producción).
 
-### 7F — Automation / notifications
-- **Objetivo:** notificar cuando una campaña pasa a `review` (creada) y cuando se decide (aprobada/rechazada), reemplazando el ítem 7.11 original (Inngest) por el patrón real del proyecto.
-- **Archivos/tablas principales:** hook en el use case `submitCampaignForReview` que crea una `alert`/`task` (reutilizando `alerts`/`tasks` ya existentes, mismo patrón que Phase 6F usa para incidentes de automation) dirigida a los roles con permiso de aprobar. Opcionalmente, un evento en `automation_webhook_events` si se decide enrutar la notificación por n8n (email/Slack) — a decidir con el usuario, no asumido.
-- **Dependencias:** 7C.
-- **Riesgos:** R-TECH-04 (duplicar notificaciones si el use case se reintenta).
-- **Criterios de aceptación:** crear una campaña genera exactamente una notificación visible en el dashboard operativo existente (Phase 5); aprobar/rechazar notifica al creador.
+### 7F — Automation / notifications — ✅ IMPLEMENTACIÓN + RUNTIME SMOKE COMPLETO (pendiente de revisión/aprobación — sin commit)
+- **Objetivo:** notificar cuando una campaña pasa a `review` (creada) y cuando se decide (aprobada/rechazada), reutilizando exactamente el runtime de `tasks`/`alerts` de Phase 6 — sin n8n, sin Inngest, sin publicación externa.
+- **Estado:** implementado en la rama `feat/phase-7-campaign-studio` sobre `8506790` (7E), con un bug real detectado y corregido en smoke (`created_by` no-UUID rompía la creación de task — ver `PHASE_7F_CAMPAIGN_AUTOMATION_REPORT.md` §18b), y **runtime smoke manual ejecutado y en PASS (4/4)** contra el fix (§18c del mismo reporte): `campaign_review_requested`, `campaign_rejected`, `campaign_approved`, `campaign_ai_provider_failure` — cada uno verificado con evidencia directa de BD (conteo exacto de filas, `created_by` UUID real, `alert_key` determinístico, sin duplicados en refresh). **1549 tests passed / 0 failed** ejecutados por el usuario en Windows (`shared` 106, `domain` 229, `application` 356, `infrastructure` 502, `apps/web` 356, `automation-engine` 0); `typecheck`/`lint` limpios en `packages/application`, `apps/web`, `packages/infrastructure` (Windows) y en los demás workspaces (verificado antes por Claude en el puente Linux). No se creó ninguna migración. No se ejecutó `git add`/`commit`. **Nota:** esto NO cierra Phase 7 — 7G (E2E/closure) sigue pendiente.
+- **Archivos/tablas principales:**
+  - `packages/application/src/use-cases/campaigns/campaign-automation-types.ts` (nuevo) — tipos cerrados de evento/automatización.
+  - `packages/application/src/use-cases/campaigns/campaign-automation-signatures.ts` (nuevo) — idempotency keys / signature tags, espejo de `automation-incident-signatures.ts` (6F).
+  - `packages/application/src/use-cases/campaigns/evaluate-campaign-automation.use-case.ts` (nuevo) — evaluador determinístico, espejo de `evaluate-automation-incident.use-case.ts` (6F).
+  - `packages/application/src/use-cases/campaigns/campaign-automation-dispatch.ts` (nuevo) — helper best-effort/post-commit (`evalCampaignAutomationSilently`), espejo de `evalIncidentSilently`.
+  - `submit-campaign-for-review.use-case.ts` / `approve-campaign.use-case.ts` / `reject-campaign.use-case.ts` (modificados) — hook post-commit.
+  - `generate-campaign-draft-with-ai.use-case.ts` / `regenerate-campaign-content.use-case.ts` (modificados) — alerta de fallo de proveedor de IA (vía `getAiErrorKind`, ya existente de 7D.1).
+  - `apps/web/src/lib/composition/campaign.composition.ts` (modificado) — wiring de `SupabaseAlertRepository`/`SupabaseTaskRepository` (ya existentes, Phase 6) con el client de sesión del usuario (NO service_role).
+  - `apps/web/src/components/campaigns/CampaignAutomationActivity.tsx` (nuevo) + `apps/web/src/app/(protected)/campaigns/[id]/page.tsx` (modificado) — sección "Actividad / Automatización" de solo lectura.
+  - Ningún `CampaignAutomationRuntimeV2`/`CampaignTaskTable`/`CampaignAlertTable` nuevo — se reutilizan `tasks`/`alerts` tal cual.
+- **Dependencias:** 7C (RPCs approve/reject), 7D.1 (`getAiErrorKind`).
+- **Riesgos:** ver R-TECH-14, R-OPS-04, R-TECH-15 (bug de smoke, resuelto) en `PHASE_7_RISK_REGISTER.md`.
+- **Criterios de aceptación:** enviar a revisión / rechazar / aprobar una campaña crea exactamente una tarea operativa la primera vez y ninguna en reintentos (idempotencia por `alert_key`/signature tag); un fallo del proveedor de IA crea/actualiza una alerta (nunca una tarea) sin bloquear la respuesta de error al usuario; ningún flujo llama a Meta/Google/YouTube/email/redes sociales/n8n.
 
 ### 7G — E2E / closure
 - **Objetivo:** cubrir el flujo creación → revisión → aprobación/rechazo con un test E2E, y cerrar Phase 7 con el mismo estándar de documentación que Phase 6 (`PHASE_7_CLOSURE_REPORT.md`, checklist de producción, security model).

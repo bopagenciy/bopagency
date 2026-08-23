@@ -107,6 +107,39 @@ export type {
   RegenerateCampaignContentDeps,
 } from './use-cases/campaigns/regenerate-campaign-content.use-case';
 
+// Use cases — Campaigns (Phase 7F — Campaign Automation / Notifications)
+export { evaluateCampaignAutomation } from './use-cases/campaigns/evaluate-campaign-automation.use-case';
+export type {
+  EvaluateCampaignAutomationInput,
+  EvaluateCampaignAutomationOutput,
+  EvaluateCampaignAutomationDeps,
+} from './use-cases/campaigns/evaluate-campaign-automation.use-case';
+export { evalCampaignAutomationSilently } from './use-cases/campaigns/campaign-automation-dispatch';
+export type {
+  CampaignAutomationDispatchDeps,
+  CampaignAutomationDispatchInput,
+} from './use-cases/campaigns/campaign-automation-dispatch';
+export {
+  CAMPAIGN_BUSINESS_EVENTS,
+  CAMPAIGN_AUTOMATION_TYPES,
+  getAlertSeverityForCampaignAutomation,
+  getTaskPriorityForCampaignAutomation,
+  campaignAutomationTypeCreatesTask,
+  campaignAutomationTypeCreatesAlert,
+} from './use-cases/campaigns/campaign-automation-types';
+export type {
+  CampaignBusinessEvent,
+  CampaignAutomationType,
+} from './use-cases/campaigns/campaign-automation-types';
+export {
+  campaignReviewRequestedKey,
+  campaignRejectedKey,
+  campaignApprovedKey,
+  campaignAiProviderFailureKey,
+  buildCampaignTaskTags,
+  buildCampaignTaskSignatureTag,
+} from './use-cases/campaigns/campaign-automation-signatures';
+
 // Phase 7D — Ports
 export type {
   CampaignGeneratorPort,

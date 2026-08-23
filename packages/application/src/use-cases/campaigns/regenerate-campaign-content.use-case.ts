@@ -64,7 +64,10 @@ import {
   hasMinimumRole,
   insufficientRole,
   notOrganizationMember,
+  getAiErrorKind,
 } from '@bop-agency/domain';
+import type { AlertRepository, TaskRepository } from '@bop-agency/domain';
+import { evalCampaignAutomationSilently } from './campaign-automation-dispatch';
 import { regenerateCampaignContentSchema } from '@bop-agency/shared';
 import type { LoggerPort } from '../../ports/logger.port';
 import type { CampaignGeneratorPort } from '../../ports/campaign-generator.port';
@@ -95,6 +98,9 @@ export type RegenerateCampaignContentDeps = {
   complianceRuleRepository: ComplianceRuleRepository;
   organizationRepository: OrganizationRepository;
   campaignGeneratorPort: CampaignGeneratorPort;
+  /** Phase 7F — opcionales para no romper callers/tests preexistentes. */
+  alertRepository?: AlertRepository;
+  taskRepository?: TaskRepository;
   logger: LoggerPort;
 };
 
@@ -245,6 +251,24 @@ export async function regenerateCampaignContent(
   });
   if (!isOk(generation)) {
     deps.logger.error('regenerateCampaignContent: AI generation failed', { error: generation });
+    // Phase 7F — §3D: solo alertar fallos reales de proveedor externo.
+    const aiErrorKind = getAiErrorKind(generation.error);
+    if (aiErrorKind) {
+      await evalCampaignAutomationSilently(
+        {
+          organizationId: input.organizationId,
+          campaignId: campaign.id,
+          campaignName: campaign.name,
+          clientId: campaign.clientId,
+          actorUserId: input.actorUserId,
+          automationType: 'campaign_ai_provider_failure',
+          aiErrorKind,
+          safeErrorMessage: generation.error.message,
+          occurredAt: new Date(),
+        },
+        deps,
+      );
+    }
     return generation;
   }
 

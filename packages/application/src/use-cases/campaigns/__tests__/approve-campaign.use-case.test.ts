@@ -20,6 +20,10 @@ import type {
   OrganizationMember,
   OrganizationRepository,
   OrganizationRole,
+  AlertRepository,
+  TaskRepository,
+  Alert,
+  Task,
 } from '@bop-agency/domain';
 import type { LoggerPort } from '../../../ports/logger.port';
 
@@ -260,5 +264,122 @@ describe('approveCampaign use case', () => {
       expect(result.error.code).toBe('FORBIDDEN');
     }
     expect(logger.error).toHaveBeenCalled();
+  });
+});
+
+describe('Phase 7F — campaign automation hook (best-effort, post-commit)', () => {
+  function makeAlertRepository(overrides: Partial<AlertRepository> = {}): AlertRepository {
+    return {
+      findById: vi.fn(),
+      findByOrganization: vi.fn(),
+      findActiveByOrganization: vi.fn(),
+      findByClient: vi.fn(),
+      countBySeverity: vi.fn(),
+      acknowledge: vi.fn(),
+      resolve: vi.fn(),
+      upsertByAlertKey: vi.fn().mockResolvedValue(
+        ok({ alert: {} as Alert, created: true }),
+      ),
+      findActiveByAlertKey: vi.fn(),
+      resolveActiveByAlertKeyPrefixes: vi.fn(),
+      ...overrides,
+    } as unknown as AlertRepository;
+  }
+
+  function makeTaskRepository(overrides: Partial<TaskRepository> = {}): TaskRepository {
+    return {
+      findById: vi.fn(),
+      findByOrganization: vi.fn(),
+      findByClient: vi.fn(),
+      findUpcoming: vi.fn(),
+      countByStatus: vi.fn(),
+      updateStatus: vi.fn(),
+      create: vi.fn().mockResolvedValue(ok({} as Task)),
+      findActiveBySignatureTag: vi.fn().mockResolvedValue(ok([])),
+      ...overrides,
+    } as unknown as TaskRepository;
+  }
+
+  it('is a no-op (does not throw, does not affect the result) when alertRepository/taskRepository are not wired', async () => {
+    const campaignRepository = makeCampaignRepo();
+    const organizationRepository = makeOrgRepo();
+    const logger = makeLogger();
+
+    const result = await approveCampaign(makeInput(), {
+      campaignRepository,
+      organizationRepository,
+      logger,
+    });
+
+    expect(result.success).toBe(true);
+    expect(logger.warn).toHaveBeenCalledWith(
+      expect.stringContaining('skipped'),
+      expect.anything(),
+    );
+  });
+
+  it('dispatches the campaign automation event when alertRepository/taskRepository ARE wired, without altering the transition result', async () => {
+    const campaignRepository = makeCampaignRepo();
+    const organizationRepository = makeOrgRepo();
+    const logger = makeLogger();
+    const taskRepository = makeTaskRepository();
+    const alertRepository = makeAlertRepository();
+
+    const result = await approveCampaign(makeInput(), {
+      campaignRepository,
+      organizationRepository,
+      alertRepository,
+      taskRepository,
+      logger,
+    });
+
+    expect(result.success).toBe(true);
+    expect(taskRepository.findActiveBySignatureTag).toHaveBeenCalled();
+    const call = (taskRepository.findActiveBySignatureTag as ReturnType<typeof vi.fn>).mock.calls[0] as [string, string] | undefined;
+    const tag = call?.[0];
+    expect(tag).toContain('campaign_approved');
+  });
+
+  it('propagates the real actorUserId (ACTOR_ID) to TaskRepository.create.createdBy — smoke bug fix regression', async () => {
+    const campaignRepository = makeCampaignRepo();
+    const organizationRepository = makeOrgRepo();
+    const logger = makeLogger();
+    const taskRepository = makeTaskRepository();
+    const alertRepository = makeAlertRepository();
+
+    await approveCampaign(makeInput(), {
+      campaignRepository,
+      organizationRepository,
+      alertRepository,
+      taskRepository,
+      logger,
+    });
+
+    expect(taskRepository.create).toHaveBeenCalledOnce();
+    const createArgs = (taskRepository.create as ReturnType<typeof vi.fn>).mock.calls[0]?.[0] as { createdBy: string };
+    expect(createArgs.createdBy).toBe(ACTOR_ID);
+    expect(createArgs.createdBy).not.toBe('campaign-automation-evaluator');
+  });
+
+  it('never reverts the already-committed transition when the automation dispatch throws unexpectedly', async () => {
+    const campaignRepository = makeCampaignRepo();
+    const organizationRepository = makeOrgRepo();
+    const logger = makeLogger();
+    const taskRepository = makeTaskRepository({
+      findActiveBySignatureTag: vi.fn().mockRejectedValue(new Error('boom')),
+    });
+    const alertRepository = makeAlertRepository();
+
+    const result = await approveCampaign(makeInput(), {
+      campaignRepository,
+      organizationRepository,
+      alertRepository,
+      taskRepository,
+      logger,
+    });
+
+    // El resultado principal (la transición ya persistida) NUNCA se ve
+    // afectado por un fallo del side effect interno.
+    expect(result.success).toBe(true);
   });
 });

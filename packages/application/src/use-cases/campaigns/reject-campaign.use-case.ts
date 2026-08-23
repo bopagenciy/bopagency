@@ -1,5 +1,5 @@
 /**
- * rejectCampaign — Phase 7C.
+ * rejectCampaign — Phase 7C. Automation hook — Phase 7F.
  *
  * Transición review → rejected. Mismo diseño que approveCampaign — delega
  * la escritura a `CampaignRepository.reject`, que llama exclusivamente a la
@@ -10,11 +10,28 @@
  * que ya corrió justo antes), y finalmente en BD (CHECK
  * ck_campaign_approvals_rejection_note + validación explícita dentro de la
  * RPC) — ninguna capa confía únicamente en la anterior.
+ *
+ * Phase 7F: POST-COMMIT, best-effort, dispara
+ * `evaluateCampaignAutomation('campaign_rejected')` — crea una tarea interna
+ * ("Campaña rechazada: <name>") con la nota de rechazo, para el
+ * creador/editor responsable si el modelo de tareas lo permitiera; hoy
+ * `Task` no tiene columna `assignee_id` (ver domain/entities/task.ts), así
+ * que la tarea queda org-scoped sin asignación explícita — visible a
+ * owner/admin/strategist/operator vía RLS existente de `tasks`, igual que
+ * cualquier otra tarea operativa (no se inventa un mecanismo de asignación
+ * nuevo). Un fallo de este paso NUNCA revierte el rechazo ya confirmado.
  */
 
 import { ok, err, isOk } from '@bop-agency/shared';
 import type { Result } from '@bop-agency/shared';
-import type { Campaign, CampaignId, CampaignRepository, OrganizationRepository } from '@bop-agency/domain';
+import type {
+  AlertRepository,
+  Campaign,
+  CampaignId,
+  CampaignRepository,
+  OrganizationRepository,
+  TaskRepository,
+} from '@bop-agency/domain';
 import type { OrganizationId } from '@bop-agency/domain';
 import {
   canTransitionCampaign,
@@ -27,6 +44,7 @@ import {
 } from '@bop-agency/domain';
 import { rejectCampaignSchema } from '@bop-agency/shared';
 import type { LoggerPort } from '../../ports/logger.port';
+import { evalCampaignAutomationSilently } from './campaign-automation-dispatch';
 
 export type RejectCampaignInput = {
   readonly campaignId: string;
@@ -40,6 +58,9 @@ export type RejectCampaignInput = {
 export type RejectCampaignDeps = {
   campaignRepository: CampaignRepository;
   organizationRepository: OrganizationRepository;
+  /** Phase 7F — opcional para no romper callers/tests preexistentes que no lo pasen. */
+  alertRepository?: AlertRepository;
+  taskRepository?: TaskRepository;
   logger: LoggerPort;
 };
 
@@ -110,5 +131,21 @@ export async function rejectCampaign(
     organizationId: input.organizationId,
     actorUserId: input.actorUserId,
   });
+
+  // 5. Phase 7F — side effect interno, post-commit, best-effort.
+  await evalCampaignAutomationSilently(
+    {
+      organizationId: input.organizationId,
+      campaignId,
+      campaignName: result.value.name,
+      clientId: result.value.clientId,
+      actorUserId: input.actorUserId,
+      automationType: 'campaign_rejected',
+      rejectionNote: note,
+      occurredAt: new Date(),
+    },
+    deps,
+  );
+
   return ok(result.value);
 }

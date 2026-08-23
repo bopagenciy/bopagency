@@ -1,5 +1,5 @@
 /**
- * approveCampaign — Phase 7C.
+ * approveCampaign — Phase 7C. Automation hook — Phase 7F.
  *
  * Transición review → approved. Delega la escritura a
  * `CampaignRepository.approve`, que a su vez llama exclusivamente a la RPC
@@ -20,11 +20,26 @@
  * 4. Verifica la transición con `canTransitionCampaign` (solo review →
  *    approved es válida).
  * 5. Llama a CampaignRepository.approve (RPC).
+ * 6. Phase 7F — POST-COMMIT, best-effort: dispara
+ *    `evaluateCampaignAutomation('campaign_approved')`, que crea una tarea
+ *    interna "Preparar activación de campaña: <name>". REGLA CRÍTICA: esto
+ *    NUNCA publica en ningún proveedor externo — solo señaliza que la
+ *    campaña quedó lista para el siguiente paso manual/futuro. La RPC ya
+ *    completó y confirmó la aprobación ANTES de que este paso se ejecute —
+ *    un fallo aquí no revierte `approved_at` ni la fila en
+ *    `campaign_approvals`.
  */
 
 import { ok, err, isOk } from '@bop-agency/shared';
 import type { Result } from '@bop-agency/shared';
-import type { Campaign, CampaignId, CampaignRepository, OrganizationRepository } from '@bop-agency/domain';
+import type {
+  AlertRepository,
+  Campaign,
+  CampaignId,
+  CampaignRepository,
+  OrganizationRepository,
+  TaskRepository,
+} from '@bop-agency/domain';
 import type { OrganizationId } from '@bop-agency/domain';
 import {
   canTransitionCampaign,
@@ -35,6 +50,7 @@ import {
 } from '@bop-agency/domain';
 import { approveCampaignSchema } from '@bop-agency/shared';
 import type { LoggerPort } from '../../ports/logger.port';
+import { evalCampaignAutomationSilently } from './campaign-automation-dispatch';
 
 export type ApproveCampaignInput = {
   readonly campaignId: string;
@@ -47,6 +63,9 @@ export type ApproveCampaignInput = {
 export type ApproveCampaignDeps = {
   campaignRepository: CampaignRepository;
   organizationRepository: OrganizationRepository;
+  /** Phase 7F — opcional para no romper callers/tests preexistentes que no lo pasen. */
+  alertRepository?: AlertRepository;
+  taskRepository?: TaskRepository;
   logger: LoggerPort;
 };
 
@@ -105,5 +124,21 @@ export async function approveCampaign(
     organizationId: input.organizationId,
     actorUserId: input.actorUserId,
   });
+
+  // 5. Phase 7F — side effect interno, post-commit, best-effort. NO publica
+  //    externamente — solo crea una tarea de preparación interna.
+  await evalCampaignAutomationSilently(
+    {
+      organizationId: input.organizationId,
+      campaignId,
+      campaignName: result.value.name,
+      clientId: result.value.clientId,
+      actorUserId: input.actorUserId,
+      automationType: 'campaign_approved',
+      occurredAt: new Date(),
+    },
+    deps,
+  );
+
   return ok(result.value);
 }

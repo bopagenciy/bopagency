@@ -49,6 +49,8 @@ import {
   SupabaseComplianceRuleRepository,
   SupabaseClientRepository,
   SupabaseOrganizationRepository,
+  SupabaseAlertRepository,
+  SupabaseTaskRepository,
   createCampaignAIProvider,
   CampaignGeneratorAdapter,
   consoleLogger,
@@ -92,6 +94,10 @@ export function createCampaignComposition(supabase: SupabaseClient) {
   const clientRepository = new SupabaseClientRepository(supabase);
   const organizationRepository = new SupabaseOrganizationRepository(supabase);
 
+  // ── Phase 7F — reutilizados de Phase 6 (NO se crean tablas/repos nuevos) ──
+  const alertRepository = new SupabaseAlertRepository(supabase);
+  const taskRepository = new SupabaseTaskRepository(supabase);
+
   // ── Puerto de IA (server-only — resuelve proveedor por llamada, nunca secretos aquí) ──
   const campaignGeneratorPort = new CampaignGeneratorAdapter(createCampaignAIProvider);
 
@@ -100,7 +106,11 @@ export function createCampaignComposition(supabase: SupabaseClient) {
   // ── Deps compartidos ────────────────────────────────────────────────────
   const readDeps = { campaignRepository, logger };
   const draftDeps = { campaignRepository, clientRepository, logger };
-  const approvalDeps = { campaignRepository, organizationRepository, logger };
+  // Phase 7F — alertRepository/taskRepository habilitan los side effects
+  // internos post-commit de submit/approve/reject (evalCampaignAutomationSilently).
+  // Son opcionales en los Deps de cada use case, pero SIEMPRE se pasan aquí en
+  // producción — solo se omiten en tests unitarios que no los necesiten.
+  const approvalDeps = { campaignRepository, organizationRepository, alertRepository, taskRepository, logger };
   const approvalsListDeps = { campaignRepository, campaignApprovalRepository, logger };
   const complianceDeps = { complianceRuleRepository, logger };
   const complianceEvalDeps = { campaignRepository, complianceRuleRepository, logger };
@@ -110,6 +120,9 @@ export function createCampaignComposition(supabase: SupabaseClient) {
     complianceRuleRepository,
     organizationRepository,
     campaignGeneratorPort,
+    // Phase 7F — habilita el alert de "fallo de proveedor de IA" (§3D).
+    alertRepository,
+    taskRepository,
     logger,
   };
 
@@ -151,6 +164,8 @@ export function createCampaignComposition(supabase: SupabaseClient) {
       complianceRuleRepository,
       clientRepository,
       organizationRepository,
+      alertRepository,
+      taskRepository,
     },
     useCases,
   };

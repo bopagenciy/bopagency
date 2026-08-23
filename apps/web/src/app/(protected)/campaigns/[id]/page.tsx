@@ -3,6 +3,7 @@ import { notFound } from 'next/navigation';
 import { Header } from '@/components/layout/Header';
 import { CampaignStatusBadge } from '@/components/campaigns/CampaignStatusBadge';
 import { CampaignApprovalPanel } from '@/components/campaigns/CampaignApprovalPanel';
+import { CampaignAutomationActivity } from '@/components/campaigns/CampaignAutomationActivity';
 import { EditCampaignModal } from '@/components/campaigns/EditCampaignModal';
 import { RegenerateContentButton } from '@/components/campaigns/RegenerateContentButton';
 import { GeneratedContentView } from '@/components/campaigns/GeneratedContentView';
@@ -14,7 +15,9 @@ import { createCampaignComposition } from '@/lib/composition/campaign.compositio
 import { OBJECTIVE_LABELS } from '@/lib/campaign-labels';
 import { PLATFORM_LABELS, isAIProviderId } from '@bop-agency/shared';
 import type { AdPlatform, AIProviderId } from '@bop-agency/shared';
-import type { OrganizationId, CampaignId } from '@bop-agency/domain';
+import type { OrganizationId, CampaignId, Task } from '@bop-agency/domain';
+import { buildCampaignTaskSignatureTag } from '@bop-agency/application';
+import type { CampaignAutomationType } from '@bop-agency/application';
 
 export const metadata: Metadata = { title: 'Detalle de campaña' };
 
@@ -48,6 +51,30 @@ function formatDate(value: Date | string | null): string {
   });
 }
 
+/**
+ * Phase 7F — mapea el status ACTUAL de la campaña al tipo de automatización
+ * cuya tarea activa (si existe) es relevante mostrar. `draft` no tiene
+ * automatización asociada (ningún evento de Phase 7F se dispara ahí).
+ * `approved`/`active`/`paused`/`completed` comparten el mismo evento
+ * ('campaign_approved') porque la tarea de preparación se crea una sola vez,
+ * en el momento de la aprobación, y sigue siendo relevante mientras exista.
+ */
+function automationTypeForStatus(status: string): CampaignAutomationType | null {
+  switch (status) {
+    case 'review':
+      return 'campaign_review_requested';
+    case 'rejected':
+      return 'campaign_rejected';
+    case 'approved':
+    case 'active':
+    case 'paused':
+    case 'completed':
+      return 'campaign_approved';
+    default:
+      return null;
+  }
+}
+
 const APPROVAL_ACTION_LABELS: Record<string, string> = {
   approved: 'Aprobada',
   rejected: 'Rechazada',
@@ -60,7 +87,7 @@ export default async function CampaignDetailPage({ params }: Props) {
   const { organization, membership } = await requireOrganization();
 
   const supabase = await createServerSupabaseClient();
-  const { useCases } = createCampaignComposition(supabase);
+  const { useCases, repositories } = createCampaignComposition(supabase);
   const orgId = organization.id as OrganizationId;
   const campaignId = id as CampaignId;
 
@@ -89,6 +116,23 @@ export default async function CampaignDetailPage({ params }: Props) {
   const approvals = approvalsResult.success ? approvalsResult.value : [];
   const compliance = complianceResult.success ? complianceResult.value : null;
   const clientName = clientRow.data?.name ?? '—';
+
+  // Phase 7F — best-effort, solo lectura: si el status actual tiene un tipo
+  // de automatización asociado, busca la tarea ACTIVA correspondiente (si
+  // existe) para mostrarla en "Actividad / Automatización". Un fallo aquí
+  // NUNCA rompe el render del detalle de campaña (mismo criterio best-effort
+  // que el resto de Phase 7F).
+  const relevantAutomationType = automationTypeForStatus(campaign.status);
+  let automationTask: Task | null = null;
+  if (relevantAutomationType) {
+    const tag = buildCampaignTaskSignatureTag(orgId, campaignId, relevantAutomationType);
+    const taskLookup = await repositories.taskRepository
+      .findActiveBySignatureTag(tag, orgId)
+      .catch(() => null);
+    if (taskLookup?.success && taskLookup.value.length > 0) {
+      automationTask = taskLookup.value[0] ?? null;
+    }
+  }
 
   return (
     <>
@@ -150,6 +194,9 @@ export default async function CampaignDetailPage({ params }: Props) {
 
         {/* Approval workflow */}
         <CampaignApprovalPanel campaign={campaign} userRole={membership.role} />
+
+        {/* Phase 7F — Automatización interna (nunca publicación externa) */}
+        <CampaignAutomationActivity task={automationTask} />
 
         {/* Generated content */}
         <div className="bg-white rounded-xl border border-gray-200 p-6 space-y-4">

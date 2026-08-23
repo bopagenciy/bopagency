@@ -264,6 +264,32 @@
 
 ---
 
+### R-TECH-14 — `TaskRepository` no expone historial completo por campaña (solo tareas ACTIVAS)
+**Severidad:** 🟢 Bajo
+**Probabilidad:** Alta (se manifiesta en cada campaña cuya tarea de automatización ya fue completada/cancelada)
+**Impacto:** `TaskRepository.findActiveBySignatureTag` (Phase 6F) solo devuelve tareas en estado `pending`/`in_progress`/`blocked`. La sección "Actividad / Automatización" del detalle de campaña (7F, §11) por eso solo puede mostrar una tarea activa relacionada con el evento correspondiente al status ACTUAL de la campaña — no un log histórico completo de todos los eventos de automatización que ocurrieron en la vida de la campaña (p. ej. si la tarea de "revisar campaña" ya se marcó `done`, deja de ser visible ahí).
+**Mitigación implementada:** documentado explícitamente en el componente (`CampaignAutomationActivity.tsx`) y en este registro, en vez de ocultarlo. La deduplicación/idempotencia (que sí depende de esta búsqueda) no se ve afectada — solo la presentación histórica en UI.
+**Acción requerida (deferida, NO ejecutada en 7F por decisión explícita de la tarea — "NO crear migration sin justificarla"):** si se quiere un historial completo, la opción más barata es añadir un método de solo lectura `findByTag(tag, organizationId, { includeCompleted: true })` a `TaskRepository`/`SupabaseTaskRepository` (sin migración — es una query nueva sobre una tabla existente). Justificación para una futura fase, no para 7F.
+
+### R-OPS-04 — Alertas de fallo de IA se re-abren (`status: 'active'`) en cada reintento del mismo tipo
+**Severidad:** 🟢 Bajo
+**Probabilidad:** Media (solo si un operador resuelve manualmente la alerta y el mismo tipo de fallo vuelve a ocurrir)
+**Impacto:** `AlertRepository.upsertByAlertKey` (Phase 6F, reutilizado sin cambios por 7F) siempre fija `status: 'active'` en el UPSERT. Si un operador marca la alerta de "fallo de proveedor de IA" como resuelta y el mismo tipo de error (`aiErrorKind`) vuelve a ocurrir para la misma campaña/cliente, la alerta se reabre automáticamente — comportamiento ya existente y aceptado en Phase 6F para incidentes de automatización; 7F hereda exactamente el mismo trade-off, no introduce uno nuevo.
+**Mitigación:** ninguna adicional — es el comportamiento ya auditado y aceptado en 6F. Documentado aquí solo para que quede explícito que 7F no lo agrava ni lo corrige.
+**Acción requerida:** ninguna en 7F. Si se decide cambiar este comportamiento, debe hacerse a nivel de `upsertByAlertKey` (Phase 6F), afectando ambos flujos por igual.
+**Observado en runtime real:** el smoke de `campaign_ai_provider_failure` confirmó el comportamiento de upsert esperado — una sola fila para el `alert_key`, con `created_at` ≠ `updated_at` en el segundo evento del mismo tipo (confirma UPDATE, no duplicado) — ver `PHASE_7F_CAMPAIGN_AUTOMATION_REPORT.md` §18c. Consistente con lo documentado aquí, sin sorpresas.
+
+### R-TECH-15 — `created_by` no-UUID rompía la creación de task en silencio (RESUELTO en 7F, detectado por smoke)
+**Severidad:** 🟡 Medio → 🟢 Bajo (resuelto)
+**Probabilidad:** Alta (ocurría en el 100% de los eventos que debían crear task — `campaign_review_requested`/`rejected`/`approved`)
+**Impacto:** `evaluate-campaign-automation.use-case.ts` pasaba el string literal `'campaign-automation-evaluator'` como `created_by` a `TaskRepository.create()`. `tasks.created_by` es `uuid NULL REFERENCES auth.users(id)` — el INSERT fallaba en Postgres, y como el hook es best-effort post-commit por diseño, el fallo se tragaba silenciosamente: la campaña transicionaba de status correctamente, pero la tarea operativa jamás se creaba. Ningún test unitario lo atrapó porque todos mockean `TaskRepository.create` para que siempre "succeeda" sin validar tipos de columna real.
+**Mitigación implementada:** se propaga el `actorUserId` real (UUID, ya resuelto server-side desde la sesión autenticada en cada use case desde fases anteriores) a través de `EvaluateCampaignAutomationInput`/`CampaignAutomationDispatchInput` hasta `TaskRepository.create({ createdBy: actorUserId })`. Guardia adicional: si `actorUserId` llega vacío en runtime, se salta la creación en vez de insertar un valor inválido. Cubierto por 10 tests nuevos que aseveran explícitamente el valor de `createdBy`/`metadata.actorUserId` recibido por los repositorios mockeados, y por un grep de regresión (`campaign-automation-evaluator` → 0 coincidencias funcionales).
+**Lección para futuros hooks best-effort:** cuando un mock siempre resuelve "éxito" sin validar la forma real de los datos, un valor con tipo incorrecto para una columna con constraint de BD (UUID, FK, CHECK) puede pasar toda la suite y fallar solo en producción/staging real. Los tests de este tipo de hook deben asertar explícitamente los valores pasados a los métodos de escritura del repositorio, no solo que `result.success === true`.
+**Acción requerida:** ninguna adicional — resuelto. Si se detectan más campañas sin tarea creada mientras el bug estuvo presente, ver la consulta de diagnóstico en `PHASE_7F_CAMPAIGN_AUTOMATION_REPORT.md` §18b.
+**Verificado en runtime real (post-fix):** smoke manual del usuario confirmó `created_by` con UUID real en las tasks creadas para los 3 eventos (`campaign_review_requested`, `campaign_rejected`, `campaign_approved`), con conteo exacto de filas en `public.tasks` — ver `PHASE_7F_CAMPAIGN_AUTOMATION_REPORT.md` §18c. Riesgo cerrado con evidencia de BD directa, no solo tests unitarios.
+
+---
+
 ## Resumen ejecutivo de riesgos que bloquean el inicio de 7B
 
 1. **R-DOM-01** (`organizationId` faltante) — debe resolverse en el diseño antes de escribir la migración.

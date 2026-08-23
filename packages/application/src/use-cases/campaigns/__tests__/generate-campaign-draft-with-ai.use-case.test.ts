@@ -35,8 +35,11 @@ import type {
   OrganizationRole,
   MetaAdsGeneratedContent,
   GoogleAdsGeneratedContent,
+  AlertRepository,
+  TaskRepository,
+  Alert,
 } from '@bop-agency/domain';
-import { GENERATED_CONTENT_SCHEMA_VERSION } from '@bop-agency/domain';
+import { GENERATED_CONTENT_SCHEMA_VERSION, aiProviderFailure, aiRateLimited } from '@bop-agency/domain';
 import type { LoggerPort } from '../../../ports/logger.port';
 import type { CampaignGeneratorPort, GeneratedCampaignResult } from '../../../ports/campaign-generator.port';
 
@@ -493,5 +496,72 @@ describe('generateCampaignDraftWithAI use case', () => {
     expect(result.success).toBe(false);
     if (!result.success) expect(result.error.code).toBe('INTERNAL_ERROR');
     expect(deps.logger.error).toHaveBeenCalled();
+  });
+});
+
+describe('Phase 7F — AI provider failure alert (no publishing, best-effort)', () => {
+  function makeAlertRepository(overrides: Partial<AlertRepository> = {}): AlertRepository {
+    return {
+      findById: vi.fn(),
+      findByOrganization: vi.fn(),
+      findActiveByOrganization: vi.fn(),
+      findByClient: vi.fn(),
+      countBySeverity: vi.fn(),
+      acknowledge: vi.fn(),
+      resolve: vi.fn(),
+      upsertByAlertKey: vi.fn().mockResolvedValue(ok({ alert: {} as Alert, created: true })),
+      findActiveByAlertKey: vi.fn(),
+      resolveActiveByAlertKeyPrefixes: vi.fn(),
+      ...overrides,
+    } as unknown as AlertRepository;
+  }
+
+  it('creates an alert (scoped by client, no campaignId yet) when the AI provider genuinely fails', async () => {
+    const alertRepository = makeAlertRepository();
+    const deps = makeDeps({
+      alertRepository,
+      taskRepository: { findActiveBySignatureTag: vi.fn(), create: vi.fn() } as unknown as TaskRepository,
+      campaignGeneratorPort: makeGeneratorPort({
+        generate: vi.fn().mockResolvedValue(err(aiProviderFailure('provider unreachable'))),
+      }),
+    });
+
+    const result = await generateCampaignDraftWithAI(makeInput(), deps);
+
+    expect(result.success).toBe(false);
+    expect(alertRepository.upsertByAlertKey).toHaveBeenCalledOnce();
+    const alertArgs = (alertRepository.upsertByAlertKey as ReturnType<typeof vi.fn>).mock.calls[0]?.[0] as {
+      alertKey: string;
+      metadata: Record<string, unknown>;
+    };
+    expect(alertArgs.alertKey).toContain('ai-provider-failure');
+    expect(alertArgs.alertKey).toContain(`client:${CLIENT_ID}`);
+    // REGLA CRÍTICA: nunca publica externamente ni persiste secretos.
+    expect(JSON.stringify(alertArgs)).not.toMatch(/sk-|api[_-]?key/i);
+    // Smoke bug fix regression: el actor real propagado, nunca inventado.
+    expect(alertArgs.metadata['actorUserId']).toBe(ACTOR_ID);
+  });
+
+  it('does not create an alert for user/validation errors (e.g. unsupported platform)', async () => {
+    const alertRepository = makeAlertRepository();
+    const deps = makeDeps({ alertRepository });
+
+    const result = await generateCampaignDraftWithAI(makeInput({ platform: 'unsupported_platform' as never }), deps);
+
+    expect(result.success).toBe(false);
+    expect(alertRepository.upsertByAlertKey).not.toHaveBeenCalled();
+  });
+
+  it('does not throw and still returns the original error when alertRepository is not wired', async () => {
+    const deps = makeDeps({
+      campaignGeneratorPort: makeGeneratorPort({
+        generate: vi.fn().mockResolvedValue(err(aiRateLimited())),
+      }),
+    });
+
+    const result = await generateCampaignDraftWithAI(makeInput(), deps);
+
+    expect(result.success).toBe(false);
+    if (!result.success) expect(result.error.code).toBe('RATE_LIMITED');
   });
 });

@@ -34,8 +34,11 @@ import type {
   OrganizationRepository,
   OrganizationRole,
   MetaAdsGeneratedContent,
+  AlertRepository,
+  TaskRepository,
+  Alert,
 } from '@bop-agency/domain';
-import { GENERATED_CONTENT_SCHEMA_VERSION } from '@bop-agency/domain';
+import { GENERATED_CONTENT_SCHEMA_VERSION, aiProviderFailure } from '@bop-agency/domain';
 import type { LoggerPort } from '../../../ports/logger.port';
 import type { CampaignGeneratorPort, GeneratedCampaignResult } from '../../../ports/campaign-generator.port';
 
@@ -438,5 +441,61 @@ describe('regenerateCampaignContent use case', () => {
 
     const updateArg = (deps.campaignRepository.update as ReturnType<typeof vi.fn>).mock.calls[0]?.[2];
     expect(updateArg.metadata.customFlag).toBe(true);
+  });
+});
+
+describe('Phase 7F — AI provider failure alert on regenerate (existing campaign)', () => {
+  function makeAlertRepository(overrides: Partial<AlertRepository> = {}): AlertRepository {
+    return {
+      findById: vi.fn(),
+      findByOrganization: vi.fn(),
+      findActiveByOrganization: vi.fn(),
+      findByClient: vi.fn(),
+      countBySeverity: vi.fn(),
+      acknowledge: vi.fn(),
+      resolve: vi.fn(),
+      upsertByAlertKey: vi.fn().mockResolvedValue(ok({ alert: {} as Alert, created: true })),
+      findActiveByAlertKey: vi.fn(),
+      resolveActiveByAlertKeyPrefixes: vi.fn(),
+      ...overrides,
+    } as unknown as AlertRepository;
+  }
+
+  it('scopes the alert by the EXISTING campaignId (not by client) since the campaign already exists', async () => {
+    const alertRepository = makeAlertRepository();
+    const deps = makeDeps({
+      alertRepository,
+      taskRepository: { findActiveBySignatureTag: vi.fn(), create: vi.fn() } as unknown as TaskRepository,
+      campaignGeneratorPort: makeGeneratorPort({
+        generate: vi.fn().mockResolvedValue(err(aiProviderFailure('provider unreachable'))),
+      }),
+    });
+
+    const result = await regenerateCampaignContent(makeInput(), deps);
+
+    expect(result.success).toBe(false);
+    expect(alertRepository.upsertByAlertKey).toHaveBeenCalledOnce();
+    const alertArgs = (alertRepository.upsertByAlertKey as ReturnType<typeof vi.fn>).mock.calls[0]?.[0] as {
+      alertKey: string;
+      metadata: Record<string, unknown>;
+    };
+    expect(alertArgs.alertKey).toBe(`campaign:${ORG_ID}:${CAMPAIGN_ID}:ai-provider-failure:AI_EXTERNAL_SERVICE_ERROR`);
+    // Smoke bug fix regression: el actor real propagado, nunca inventado.
+    expect(alertArgs.metadata['actorUserId']).toBe(ACTOR_ID);
+  });
+
+  it('does not persist the regeneration when the provider fails, regardless of the alert side effect', async () => {
+    const alertRepository = makeAlertRepository();
+    const deps = makeDeps({
+      alertRepository,
+      campaignGeneratorPort: makeGeneratorPort({
+        generate: vi.fn().mockResolvedValue(err(aiProviderFailure('provider unreachable'))),
+      }),
+    });
+
+    const result = await regenerateCampaignContent(makeInput(), deps);
+
+    expect(result.success).toBe(false);
+    expect(deps.campaignRepository.update).not.toHaveBeenCalled();
   });
 });
