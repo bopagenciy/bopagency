@@ -228,3 +228,60 @@ export type {
   CreateTaskForAutomationInput,
 } from './repositories/alert.repository';
 export type { CreateTaskInput } from './repositories/task.repository';
+
+// CampaignActivation entity — Phase 8A.1
+export type {
+  CampaignActivationId,
+  ActivationSnapshotSchemaVersion,
+  CampaignActivationSnapshotCampaign,
+  CampaignActivationSnapshotApproval,
+  CampaignActivationSnapshot,
+  CampaignActivation,
+  CampaignActivationFilter,
+  CreateCampaignActivationInput,
+} from './entities/campaign-activation';
+export {
+  campaignActivationId,
+  ACTIVATION_SNAPSHOT_SCHEMA_VERSION,
+  canTransitionActivation,
+  getActivationNextStates,
+  isActivationStatusTerminal,
+  canCancelActivation,
+  deriveActivationStatus,
+  isValidCancellationReason,
+} from './entities/campaign-activation';
+
+// CampaignActivationTarget entity — Phase 8A.1
+export type {
+  CampaignActivationTargetId,
+  CampaignActivationTarget,
+  CampaignActivationTargetFilter,
+  CreateActivationTargetInput,
+} from './entities/campaign-activation-target';
+export {
+  campaignActivationTargetId,
+  validateCreateActivationTargetInput,
+  canTransitionActivationTarget,
+  getActivationTargetNextStates,
+  isActivationTargetStatusTerminal,
+  canMarkActivationTargetPublished,
+  canCancelActivationTarget,
+} from './entities/campaign-activation-target';
+
+// CampaignActivationEvent entity — Phase 8A.1
+export type {
+  CampaignActivationEventId,
+  CampaignActivationEvent,
+  CreateActivationEventInput,
+} from './entities/campaign-activation-event';
+export {
+  campaignActivationEventId,
+  isValidActivationEventType,
+  sanitizeActivationEventMetadata,
+} from './entities/campaign-activation-event';
+
+// CampaignActivationRepository — Phase 8A.1
+export type {
+  CampaignActivationRepository,
+  CampaignActivationWithTargets,
+} from './repositories/campaign-activation.repository';

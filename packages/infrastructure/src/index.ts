@@ -25,6 +25,9 @@ export { SupabaseComplianceRuleRepository } from './supabase/repositories/supaba
 export { SupabaseAutomationRepository } from './supabase/repositories/supabase-automation.repository';
 export { SupabaseAutomationExecutionRepository } from './supabase/repositories/supabase-automation-execution.repository';
 
+// Phase 8A.1 repositories
+export { SupabaseCampaignActivationRepository } from './supabase/repositories/supabase-campaign-activation.repository';
+
 // Mappers
 export {
   rowToOrganization,
@@ -56,6 +59,18 @@ export { rowToCampaignApproval } from './supabase/mappers/campaign-approval.mapp
 export type { CampaignApprovalRow } from './supabase/mappers/campaign-approval.mapper';
 export { rowToComplianceRule } from './supabase/mappers/compliance-rule.mapper';
 export type { ComplianceRuleRow } from './supabase/mappers/compliance-rule.mapper';
+
+// Phase 8A.1 mappers
+export {
+  rowToCampaignActivation,
+  rowToCampaignActivationTarget,
+  rowToCampaignActivationEvent,
+} from './supabase/mappers/campaign-activation.mapper';
+export type {
+  CampaignActivationRow,
+  CampaignActivationTargetRow,
+  CampaignActivationEventRow,
+} from './supabase/mappers/campaign-activation.mapper';
 
 // Phase 6B mappers
 export { rowToAutomation } from './supabase/mappers/automation.mapper';

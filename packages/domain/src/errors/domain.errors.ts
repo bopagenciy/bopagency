@@ -291,3 +291,36 @@ export const cancelRemoteFailed = (safeDetail: string): AppError =>
     'EXTERNAL_SERVICE_ERROR',
     `Remote cancellation failed — execution remains running. Safe detail: ${safeDetail}`,
   );
+
+// Campaign Activation errors — Phase 8A.1
+export const activationNotFound = (id: string): AppError => notFound(`Campaign activation not found: ${id}`);
+
+export const activationTargetNotFound = (id: string): AppError =>
+  notFound(`Campaign activation target not found: ${id}`);
+
+export const activationInvalidStatus = (from: string, to: string): AppError =>
+  validationError(`Cannot transition campaign activation from "${from}" to "${to}"`);
+
+export const activationTargetInvalidStatus = (from: string, to: string): AppError =>
+  validationError(`Cannot transition campaign activation target from "${from}" to "${to}"`);
+
+export const campaignNotApprovedForActivation = (campaignId: string, status: string): AppError =>
+  createError(
+    'VALIDATION_ERROR',
+    `Campaign ${campaignId} is not approved (current status: ${status}) — an activation can only be created from an approved campaign.`,
+  );
+
+export const activationAlreadyActiveForCampaign = (campaignId: string): AppError =>
+  createError(
+    'CONFLICT',
+    `Campaign ${campaignId} already has a non-terminal activation. Cancel or complete it before creating a new one.`,
+  );
+
+export const activationApprovalMismatch = (campaignApprovalId: string): AppError =>
+  createError(
+    'VALIDATION_ERROR',
+    `campaign_approval ${campaignApprovalId} does not belong to the given campaign, or is not an approval record.`,
+  );
+
+export const activationCancellationReasonRequired = (): AppError =>
+  createError('VALIDATION_ERROR', 'A non-empty cancellation reason is required to cancel a campaign activation.');

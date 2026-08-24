@@ -123,3 +123,36 @@ export type {
   CancelExecutionFormValues,
   RetryExecutionFormValues,
 } from './schemas/automation.schema';
+
+// Constants — Campaign Activation (Phase 8A.1)
+export {
+  ACTIVATION_STATUSES,
+  ACTIVATION_TERMINAL_STATUSES,
+  ACTIVATION_TARGET_STATUSES,
+  ACTIVATION_TARGET_TERMINAL_STATUSES,
+  ACTIVATION_CHANNELS,
+  ACTIVATION_PROVIDERS,
+  ACTIVATION_CHANNEL_LABELS,
+  ACTIVATION_CHANNEL_PROVIDER,
+  isValidChannelProviderPair,
+  ACTIVATION_EVENT_TYPES,
+} from './constants/activation';
+export type {
+  ActivationStatus,
+  ActivationTargetStatus,
+  ActivationChannel,
+  ActivationProvider,
+  ActivationEventType,
+} from './constants/activation';
+
+// Schemas — Campaign Activation (Phase 8A.1)
+export {
+  campaignActivationSnapshotSchema,
+  ACTIVATION_SNAPSHOT_SCHEMA_VERSION,
+  activationChannelSchema,
+  activationProviderSchema,
+  activationPlacementSchema,
+  activationCancellationReasonSchema,
+  activationExternalReferenceSchema,
+} from './schemas/campaign-activation.schema';
+export type { CampaignActivationSnapshotShape } from './schemas/campaign-activation.schema';

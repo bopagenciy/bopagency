@@ -38,3 +38,73 @@ Este registro se actualiza (nunca se sobreescribe silenciosamente) en cada
 subfase — 8A.1/8A.2/8A.3 deben revisar cada fila marcada `Medium`/`Low`
 para confirmar si la mitigación propuesta efectivamente se implementó tal
 cual, y 8B en adelante añade filas nuevas específicas de publicación real.
+
+## Actualización — Phase 8A.1 (Activation Domain + Persistence) — COMPLETE
+
+Ver `PHASE_8A1_ACTIVATION_DOMAIN_PERSISTENCE_REPORT.md` (secciones 26–31)
+para el detalle completo. Resumen de mitigaciones **implementadas Y
+confirmadas en runtime real** contra Supabase LOCAL (Rounds A–E,
+repetibilidad de 2 corridas consecutivas probada — ya no solo revisión
+estática de texto/tests con mocks):
+
+- **R-ACT-01** (duplicate publishing) — mitigado y **confirmado en
+  runtime**: las 5 RPCs de transición revalidan status dentro de la
+  transacción antes de escribir; 10.2/10.5 confirman transiciones
+  inválidas rechazadas con el motivo semántico correcto.
+- **R-ACT-02** (approval bypass) — mitigado y **confirmado en runtime**:
+  trigger `check_activation_source()` revalida `campaigns.status =
+  'approved'` + linkage real de la aprobación, `BEFORE INSERT` — 5
+  aserciones negativas distintas en runtime (5.2–5.6), cada una validando
+  el motivo exacto de rechazo, no solo "hubo un error".
+- **R-ACT-03** (stale snapshot) — mitigado y **confirmado en runtime**:
+  snapshot inmutable, persistido con forma estructurada (9.1), sin claves
+  de secretos (9.2), rechazo real de forma no-objeto con `SQLSTATE 23514`
+  (9.3).
+- **R-ACT-04** (cross-org integration reference) — mitigado y
+  **confirmado en runtime**: trigger `check_activation_target_match()`
+  rechazó en runtime real un `client_integration_id` cross-org (6.5) —
+  este es el riesgo `Critical` del registro, y es el que tiene la
+  evidencia runtime más directa de las 15 filas.
+- **R-ACT-05** (credential leakage) — mitigado y **confirmado en
+  runtime**: 9.2 verificó en runtime que el snapshot persistido no
+  contiene claves de secretos/tokens/credenciales; `service_role` no se
+  usa en ningún GRANT ni en el repositorio de infraestructura (revisión
+  de código, sección 30 del reporte).
+- **R-ACT-07** (partial multi-channel failure oculto) — mitigado:
+  `deriveActivationStatus` tiene el estado explícito `partially_completed`
+  (test unitario dedicado); la derivación automática a `completed` se
+  confirmó en runtime real (10.4b) — el caso `partially_completed`
+  específico no se ejercitó en runtime (requeriría un target fallido, no
+  cubierto por el fixture actual de un solo target manual) — queda como
+  gap de cobertura runtime, no de mitigación (la lógica pura ya está
+  100% testeada con mocks).
+- **R-ACT-09** (race conditions en creación concurrente) — mitigado y
+  **confirmado en runtime**: índice único parcial
+  `uq_campaign_activations_active_per_campaign` rechazó en runtime real
+  una segunda activation no-terminal para la misma campaña con `SQLSTATE
+  23505` (7.1) — la condición de carrera bajo dos sesiones concurrentes
+  reales específicamente no se ejercitó (un solo script `psql -f`, no dos
+  conexiones simultáneas) — ver limitación explícita en el reporte §22.
+- **R-ACT-13** (accidental automatic publication) — mitigado por diseño y
+  **confirmado en runtime**: ningún use case de `campaign` fue tocado en
+  8A.1; 10.4c confirmó en runtime que `campaign.status` permanece
+  `approved` tras completar una activation — sin transición automática a
+  `active`. El gap se cierra completamente en 8A.2 cuando exista el use
+  case real, que deberá mantener esta misma invariante.
+
+**Sin cambio de estado** (correctamente diferidos, sin código en 8A.1):
+R-ACT-06, R-ACT-08, R-ACT-10, R-ACT-11 (mitigación parcial vía
+`actor_user_id`/timestamp/`external_reference` ya en el modelo de datos,
+pero la verificación cruzada real queda para 8E/8F), R-ACT-12, R-ACT-14,
+R-ACT-15.
+
+**Riesgo residual anterior, CERRADO:** la migración fue aplicada
+exitosamente contra Supabase LOCAL y validada en runtime real (Rounds
+A–E) — el residual "solo revisión estática, sin comportamiento real de
+RLS/triggers/RPCs" queda cerrado. Residuales nuevos, ambos no bloqueantes
+y documentados en el reporte (§22): (a) la condición de carrera de dos
+sesiones concurrentes reales no se ejercitó (un solo script secuencial),
+y (b) 11.3 (piso de rol `operator` no puede cancelar) permanece
+estructural por falta de un `auth.users` desechable en el fixture local
+disponible — ninguno de los dos bloquea 8A.1 COMPLETE; ambos son
+candidatos a cerrar en 8A.2/8D si se decide necesario.

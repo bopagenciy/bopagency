@@ -4,9 +4,13 @@
 **Base:** `a8025ec` (Phase 7 cerrada y mergeada a `main`)
 **Estado general de Phase 8:** en curso — 8A.0 completada; 8A (audit +
 arquitectura) completada — ver
-`docs/implementation/phase-8/PHASE_8A_ACTIVATION_AUDIT.md`; **implementación
-de 8A.1/8A.2/8A.3 pendiente de arrancar** (esta ronda fue solo diseño, sin
-código).
+`docs/implementation/phase-8/PHASE_8A_ACTIVATION_AUDIT.md`; **8A.1
+(Activation Domain + Persistence) COMPLETE** — implementada, migración
+aplicada contra Supabase LOCAL, y validada en runtime real (Rounds A–E,
+repetibilidad de 2 corridas consecutivas probada) — ver
+`docs/implementation/phase-8/PHASE_8A1_ACTIVATION_DOMAIN_PERSISTENCE_REPORT.md`
+secciones 26–31; **8A.2/8A.3 pendientes de arrancar** (NO toda la subfase
+8A está completa — solo 8A.1).
 
 > Regla de producto heredada de Phase 7 y vigente para toda Phase 8: **NO
 > publicación externa real** (Meta Ads, Google Ads, YouTube, email
@@ -53,17 +57,48 @@ código).
   esta ronda.**
 - **Subfases de implementación derivadas de 8A (a ejecutar en orden,
   cada una requiere aprobación explícita del usuario antes de empezar):**
-  - **8A.1 — Activation Domain + Persistence**: entidades de dominio
-    (`CampaignActivation`, `CampaignActivationTarget`,
+  - **8A.1 — Activation Domain + Persistence**: ✅ **COMPLETE** (ver
+    `PHASE_8A1_ACTIVATION_DOMAIN_PERSISTENCE_REPORT.md`) — entidades de
+    dominio (`CampaignActivation`, `CampaignActivationTarget`,
     `CampaignActivationEvent`) + funciones puras de transición de status
-    (3 niveles), migración aditiva de las 3 tablas propuestas en el
-    audit §15 (con las 3 RPCs `SECURITY DEFINER` de transición crítica),
-    RLS (audit §16), repositorios de infraestructura (audit §18).
-  - **8A.2 — Activation Application Layer + Security**: use cases (audit
-    §17), integración con el patrón de tasks/alerts best-effort (audit
-    §20/§25), matriz de roles final confirmada con el usuario (audit
-    §12, hay un punto marcado "a revisar": rol mínimo para cancelar una
-    activation), tests de integración/RLS.
+    (3 niveles) + `deriveActivationStatus`, migración aditiva de las 3
+    tablas propuestas en el audit §15 (con 5 RPCs `SECURITY DEFINER` de
+    transición crítica — el audit mencionaba 3, el diseño final usó 5:
+    prepare/ready/published/cancelTarget/cancelActivation, sin desviación
+    de fondo), RLS (audit §16), repositorios de infraestructura (audit
+    §18). Migración **aplicada contra Supabase LOCAL** y **validada en
+    runtime real** (Rounds A–E: 32 aserciones de comportamiento runtime
+    con verificación semántica del motivo exacto de rechazo en cada caso
+    negativo, repetibilidad de 2 corridas consecutivas sin limpieza
+    manual, sin ningún defecto encontrado en la migración misma — ver
+    reporte secciones 26–27). 1012 tests pasando en `packages/shared` +
+    `packages/domain` + `packages/infrastructure` (typecheck/lint limpios
+    en los 3), revisión de seguridad de 10 puntos sin hallazgos (reporte
+    sección 30). 11.3 (piso de rol operator) queda como limitación
+    estructural no bloqueante por falta de fixture de usuario local
+    disponible — ver reporte sección 22.
+  - **8A.2 — Activation Application Use Cases + Authorization / Signals
+    Integration**: capa de aplicación sobre la persistencia ya lista y
+    validada. Alcance: (1) use case `createCampaignActivation` — único
+    punto autorizado para construir un `CampaignActivationSnapshot` real
+    desde una `Campaign`/`CampaignApproval` reales, con re-verificación
+    explícita de `campaign.status === 'approved'` en application (defensa
+    en profundidad sobre el trigger de BD), nunca disparado
+    automáticamente desde `approveCampaign`; (2) use cases de gestión de
+    targets (`addActivationTarget`/`removeActivationTarget`) y de
+    transición (`prepareTarget`/`markTargetReady`/`markTargetPublished`/
+    `cancelTarget`/`cancelActivation`) como wrappers delgados sobre
+    `CampaignActivationRepository`, con la matriz de roles final
+    confirmada con el usuario (audit §12, punto abierto: rol mínimo exacto
+    para cancelar una activation completa); (3) integración best-effort
+    con el patrón de `tasks`/`alerts` ya existente (audit §20/§25) —
+    señales/alertas si una activation queda pendiente de publicación
+    manual demasiado tiempo (mitigación parcial de R-ACT-11); (4)
+    autorización end-to-end en la capa de aplicación (no solo BD) para
+    cada use case nuevo. **NO implementado todavía** — esta ronda de
+    cierre documenta el alcance pero no comienza el código de 8A.2. Sigue
+    explícitamente fuera de 8A.2: cualquier UI (8A.3), cualquier
+    publicación externa real (8B+).
   - **8A.3 — Activation UI / Manual Activation**: UI de creación/gestión
     de activation dentro del detail de campaign + ruta dedicada
     `/campaigns/[id]/activation/[activationId]` (audit §19), **y el
