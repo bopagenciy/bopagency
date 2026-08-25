@@ -23,7 +23,7 @@ integración en Campaign Studio (§6), operación manual end-to-end (crear →
 agregar canal manual → preparar → listo → publicado/cancelar) sin ninguna
 llamada a proveedor externo — ver
 `docs/implementation/phase-8/PHASE_8A3_WEB_MANUAL_OPERATIONS_REPORT.md`.
-**8A queda COMPLETA en su totalidad** (8A.1 + 8A.2 + 8A.3).
+**8A queda COMPLETA en su totalidad** (8A.1 + 8A.2 + 8A.3); **8B.0 (Publishing Gateway — Audit + Architecture) COMPLETE** — ver `docs/implementation/phase-8/PHASE_8B_PUBLISHING_GATEWAY_AUDIT.md` (diseño del modelo de datos de publicación, state machine de job con `unknown_outcome`, `ChannelPublisherPort`, orquestación job+n8n+reconciliación, sin código ni migración).
 
 > Regla de producto heredada de Phase 7 y vigente para toda Phase 8: **NO
 > publicación externa real** (Meta Ads, Google Ads, YouTube, email
@@ -164,16 +164,69 @@ llamada a proveedor externo — ver
   cualquier implementación de `ChannelPublisherPort`, cualquier escritor
   de `client_integrations`.
 
-### 8B — Publishing Gateway
-- **Objetivo:** la capa de abstracción (puerto/adaptador, mismo patrón que
-  `CampaignGeneratorPort` de Phase 7D) para "publicar" un
-  `CampaignActivationTarget` a un canal, con proveedores intercambiables —
-  sin implementar todavía ningún proveedor real conectado a una cuenta de
-  anuncios de verdad. Nombre de puerto recomendado por el audit de 8A:
-  `ChannelPublisherPort` (ver `PHASE_8A_ACTIVATION_AUDIT.md` §22) — a
-  confirmar/ajustar al arrancar 8B.
-- **Explícitamente fuera de alcance:** credenciales reales, llamadas de red
-  reales a Meta/Google/YouTube.
+### 8B — Publishing Gateway — Estado de la subfase de AUDIT +
+  ARQUITECTURA: ✅ **COMPLETA (8B.0)** — entregable:
+  `docs/implementation/phase-8/PHASE_8B_PUBLISHING_GATEWAY_AUDIT.md`
+  (auditoría de código real de Phase 8A/6/7 + client_integrations +
+  n8n/webhooks; confirma `ChannelPublisherPort` como nombre de puerto
+  (audit 8A §22, no reabierto); diseña el modelo de datos de publicación
+  — `campaign_publication_jobs` / `campaign_publication_attempts` /
+  `campaign_publication_events` / `campaign_publication_webhook_events`,
+  ninguno de los cuales existía en el modelo de 8A — sin migración;
+  state machine de job (`queued → claimed → in_progress → succeeded|
+  failed|cancelled|unknown_outcome`, con `unknown_outcome` como adición
+  central para prevenir publicación duplicada tras timeout); arquitectura
+  de idempotencia (`publish:{orgId}:{targetId}:{retryCount}`,
+  constraints únicos); contrato completo del puerto (`validateTarget`/
+  `publish`/`getStatus`/`cancel`, con `PublishReceipt.outcome:
+  'confirmed'|'unknown'`); arquitectura de adapters vía factory/registry
+  (mismo patrón que `campaign-ai-provider.factory.ts` de Phase 7D, con
+  divergencia justificada por resolución dinámica de credenciales
+  multi-tenant); auditoría de `client_integrations` (confirma que hoy no
+  puede representar credenciales reales de forma segura sin cambios de
+  schema, y que el patrón `vault_reference`/Supabase Vault ya diseñado en
+  `automation_secrets_metadata` — Phase 6B, sin escritor — es reutilizable
+  en vez de inventar infraestructura de secretos nueva); recomendación de
+  orquestación **job + n8n + reconciliación periódica**, con la regla no
+  negociable de que la DB permanece la única autoridad de estado y n8n
+  nunca lo es; modelo de coexistencia manual/externo (una sola entidad de
+  target con enrutamiento, no dos modelos); matriz de roles extendida;
+  modelo de fallo/reconciliación con la categoría `UNKNOWN_OUTCOME`
+  explícita; diseño de señales reutilizando el patrón de dedupe de
+  Phase 6F/7F/8A2; diseño de webhook/reconciliación (sin implementar)
+  generalizando `/api/webhooks/n8n/route.ts` y `automation_webhook_events`;
+  revisión de seguridad de 14 puntos; propuesta de DB/RLS (sin migración);
+  4 preguntas abiertas para confirmación explícita antes de 8B.1 (rol de
+  reconciliación manual, rol de cancelación in-progress, umbral de
+  reconciliación periódica, alcance del primer webhook real en 8B.3).
+  **Ningún código, migración, entidad, use case, componente ni Server
+  Action fue creado en esta ronda.**
+  - **Subfases de implementación derivadas de 8B (a ejecutar en orden,
+    cada una requiere aprobación explícita del usuario antes de
+    empezar, mismo criterio que 8A):**
+    - **8B.1 — Publication Domain + Persistence**: entidades de dominio
+      (`CampaignPublicationJob`, `CampaignPublicationAttempt`,
+      `CampaignPublicationEvent`) + funciones puras de transición +
+      migración aditiva de las 4 tablas propuestas en el audit §15 +
+      RPCs `SECURITY DEFINER` de transición crítica + las 2 transiciones
+      nuevas de `CampaignActivationTarget` (`markPublishing`/
+      `markFailed`) + RLS. Sin adapters de proveedor real.
+    - **8B.2 — Publication Application Orchestration**:
+      `ChannelPublisherPort` como contrato (sin implementación real —
+      adapter de prueba determinístico), factory/registry, use case
+      `publishActivationTarget` (bifurcación manual/automatizado),
+      retry/cancel/reconcile, integración de señales.
+    - **8B.3 — Publishing Gateway Runtime**: transporte real hacia n8n
+      para dispatch de jobs, endpoint `/api/webhooks/publishing/[provider]`,
+      worker/cron de reconciliación periódica. Sin credenciales reales de
+      ningún proveedor.
+    - **8B.4 — Web Operations / Monitoring**: UI de jobs/attempts,
+      vista de reconciliación manual, mapeo de errores de proveedor a la
+      taxonomía cerrada.
+  - **Explícitamente fuera de alcance de TODA la subfase 8B (incluida
+    8B.0):** cualquier llamada real a Meta/Google/LinkedIn/email,
+    cualquier credencial real, cualquier adapter de proveedor
+    implementado — eso pertenece a 8E/8F.
 
 ### 8C — Content / Asset Calendar
 - **Objetivo:** vista de calendario de contenido/activos asociados a

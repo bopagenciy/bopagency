@@ -243,3 +243,43 @@ las RPCs que ya eran la autoridad final desde 8A.1.
 **Riesgos sin cambio de estado en 8A.3** (correctamente diferidos, ningún
 código de dominio/application/infraestructura tocado):
 R-ACT-03/04/05/06/07/08/10/14/15.
+
+## Actualización — Phase 8B.0 (Publishing Gateway — Audit + Architecture)
+
+Ver `PHASE_8B_PUBLISHING_GATEWAY_AUDIT.md` para el detalle completo.
+Ningún archivo de código/migración fue tocado en esta ronda — los riesgos
+nuevos abajo son de **diseño** (a mitigar cuando 8B.1+ implemente), no
+hallazgos de código existente. Se numeran R-PUB-01 en adelante para no
+colisionar con el namespace R-ACT-* ya establecido, y porque describen
+riesgos de un subsistema nuevo (publicación externa vía job/adapter), no
+extensiones de los riesgos de activación ya registrados.
+
+| ID | Riesgo | Severity | Likelihood | Mitigation (diseño, a implementar en 8B.1+) |
+|---|---|---|---|---|
+| R-PUB-01 | **Duplicate publishing por timeout no reconciliado** — un timeout de red hacia el proveedor deja ambigüedad sobre si la publicación ocurrió; un retry automático ciego publicaría dos veces en la cuenta real del cliente | Critical | Medium (una vez exista ejecución automática real, 8E/8F) | Estado dedicado `unknown_outcome` en el state machine de job (nunca colapsado en `failed`); ningún retry automático permitido desde `unknown_outcome` — requiere reconciliación positiva vía `ChannelPublisherPort.getStatus()` o confirmación manual `strategist+` antes de habilitar un retry. Ver audit 8B §4.1/§11. |
+| R-PUB-02 | **Credential leakage vía error de proveedor** — un SDK de proveedor incluye un token/header sensible dentro de su propio mensaje de error, que termina persistido sin sanitizar en `failure_message`/`provider_error_code` | Critical | Medium (depende del SDK concreto de cada proveedor, no verificable hasta 8E/8F) | `providerErrorCode`/mensajes de error deben pasar por el mismo sanitizador `FORBIDDEN_METADATA_KEYS` ya usado por el n8n dispatcher ANTES de persistir — responsabilidad explícita de cada adapter concreto, señalada en el audit 8B §14 punto 4 para que 8E/8F no lo omitan. |
+| R-PUB-03 | **n8n tratado como autoridad de estado** — un futuro cambio de implementación asume que si n8n "dice" que un job tuvo éxito, eso basta para marcarlo `succeeded` sin revalidar contra el estado real en DB/proveedor | Critical | Low (si se documenta la regla explícitamente antes de 8B.3) | Regla arquitectónica explícita: DB es la única fuente de verdad; cualquier callback de n8n solo PROPONE una transición, la RPC `SECURITY DEFINER` revalida el estado actual antes de aplicarla (mismo patrón que `/api/webhooks/n8n` ya hace hoy). Ver audit 8B §8.3. |
+| R-PUB-04 | **Cross-org integration reference al resolver credenciales de publishing** — el adapter resuelve `clientIntegrationId` sin revalidar que pertenece a la misma organización del target, filtrando credenciales de otro cliente | Critical | Low | Doble capa: el target ya fue validado cross-org en su creación (trigger `check_activation_target_match`, 8A.1); `resolveCredentials` (8B.2) revalida de nuevo `integration.organizationId === target.organizationId` como defensa en profundidad, nunca confiando solo en la validación de 8A.1. Ver audit 8B §7.3/§14 punto 11. |
+| R-PUB-05 | **Arbitrary provider name en webhook inbound** — un path de webhook con un `provider` no reconocido (`/api/webhooks/publishing/evil`) alcanza lógica de resolución de adapter/secreto antes de ser rechazado | High | Low | Validación de `provider` contra `ACTIVATION_PROVIDERS` (enum cerrado ya existente) como el PRIMER paso del handler, antes de leer headers de firma o crear cualquier cliente con privilegio — cierra el vector antes de que llegue a HMAC/DB. Ver audit 8B §13.1/§14 punto 6. |
+| R-PUB-06 | **Job huérfano sin reconciliación** — un job queda `in_progress` indefinidamente porque el webhook nunca llega (bug del proveedor, outage, workflow n8n mal configurado) y nadie lo detecta | High | Medium | Reconciliación periódica obligatoria (cron/n8n workflow) que revisa jobs `in_progress` más allá de un umbral de tiempo y fuerza una consulta `getStatus()` — nunca depender exclusivamente del webhook. Ver audit 8B §8.2/§13.3. Umbral exacto es una pregunta abierta (audit 8B §18.3) a confirmar antes de 8B.1. |
+| R-PUB-07 | **Reconciliación manual incorrecta** — un strategist+ resuelve un job `unknown_outcome` a `succeeded` sin verificación real contra el proveedor (o a `failed` cuando en realidad sí publicó), ocultando una duplicación o bloqueando indebidamente un retry | High | Medium (inherente a cualquier acción humana de reconciliación) | La RPC de reconciliación manual exige `reconciled_by`/`reconciliation_note` obligatorios (nunca una transición silenciosa) — auditable y atribuible, mismo criterio que `markManualTargetPublished` en el camino manual de 8A. Mitigación completa (verificación automática) solo posible cuando el proveedor ofrezca una consulta fiable por idempotency key. Ver audit 8B §10/§13. |
+| R-PUB-08 | **Cancelación de job `in_progress` interpretada como cancelación real** — un operador cree que "cancelar" un job en curso detiene la llamada HTTP ya en vuelo, cuando en realidad es cooperativa y puede resolverse igual a `succeeded` | Medium | Medium | Semántica explícita: cancelar `in_progress` solo registra `cancellation_requested_at`, nunca aborta una llamada de red real; el job se resuelve según lo que efectivamente ocurrió con el proveedor. UI (8B.4) debe comunicar esto explícitamente, no solo el backend. Ver audit 8B §4.4. |
+| R-PUB-09 | **`client_integrations.configuration` usado para credenciales reales sin cambio de schema** — un futuro PR de 8E/8F, bajo presión de tiempo, escribe un token real directamente en `configuration: jsonb` en vez de usar una referencia a vault, violando el comentario ya existente en la migración de Phase 3 | Critical | Medium (si no se bloquea explícitamente antes de que exista el primer escritor real) | Documentado como precondición dura para 8E/8F: `client_integrations` necesita `provider` como enum cerrado + que las credenciales vivan exclusivamente como `vault_reference` (generalizando el patrón ya diseñado en `automation_secrets_metadata`, Phase 6B, hoy sin escritor) — nunca en `configuration` directamente. Ver audit 8B §1.4/§7.3. Extiende (no reemplaza) R-ACT-14. |
+| R-PUB-10 | **UI de retry/cancel de publicación duplica reglas de dominio sin compartir la fuente de verdad** — mismo patrón de riesgo que R-ACT-16 (8A.3), ahora aplicado a los botones nuevos de 8B.4 sobre jobs/attempts | Low | Low | Mismo criterio que R-ACT-16: la autoridad real es siempre la RPC, el peor caso es un botón visible que el servidor rechaza — no una transición inválida ejecutada. Candidato a resolver junto con R-ACT-16 si se decide compartir funciones `can*` de dominio hacia el cliente. Ver audit 8B §1.1 (herencia de R-ACT-16). |
+
+**Riesgos de Phase 8A referenciados y extendidos por 8B.0 (sin cambio de
+severidad, solo de alcance)**: R-ACT-01 (duplicate publishing — ahora con
+mitigación concreta de job/idempotencyKey, ver R-PUB-01), R-ACT-04/R-ACT-05
+(cross-org/credential leakage — extendidos a la superficie nueva de
+publishing, ver R-PUB-04/R-PUB-02), R-ACT-08 (retries duplicando acción
+externa — resuelto en diseño por R-PUB-01/la categoría `unknown_outcome`),
+R-ACT-10 (cancelación durante ejecución — resuelto en diseño por §4.4/
+R-PUB-08), R-ACT-12 (alert spam — el diseño de señales de 8B §12 sigue el
+mismo criterio de moderación, sin filas nuevas necesarias), R-ACT-14
+(refresh token / escritor de `client_integrations` inexistente — sigue sin
+resolverse, ahora con precondición explícita adicional vía R-PUB-09).
+
+**Sin cambio de estado** (correctamente diferidos a 8B.1+, sin código en
+esta ronda): todos los riesgos anteriores permanecen exactamente como
+estaban documentados hasta que exista implementación real que los
+ejercite.
