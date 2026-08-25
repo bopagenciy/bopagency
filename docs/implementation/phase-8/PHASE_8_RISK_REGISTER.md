@@ -179,3 +179,67 @@ activation/target) sigue verificado solo por revisión de código + tests
 unitarios de application, no por un fixture de `auth.users` real
 desechable en runtime local — ambos quedan como candidatos para 8A.3/8D
 si se decide necesario.
+
+---
+
+## Seguimiento — Phase 8A.3 (Web Integration + Manual Operations UI)
+
+Ver `PHASE_8A3_WEB_MANUAL_OPERATIONS_REPORT.md` para el detalle completo.
+Ningún archivo de `packages/domain`/`packages/application`/
+`packages/infrastructure`/`packages/shared` ni ninguna migración SQL se
+tocó en esta subfase — los cambios son exclusivamente `apps/web` (Server
+Actions + composition root + UI). Por lo tanto, la mitigación real de
+todos los riesgos con "Mitigation" a nivel de RPC/trigger/schema (la
+mayoría de R-ACT-01 a R-ACT-15) no cambió: 8A.3 solo añade una capa de UI
+y una capa adicional (redundante, no nueva) de verificación de rol sobre
+las RPCs que ya eran la autoridad final desde 8A.1.
+
+- **R-ACT-01** (duplicate publishing) — sin cambio de mitigación (la RPC
+  `mark_activation_target_published` sigue siendo la autoridad). La UI
+  añade una mitigación de UX no crítica: el botón "Marcar publicado" solo
+  se muestra cuando `status` es `ready`/`scheduled` (`canMarkPublished` en
+  `ActivationTargetsPanel`), reduciendo el doble-click accidental, pero un
+  segundo intento vía Server Action directo seguiría siendo rechazado por
+  la RPC, no por la UI.
+- **R-ACT-02** (approval bypass) — sin cambio; `createCampaignActivationAction`
+  exige rol strategist+ en la Server Action (capa nueva, redundante con la
+  capa de application ya existente) antes de siquiera invocar el use case,
+  que a su vez revalida `campaign.status === 'approved'` antes del INSERT
+  protegido por el trigger `check_activation_source`.
+- **R-ACT-09** (race conditions en creación concurrente) — **verificado en
+  la capa web**: test S4 (`actions.test.ts`) confirma que cuando el use
+  case devuelve `CONFLICT` (el índice único parcial rechazó la segunda
+  activación concurrente), la Server Action lo traduce a un `ActionResult`
+  seguro sin lanzar excepción y sin llamar `revalidatePath` — la UI puede
+  mostrar el error de forma controlada en vez de romper.
+- **R-ACT-11** (manual/external state divergence) — sin cambio de
+  mitigación de datos (`actorUserId`/timestamp/`externalReference` siguen
+  siendo la única atribución posible en el camino manual); la UI hace
+  explícito en tres lugares distintos (Server Action, componente,
+  composition root — ver reporte §7) que "marcar publicado" es una
+  confirmación humana, no una publicación real, reduciendo el riesgo de
+  que un operador crea erróneamente que el sistema publicó por él.
+- **R-ACT-12** (alert spam) — sin cambio: 8A.3 no agrega ninguna alerta ni
+  tarea nueva — el composition root de esta subfase deliberadamente omite
+  `alertRepository`/`taskRepository` en los Deps de creación (ver
+  `activation.composition.ts`, comentario explícito), dejando la única
+  señal existente (tarea en `createCampaignActivation`, ya implementada en
+  8A.2) sin duplicar.
+- **R-ACT-13** (accidental automatic publication) — **re-confirmado en la
+  capa web**: `CampaignActivationEntryCard` (integración en Campaign
+  Studio) nunca auto-crea una activación ni cambia `campaign.status` — la
+  creación pasa exclusivamente por un click explícito de un strategist+ en
+  `CreateActivationPanel`, verificado por test (U1/U3 de
+  `CampaignActivationEntryCard.test.tsx` y `CreateActivationPanel.test.tsx`).
+  `approveCampaignAction` (Phase 7C/7F, `campaigns/actions.ts`) no fue
+  tocado por esta subfase.
+
+**Nuevo riesgo de UI identificado en 8A.3 (bajo, aceptado):**
+
+| ID | Riesgo | Severity | Likelihood | Mitigation |
+|---|---|---|---|---|
+| R-ACT-16 | **Guards de UI desincronizados de las reglas de dominio** — `ActivationTargetsPanel`/`CancelActivationPanel` replican como funciones puras (`canPrepare`/`canMarkReady`/`canMarkPublished`/`canCancel`) las mismas reglas que `canTransitionActivationTarget`/`canCancelActivation` de `packages/domain`; si el dominio cambia esas reglas en una fase futura sin actualizar la UI, un botón podría mostrarse (o esconderse) incorrectamente | Low | Low | Es solo UX — la autoridad real sigue siendo la RPC/use case (§5 del kickoff, "UI hiding is UX only"), así que el peor caso es un botón visible que el servidor rechaza con un error claro (`VALIDATION_ERROR`), nunca una transición inválida ejecutada. Mitigación completa (compartir la fuente de verdad en vez de duplicarla) queda como mejora futura no bloqueante — candidato para exportar las funciones `can*` de dominio hacia un paquete consumible por el cliente si se vuelve a duplicar en más componentes. |
+
+**Riesgos sin cambio de estado en 8A.3** (correctamente diferidos, ningún
+código de dominio/application/infraestructura tocado):
+R-ACT-03/04/05/06/07/08/10/14/15.

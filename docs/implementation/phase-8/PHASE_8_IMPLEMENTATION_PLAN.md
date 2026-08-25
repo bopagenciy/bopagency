@@ -16,8 +16,14 @@ Authorization/Signals Integration) COMPLETE** — 7 use cases de escritura
 sobre las RPCs), señal best-effort post-commit acotada a la creación de
 activation (sin inventar side effects nuevos) — ver
 `docs/implementation/phase-8/PHASE_8A2_APPLICATION_USE_CASES_REPORT.md`;
-**8A.3 pendiente de arrancar** (NO toda la subfase 8A está completa —
-8A.1 y 8A.2 sí).
+**8A.3 (Web Integration + Manual Operations UI) COMPLETE** — Server
+Actions + composition root expone los 11 use cases de 8A.2, ruta
+`/campaigns/[id]/activation` con resumen/targets/timeline/cancelación,
+integración en Campaign Studio (§6), operación manual end-to-end (crear →
+agregar canal manual → preparar → listo → publicado/cancelar) sin ninguna
+llamada a proveedor externo — ver
+`docs/implementation/phase-8/PHASE_8A3_WEB_MANUAL_OPERATIONS_REPORT.md`.
+**8A queda COMPLETA en su totalidad** (8A.1 + 8A.2 + 8A.3).
 
 > Regla de producto heredada de Phase 7 y vigente para toda Phase 8: **NO
 > publicación externa real** (Meta Ads, Google Ads, YouTube, email
@@ -125,13 +131,34 @@ activation (sin inventar side effects nuevos) — ver
     cualquier publicación externa real (8B+), `AutomationExecution`,
     `publication_jobs`, n8n, transición automática `campaign approved` →
     `activation`/`campaign.status = 'active'`.
-  - **8A.3 — Activation UI / Manual Activation**: UI de creación/gestión
-    de activation dentro del detail de campaign + ruta dedicada
-    `/campaigns/[id]/activation/[activationId]` (audit §19), **y el
-    camino manual end-to-end completo** (crear → agregar canal manual →
-    checklist → marcar publicado, audit §8). Esta subfase absorbe
-    funcionalmente lo que el roadmap anterior llamaba **8D "Manual
-    Activation"** — ver nota de resolución de solapamiento abajo.
+  - **8A.3 — Activation UI / Manual Activation**: ✅ **COMPLETE** (ver
+    `PHASE_8A3_WEB_MANUAL_OPERATIONS_REPORT.md`) — composition root
+    (`activation.composition.ts`) + 11 Server Actions (7 escritura + 4
+    lectura) sobre los use cases de 8A.2; ruta
+    `/campaigns/[id]/activation` (sin `[activationId]` — desviación
+    deliberada y documentada en el reporte §1: el índice único parcial de
+    8A.1 garantiza como máximo una activación NO-terminal por campaña, así
+    que "la activación de esta campaña" no necesita un ID en la URL; el
+    historial de activaciones terminales se muestra en la misma página) con
+    resumen (A), tabla de targets (B), workflow manual completo — agregar
+    canal manual, preparar, marcar listo, marcar publicado, cancelar (C) —,
+    cancelación de la activación completa con razón obligatoria y
+    confirmación en dos pasos (D), y timeline de eventos append-only (E);
+    integración en Campaign Studio (`CampaignActivationEntryCard` en
+    `/campaigns/[id]`, §6) sin auto-crear activación al aprobar ni cambiar
+    `campaign.status`; matriz de roles reforzada en dos capas (Server
+    Action + use case, ninguna nueva) exactamente igual a la definida en
+    8A.2; "marcar publicado" documentado como confirmación manual en cada
+    capa (Server Action, UI, composition root) — nunca una llamada real a
+    Meta/Google/LinkedIn/email, verificado también por un test que audita
+    el código fuente en busca de imports/strings de proveedor. 43 tests
+    nuevos (6 archivos) cubriendo matriz de roles, actor spoofing,
+    transición inválida, duplicado, cancelación con razón, y los tres
+    estados (empty / historial terminal / nueva activación tras terminal).
+    Esta subfase absorbe funcionalmente lo que el roadmap anterior llamaba
+    **8D "Manual Activation"** — ver nota de resolución de solapamiento
+    abajo. `removeActivationTarget` sigue sin exponerse como Server Action
+    (fuera de alcance de 8A.2, por lo tanto de 8A.3 — ver reporte §12).
 - **Explícitamente fuera de alcance de TODA la subfase 8A (incluidas
   8A.1/8A.2/8A.3):** cualquier llamada real a un proveedor externo,
   cualquier implementación de `ChannelPublisherPort`, cualquier escritor
