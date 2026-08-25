@@ -328,3 +328,77 @@ export {
   isRecoverableIncident,
 } from './use-cases/automations/automation-incident-severity';
 export type { AutomationIncidentType } from './use-cases/automations/automation-incident-severity';
+
+// Use cases — Campaign Activations (Phase 8A.2)
+export { createCampaignActivation } from './use-cases/activations/create-campaign-activation.use-case';
+export type {
+  CreateCampaignActivationInput,
+  CreateCampaignActivationDeps,
+} from './use-cases/activations/create-campaign-activation.use-case';
+
+export { addCampaignActivationTarget } from './use-cases/activations/add-campaign-activation-target.use-case';
+export type {
+  AddCampaignActivationTargetInput,
+  AddCampaignActivationTargetDeps,
+} from './use-cases/activations/add-campaign-activation-target.use-case';
+
+export { prepareActivationTarget } from './use-cases/activations/prepare-activation-target.use-case';
+export type {
+  PrepareActivationTargetInput,
+  PrepareActivationTargetDeps,
+} from './use-cases/activations/prepare-activation-target.use-case';
+
+export { markActivationTargetReady } from './use-cases/activations/mark-activation-target-ready.use-case';
+export type {
+  MarkActivationTargetReadyInput,
+  MarkActivationTargetReadyDeps,
+} from './use-cases/activations/mark-activation-target-ready.use-case';
+
+export { markActivationTargetPublished } from './use-cases/activations/mark-activation-target-published.use-case';
+export type {
+  MarkActivationTargetPublishedInput,
+  MarkActivationTargetPublishedDeps,
+} from './use-cases/activations/mark-activation-target-published.use-case';
+
+export { cancelActivationTarget } from './use-cases/activations/cancel-activation-target.use-case';
+export type {
+  CancelActivationTargetInput,
+  CancelActivationTargetDeps,
+} from './use-cases/activations/cancel-activation-target.use-case';
+
+export { cancelCampaignActivation } from './use-cases/activations/cancel-campaign-activation.use-case';
+export type {
+  CancelCampaignActivationInput,
+  CancelCampaignActivationDeps,
+} from './use-cases/activations/cancel-campaign-activation.use-case';
+
+export { getCampaignActivation } from './use-cases/activations/get-campaign-activation.use-case';
+export type {
+  GetCampaignActivationInput,
+  GetCampaignActivationDeps,
+} from './use-cases/activations/get-campaign-activation.use-case';
+
+export { listCampaignActivationsByCampaign } from './use-cases/activations/list-campaign-activations-by-campaign.use-case';
+export type {
+  ListCampaignActivationsByCampaignInput,
+  ListCampaignActivationsByCampaignDeps,
+} from './use-cases/activations/list-campaign-activations-by-campaign.use-case';
+
+export { listCampaignActivationsByClient } from './use-cases/activations/list-campaign-activations-by-client.use-case';
+export type {
+  ListCampaignActivationsByClientInput,
+  ListCampaignActivationsByClientDeps,
+} from './use-cases/activations/list-campaign-activations-by-client.use-case';
+
+export { getActivationWithTargetsAndEvents } from './use-cases/activations/get-activation-with-targets-and-events.use-case';
+export type {
+  GetActivationWithTargetsAndEventsInput,
+  GetActivationWithTargetsAndEventsDeps,
+  ActivationWithTargetsAndEvents,
+} from './use-cases/activations/get-activation-with-targets-and-events.use-case';
+
+export { evalActivationCreatedSignalSilently, activationTargetsSetupSignatureTag } from './use-cases/activations/activation-signals';
+export type {
+  ActivationCreatedSignalInput,
+  ActivationSignalDeps,
+} from './use-cases/activations/activation-signals';

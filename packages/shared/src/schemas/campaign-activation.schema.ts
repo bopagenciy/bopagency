@@ -78,3 +78,73 @@ export const activationCancellationReasonSchema = z
   .max(2000);
 
 export const activationExternalReferenceSchema = z.string().trim().min(1).max(300).nullable().optional();
+
+
+// ─── Use-case input schemas — Phase 8A.2 ───────────────────────────────────────
+//
+// Mismo criterio que approveCampaignSchema/rejectCampaignSchema
+// (campaign.schema.ts, Phase 7C): SOLO validan los campos que realmente
+// vienen del cliente/form. organizationId y actorUserId NUNCA forman parte
+// de estos schemas — se resuelven siempre en el servidor desde la sesión,
+// nunca se aceptan del caller (ver comentario en cada *Input de los use
+// cases de application).
+
+const activationIdSchema = z.string().uuid();
+const campaignIdForActivationSchema = z.string().uuid();
+const activationNotesSchema = z.string().trim().max(2000).nullable().optional();
+const activationMetadataSchema = z.record(z.string(), z.unknown()).optional();
+const readinessChecklistSchema = z.record(z.string(), z.unknown()).nullable().optional();
+
+export const createCampaignActivationSchema = z.object({
+  campaignId: campaignIdForActivationSchema,
+  notes: activationNotesSchema,
+  metadata: activationMetadataSchema,
+});
+
+export type CreateCampaignActivationFormValues = z.infer<typeof createCampaignActivationSchema>;
+
+export const addCampaignActivationTargetSchema = z.object({
+  activationId: activationIdSchema,
+  channel: activationChannelSchema,
+  provider: activationProviderSchema,
+  placement: activationPlacementSchema,
+  clientIntegrationId: z.string().uuid().nullable().optional(),
+  metadata: activationMetadataSchema,
+});
+
+export type AddCampaignActivationTargetFormValues = z.infer<typeof addCampaignActivationTargetSchema>;
+
+export const prepareActivationTargetSchema = z.object({
+  targetId: activationIdSchema,
+  checklist: readinessChecklistSchema,
+});
+
+export type PrepareActivationTargetFormValues = z.infer<typeof prepareActivationTargetSchema>;
+
+export const markActivationTargetReadySchema = z.object({
+  targetId: activationIdSchema,
+});
+
+export type MarkActivationTargetReadyFormValues = z.infer<typeof markActivationTargetReadySchema>;
+
+export const markActivationTargetPublishedSchema = z.object({
+  targetId: activationIdSchema,
+  externalReference: activationExternalReferenceSchema,
+  note: z.string().trim().max(2000).nullable().optional(),
+});
+
+export type MarkActivationTargetPublishedFormValues = z.infer<typeof markActivationTargetPublishedSchema>;
+
+export const cancelActivationTargetSchema = z.object({
+  targetId: activationIdSchema,
+  reason: activationCancellationReasonSchema,
+});
+
+export type CancelActivationTargetFormValues = z.infer<typeof cancelActivationTargetSchema>;
+
+export const cancelCampaignActivationSchema = z.object({
+  activationId: activationIdSchema,
+  reason: activationCancellationReasonSchema,
+});
+
+export type CancelCampaignActivationFormValues = z.infer<typeof cancelCampaignActivationSchema>;

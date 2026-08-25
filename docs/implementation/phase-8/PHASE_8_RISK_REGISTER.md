@@ -108,3 +108,74 @@ y (b) 11.3 (piso de rol `operator` no puede cancelar) permanece
 estructural por falta de un `auth.users` desechable en el fixture local
 disponible — ninguno de los dos bloquea 8A.1 COMPLETE; ambos son
 candidatos a cerrar en 8A.2/8D si se decide necesario.
+
+## Actualización — Phase 8A.2 (Activation Application Use Cases + Authorization/Signals Integration) — COMPLETE
+
+Ver `PHASE_8A2_APPLICATION_USE_CASES_REPORT.md` para el detalle completo
+de use cases, tests y revisión de seguridad. Resumen de mitigaciones
+reforzadas en la capa de **application** (defensa en profundidad sobre lo
+ya confirmado en runtime real por 8A.1 — la RPC/trigger de BD sigue
+siendo la autoridad final en todos los casos):
+
+- **R-ACT-02** (approval bypass) — reforzado en application:
+  `createCampaignActivation` reverifica `campaign.status === 'approved'`
+  Y resuelve la última decisión REAL de `campaign_approvals`
+  (`findLatestByCampaignId`) antes de construir el snapshot — nunca
+  fabrica un `campaignApprovalId`. Cubierto por tests unitarios
+  (draft/review/rejected rechazados antes de persistir; aprobación
+  inexistente o con `action !== 'approved'` rechazada).
+- **R-ACT-03** (stale snapshot) — reforzado: el use case de creación es el
+  ÚNICO punto de application autorizado a construir un
+  `CampaignActivationSnapshot`; se valida con
+  `campaignActivationSnapshotSchema` (Zod) antes de llamar al
+  repositorio. Corrección hecha en esta ronda: el `generatedContent` REAL
+  de la campaña (Phase 7D) ahora se congela en el snapshot cuando existe y
+  matchea el schema esperado (el scaffold original lo dejaba siempre en
+  `null`, perdiendo contenido real de campañas con IA generada — ver
+  reporte 8A.2 para el detalle y los tests que lo cubren). Un
+  `generatedContent` presente pero que no matchea el schema (dato
+  corrupto/legacy) se congela como `null` con warning logueado, en vez de
+  fallar la creación de la activation por un problema de otro subsistema.
+- **R-ACT-09** (race conditions en creación concurrente) — la ruta de
+  application no intenta "adivinar" el resultado de una carrera: el error
+  `CONFLICT` (`activationAlreadyActiveForCampaign`) que puede devolver el
+  índice único parcial de 8A.1 se propaga tal cual al caller, sin
+  reintento automático — cubierto por test unitario dedicado.
+- **R-ACT-11** (manual/external state divergence) — sin cambio de
+  mitigación (sigue acotada a `actor_user_id`/timestamp/
+  `external_reference` del modelo de datos de 8A.1); `markActivation
+  TargetPublished` en application no publica en ningún proveedor externo,
+  solo registra que el operador ya publicó manualmente — confirmado por
+  revisión de código (sin imports de Meta/Google/n8n en ningún use case
+  nuevo) y por test explícito ("no invoca ningún adapter de publishing
+  externo").
+- **R-ACT-12** (alert spam) — confirmado sin regresión: 8A.2 NO agrega
+  ninguna alerta nueva. La única señal nueva es una tarea (no una alerta)
+  en la creación de la activation, deduplicada por `activationId` vía
+  `findActiveBySignatureTag` (mismo patrón que Phase 7F) — cancelaciones y
+  transiciones de target no generan ni tareas ni alertas nuevas (decisión
+  de producto documentada explícitamente en `activation-signals.ts`, para
+  no inventar señales que el producto no pidió).
+- **R-ACT-13** (accidental automatic publication) — **gap cerrado**: existe
+  ahora el use case real (`createCampaignActivation`), y se confirmó (vía
+  revisión de código + test unitario "nunca transiciona campaign.status a
+  'active'") que ningún use case de 8A.2 llama a `CampaignRepository
+  .update`/`.approve`, y que `approveCampaign` (Phase 7C/7F) no fue
+  modificado ni llama a ningún use case de activation — la creación de una
+  activation sigue siendo 100% explícita, iniciada por un actor humano con
+  rol strategist+.
+
+**Riesgos sin cambio de estado en 8A.2** (correctamente diferidos, sin
+código nuevo en esta ronda): R-ACT-01/R-ACT-04/R-ACT-05/R-ACT-07 (sin
+cambios porque ninguna de las RPCs/triggers que los mitigan fue tocada;
+8A.2 solo agrega wrappers de application que las invocan tal cual),
+R-ACT-06, R-ACT-08, R-ACT-10, R-ACT-14, R-ACT-15.
+
+**Residuales heredados de 8A.1, sin resolver en 8A.2 (no bloqueantes,
+mismo motivo que antes — ninguno requiere código de application):** (a)
+la condición de carrera de dos sesiones concurrentes reales sigue sin
+ejercitarse en runtime; (b) el piso de rol `operator` (no puede cancelar
+activation/target) sigue verificado solo por revisión de código + tests
+unitarios de application, no por un fixture de `auth.users` real
+desechable en runtime local — ambos quedan como candidatos para 8A.3/8D
+si se decide necesario.

@@ -156,3 +156,23 @@ export {
   activationExternalReferenceSchema,
 } from './schemas/campaign-activation.schema';
 export type { CampaignActivationSnapshotShape } from './schemas/campaign-activation.schema';
+
+// Schemas — Campaign Activation use-case inputs (Phase 8A.2)
+export {
+  createCampaignActivationSchema,
+  addCampaignActivationTargetSchema,
+  prepareActivationTargetSchema,
+  markActivationTargetReadySchema,
+  markActivationTargetPublishedSchema,
+  cancelActivationTargetSchema,
+  cancelCampaignActivationSchema,
+} from './schemas/campaign-activation.schema';
+export type {
+  CreateCampaignActivationFormValues,
+  AddCampaignActivationTargetFormValues,
+  PrepareActivationTargetFormValues,
+  MarkActivationTargetReadyFormValues,
+  MarkActivationTargetPublishedFormValues,
+  CancelActivationTargetFormValues,
+  CancelCampaignActivationFormValues,
+} from './schemas/campaign-activation.schema';

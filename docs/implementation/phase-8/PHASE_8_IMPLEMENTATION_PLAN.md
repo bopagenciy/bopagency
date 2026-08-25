@@ -9,8 +9,15 @@ arquitectura) completada — ver
 aplicada contra Supabase LOCAL, y validada en runtime real (Rounds A–E,
 repetibilidad de 2 corridas consecutivas probada) — ver
 `docs/implementation/phase-8/PHASE_8A1_ACTIVATION_DOMAIN_PERSISTENCE_REPORT.md`
-secciones 26–31; **8A.2/8A.3 pendientes de arrancar** (NO toda la subfase
-8A está completa — solo 8A.1).
+secciones 26–31; **8A.2 (Activation Application Use Cases +
+Authorization/Signals Integration) COMPLETE** — 7 use cases de escritura
+(A–G) + 4 use cases de lectura implementados sobre la persistencia de
+8A.1, matriz de roles reforzada en application (defensa en profundidad
+sobre las RPCs), señal best-effort post-commit acotada a la creación de
+activation (sin inventar side effects nuevos) — ver
+`docs/implementation/phase-8/PHASE_8A2_APPLICATION_USE_CASES_REPORT.md`;
+**8A.3 pendiente de arrancar** (NO toda la subfase 8A está completa —
+8A.1 y 8A.2 sí).
 
 > Regla de producto heredada de Phase 7 y vigente para toda Phase 8: **NO
 > publicación externa real** (Meta Ads, Google Ads, YouTube, email
@@ -78,27 +85,46 @@ secciones 26–31; **8A.2/8A.3 pendientes de arrancar** (NO toda la subfase
     estructural no bloqueante por falta de fixture de usuario local
     disponible — ver reporte sección 22.
   - **8A.2 — Activation Application Use Cases + Authorization / Signals
-    Integration**: capa de aplicación sobre la persistencia ya lista y
-    validada. Alcance: (1) use case `createCampaignActivation` — único
-    punto autorizado para construir un `CampaignActivationSnapshot` real
-    desde una `Campaign`/`CampaignApproval` reales, con re-verificación
-    explícita de `campaign.status === 'approved'` en application (defensa
-    en profundidad sobre el trigger de BD), nunca disparado
-    automáticamente desde `approveCampaign`; (2) use cases de gestión de
-    targets (`addActivationTarget`/`removeActivationTarget`) y de
-    transición (`prepareTarget`/`markTargetReady`/`markTargetPublished`/
-    `cancelTarget`/`cancelActivation`) como wrappers delgados sobre
-    `CampaignActivationRepository`, con la matriz de roles final
-    confirmada con el usuario (audit §12, punto abierto: rol mínimo exacto
-    para cancelar una activation completa); (3) integración best-effort
-    con el patrón de `tasks`/`alerts` ya existente (audit §20/§25) —
-    señales/alertas si una activation queda pendiente de publicación
-    manual demasiado tiempo (mitigación parcial de R-ACT-11); (4)
-    autorización end-to-end en la capa de aplicación (no solo BD) para
-    cada use case nuevo. **NO implementado todavía** — esta ronda de
-    cierre documenta el alcance pero no comienza el código de 8A.2. Sigue
-    explícitamente fuera de 8A.2: cualquier UI (8A.3), cualquier
-    publicación externa real (8B+).
+    Integration**: ✅ **COMPLETE** (ver
+    `PHASE_8A2_APPLICATION_USE_CASES_REPORT.md`) — capa de aplicación
+    sobre la persistencia de 8A.1. Implementado: (1)
+    `createCampaignActivation` — único punto autorizado para construir un
+    `CampaignActivationSnapshot` real desde una `Campaign`/
+    `CampaignApproval` reales (incluye el `generatedContent` real de la
+    campaña, congelado, cuando existe y matchea el schema de Phase 7D —
+    corregido en esta ronda, ver reporte §"generatedContent"), con
+    re-verificación explícita de `campaign.status === 'approved'` en
+    application (defensa en profundidad sobre el trigger `check_activation
+    _source`), nunca disparado automáticamente desde `approveCampaign`;
+    (2) `addCampaignActivationTarget` (rol mínimo strategist+, valida par
+    channel/provider cerrado — nunca un string arbitrario) y los 4 use
+    cases de transición de target (`prepareActivationTarget`/
+    `markActivationTargetReady`/`markActivationTargetPublished`, rol
+    mínimo operator+; `cancelActivationTarget`, rol mínimo strategist+) y
+    de activation (`cancelCampaignActivation`, rol mínimo strategist+),
+    todos wrappers delgados sobre `CampaignActivationRepository` que
+    delegan las transiciones críticas a las 5 RPCs `SECURITY DEFINER` de
+    8A.1 (la RPC sigue siendo la autoridad final); (3) 4 use cases de
+    lectura pura (`getCampaignActivation`, `listCampaignActivationsBy
+    Campaign`, `listCampaignActivationsByClient`,
+    `getActivationWithTargetsAndEvents`) — cualquier rol miembro,
+    NUNCA mutan `tasks`/`alerts`; (4) integración de señales best-effort,
+    post-commit, acotada deliberadamente: SOLO `createCampaignActivation`
+    crea una tarea operativa ("Configurar y publicar canales de
+    activación"), con dedupe por `activationId`; cancelación de
+    activation/target y las transiciones de target NO generan ninguna
+    alerta/tarea nueva (decisión de producto documentada explícitamente en
+    `activation-signals.ts` y en el reporte — no se inventa un side effect
+    solo para usar la capa de señales); (5) autorización end-to-end en
+    application (rol mínimo por use case, nunca solo BD) para los 7 use
+    cases de escritura. `removeActivationTarget` (mencionado en la versión
+    anterior de este plan) NO se implementó como use case de aplicación en
+    esta ronda — no forma parte del alcance A–G confirmado con el usuario
+    para 8A.2 (el método de repositorio ya existe en 8A.1 para 8A.3/8D si
+    se necesita). Sigue explícitamente fuera de 8A.2: cualquier UI (8A.3),
+    cualquier publicación externa real (8B+), `AutomationExecution`,
+    `publication_jobs`, n8n, transición automática `campaign approved` →
+    `activation`/`campaign.status = 'active'`.
   - **8A.3 — Activation UI / Manual Activation**: UI de creación/gestión
     de activation dentro del detail de campaign + ruta dedicada
     `/campaigns/[id]/activation/[activationId]` (audit §19), **y el
