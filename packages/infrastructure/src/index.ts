@@ -28,6 +28,9 @@ export { SupabaseAutomationExecutionRepository } from './supabase/repositories/s
 // Phase 8A.1 repositories
 export { SupabaseCampaignActivationRepository } from './supabase/repositories/supabase-campaign-activation.repository';
 
+// Phase 8B.1 repositories
+export { SupabaseCampaignPublicationRepository } from './supabase/repositories/supabase-campaign-publication.repository';
+
 // Mappers
 export {
   rowToOrganization,
@@ -71,6 +74,20 @@ export type {
   CampaignActivationTargetRow,
   CampaignActivationEventRow,
 } from './supabase/mappers/campaign-activation.mapper';
+
+// Phase 8B.1 mappers
+export {
+  rowToCampaignPublicationJob,
+  rowToCampaignPublicationAttempt,
+  rowToCampaignPublicationEvent,
+  rowToCampaignPublicationWebhookEvent,
+} from './supabase/mappers/campaign-publication.mapper';
+export type {
+  CampaignPublicationJobRow,
+  CampaignPublicationAttemptRow,
+  CampaignPublicationEventRow as CampaignPublicationEventRowType,
+  CampaignPublicationWebhookEventRow,
+} from './supabase/mappers/campaign-publication.mapper';
 
 // Phase 6B mappers
 export { rowToAutomation } from './supabase/mappers/automation.mapper';

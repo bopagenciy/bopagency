@@ -23,7 +23,7 @@ integración en Campaign Studio (§6), operación manual end-to-end (crear →
 agregar canal manual → preparar → listo → publicado/cancelar) sin ninguna
 llamada a proveedor externo — ver
 `docs/implementation/phase-8/PHASE_8A3_WEB_MANUAL_OPERATIONS_REPORT.md`.
-**8A queda COMPLETA en su totalidad** (8A.1 + 8A.2 + 8A.3); **8B.0 (Publishing Gateway — Audit + Architecture) COMPLETE** — ver `docs/implementation/phase-8/PHASE_8B_PUBLISHING_GATEWAY_AUDIT.md` (diseño del modelo de datos de publicación, state machine de job con `unknown_outcome`, `ChannelPublisherPort`, orquestación job+n8n+reconciliación, sin código ni migración).
+**8A queda COMPLETA en su totalidad** (8A.1 + 8A.2 + 8A.3); **8B.0 (Publishing Gateway — Audit + Architecture) COMPLETE** — ver `docs/implementation/phase-8/PHASE_8B_PUBLISHING_GATEWAY_AUDIT.md` (diseño del modelo de datos de publicación, state machine de job con `unknown_outcome`, `ChannelPublisherPort`, orquestación job+n8n+reconciliación, sin código ni migración). **8B.1 (Publication Domain + Persistence) COMPLETE** — migración aditiva de 4 tablas (`campaign_publication_jobs`/`campaign_publication_attempts`/`campaign_publication_events`/`campaign_publication_webhook_events`) + 15 RPCs `SECURITY DEFINER` (14 de la migración original + `prepare_publication_retry` del retry-reset, 4 `authenticated`/11 `service_role`) + 2 transiciones nuevas de `CampaignActivationTarget` (`markTargetPublishing`/`markTargetFailed`), entidades de dominio + funciones puras de transición (incluye guarda anti-retry-ciego de `unknown_outcome`), repositorio agregado `CampaignPublicationRepository` + mapper/repositorio Supabase — ver `docs/implementation/phase-8/PHASE_8B1_PUBLICATION_DOMAIN_PERSISTENCE_REPORT.md`. **Validada end-to-end contra Postgres local real** (2026-08-27): las 3 migraciones (`20260825120000`, `20260827090000` hardening, `20260828100000` retry-reset) fueron aplicadas por el usuario contra su Supabase local; el fixture de runtime `phase8b1_local_runtime_validation.sql` corrió limpio en Run 6 y de nuevo en Run 7 inmediatamente después SIN limpieza entre corridas, probando repetibilidad real. Ciclo de vida completo confirmado en runtime real (creación/claim/in_progress/éxito/fallo/unknown_outcome, protecciones append-only, guardas terminales, retry explícito `failed → ready` con nuevo job y `retry_of_job_id`/`retry_count`, inmutabilidad del job histórico, bloqueo de retry duplicado y de estados de origen inválidos, idempotencia de webhook). Residual honesto: los checks del role matrix específicos de `viewer`/`operator`/`strategist` permanecen ESTRUCTURAL por falta de `auth.users` desechables en el entorno local — no se fabricó ningún PASS para cubrir ese hueco. Ver `PHASE_8B1_PUBLICATION_DOMAIN_PERSISTENCE_REPORT.md` §29 y `PHASE_8_RISK_REGISTER.md` (R-PUB-11/12/13 cerrados) para el detalle completo.
 
 > Regla de producto heredada de Phase 7 y vigente para toda Phase 8: **NO
 > publicación externa real** (Meta Ads, Google Ads, YouTube, email
@@ -204,13 +204,36 @@ llamada a proveedor externo — ver
   - **Subfases de implementación derivadas de 8B (a ejecutar en orden,
     cada una requiere aprobación explícita del usuario antes de
     empezar, mismo criterio que 8A):**
-    - **8B.1 — Publication Domain + Persistence**: entidades de dominio
-      (`CampaignPublicationJob`, `CampaignPublicationAttempt`,
-      `CampaignPublicationEvent`) + funciones puras de transición +
-      migración aditiva de las 4 tablas propuestas en el audit §15 +
-      RPCs `SECURITY DEFINER` de transición crítica + las 2 transiciones
-      nuevas de `CampaignActivationTarget` (`markPublishing`/
-      `markFailed`) + RLS. Sin adapters de proveedor real.
+    - **8B.1 — Publication Domain + Persistence**: ✅ **COMPLETE** (ver
+      `PHASE_8B1_PUBLICATION_DOMAIN_PERSISTENCE_REPORT.md`) — entidades de
+      dominio (`CampaignPublicationJob`, `CampaignPublicationAttempt`,
+      `CampaignPublicationEvent`, `CampaignPublicationWebhookEvent`) +
+      funciones puras de transición (`canTransitionPublicationJob`,
+      guardas terminales, `canRetryPublicationJob`/
+      `canReconcilePublicationJob` que bloquean explícitamente cualquier
+      retry ciego desde `unknown_outcome`) + migración aditiva
+      (`20260825120000_phase8b1_publication_domain_persistence.sql`) de
+      las 4 tablas del audit §15 + 15 RPCs `SECURITY DEFINER` (14 originales,
+      incluye `start_publication_job`, una adición documentada frente al
+      audit — separa `claimed` de `in_progress` tal como el propio grafo
+      de estados de 8B.0 ya distinguía — + `prepare_publication_retry`
+      agregada en la migración de retry-reset, `authenticated`,
+      strategist+ interno — split final 4 `authenticated`/11
+      `service_role`) + las 2 transiciones nuevas de
+      `CampaignActivationTarget` (`mark_activation_target_publishing`/
+      `mark_activation_target_failed`, service_role-only) + RLS completa
+      (viewer read-only, operator+ crea/cancela queued-claimed,
+      strategist+ cancela in_progress y reconcilia unknown_outcome — sin
+      debilitar el modelo de roles bloqueado del kickoff). Repositorio
+      agregado `CampaignPublicationRepository` (dominio) +
+      `SupabaseCampaignPublicationRepository`/mapper (infraestructura).
+      402 tests nuevos/existentes en `domain` pasando (70 nuevos), 511
+      tests corridos en `infrastructure` (56 nuevos de guarda estática de
+      la migración + 15 del mapper), 9 tests nuevos en `shared`,
+      typecheck/lint limpios en `shared`/`domain`/`infrastructure`/
+      `application`/`apps/web`. Sin adapter de proveedor real, sin
+      `ChannelPublisherPort` implementado, sin endpoint HTTP de webhook —
+      todo diferido a 8B.2/8B.3 según el audit. Migración APLICADA contra Supabase local real por el usuario, junto con la migración de hardening (`20260827090000`) y la de retry-reset (`20260828100000`). Validación de runtime real completada en 7 corridas del fixture (Run 6 y Run 7 limpias, Run 7 inmediatamente después de Run 6 SIN limpieza, probando repetibilidad sin necesidad de reset entre ejecuciones) — ver reporte §27-§29 para el detalle completo de cada ronda de triage y la auditoría final pre-commit. Único residual: role matrix `viewer`/`operator`/`strategist` permanece ESTRUCTURAL (sin `auth.users` desechables en local), documentado honestamente, no convertido en PASS.
     - **8B.2 — Publication Application Orchestration**:
       `ChannelPublisherPort` como contrato (sin implementación real —
       adapter de prueba determinístico), factory/registry, use case

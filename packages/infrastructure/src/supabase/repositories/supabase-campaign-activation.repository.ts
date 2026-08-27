@@ -493,6 +493,50 @@ export class SupabaseCampaignActivationRepository implements CampaignActivationR
     return this.findTargetById(id, organizationId);
   }
 
+  // ── markTargetPublishing — RPC mark_activation_target_publishing (Phase 8B.1) ──
+
+  async markTargetPublishing(
+    id: CampaignActivationTargetId,
+    organizationId: OrganizationId,
+  ): Promise<Result<CampaignActivationTarget>> {
+    const existing = await this.findTargetById(id, organizationId);
+    if (!existing.success) return existing;
+
+    const { error } = await (this.supabase as unknown as RpcCapableClient).rpc(
+      'mark_activation_target_publishing',
+      { p_target_id: id },
+    );
+
+    if (error) {
+      return err(mapActivationRpcError(error.message, 'Error al marcar el canal como en publicación'));
+    }
+
+    return this.findTargetById(id, organizationId);
+  }
+
+  // ── markTargetFailed — RPC mark_activation_target_failed (Phase 8B.1) ──────────
+
+  async markTargetFailed(
+    id: CampaignActivationTargetId,
+    organizationId: OrganizationId,
+    failureCode: string,
+    failureMessage?: string | null,
+  ): Promise<Result<CampaignActivationTarget>> {
+    const existing = await this.findTargetById(id, organizationId);
+    if (!existing.success) return existing;
+
+    const { error } = await (this.supabase as unknown as RpcCapableClient).rpc(
+      'mark_activation_target_failed',
+      { p_target_id: id, p_failure_code: failureCode, p_failure_message: failureMessage ?? null },
+    );
+
+    if (error) {
+      return err(mapActivationRpcError(error.message, 'Error al marcar el canal como fallido'));
+    }
+
+    return this.findTargetById(id, organizationId);
+  }
+
   // ── cancelTarget — RPC cancel_activation_target ─────────────────────────────────
 
   async cancelTarget(

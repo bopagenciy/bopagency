@@ -285,3 +285,73 @@ export type {
   CampaignActivationRepository,
   CampaignActivationWithTargets,
 } from './repositories/campaign-activation.repository';
+
+// CampaignPublicationJob entity — Phase 8B.1
+export type {
+  CampaignPublicationJobId,
+  PublicationIdempotencyKey,
+  CampaignPublicationJob,
+  CreatePublicationJobInput,
+} from './entities/campaign-publication-job';
+export {
+  campaignPublicationJobId,
+  buildPublicationIdempotencyKey,
+  canTransitionPublicationJob,
+  getPublicationJobNextStates,
+  transitionPublicationJob,
+  isPublicationJobTerminal,
+  canDirectlyCancelPublicationJob,
+  canRequestCooperativeCancel,
+  canRetryPublicationJob,
+  canReconcilePublicationJob,
+  computeReconciliationDeadline,
+} from './entities/campaign-publication-job';
+
+// CampaignPublicationAttempt entity — Phase 8B.1
+export type {
+  CampaignPublicationAttemptId,
+  CampaignPublicationAttempt,
+} from './entities/campaign-publication-attempt';
+export {
+  campaignPublicationAttemptId,
+  isValidAttemptNumber as isValidPublicationAttemptNumber,
+  isPublicationAttemptOpen,
+  computeAttemptDurationMs,
+} from './entities/campaign-publication-attempt';
+
+// CampaignPublicationEvent entity — Phase 8B.1
+export type {
+  CampaignPublicationEventId,
+  CampaignPublicationEvent,
+  CreatePublicationEventInput,
+} from './entities/campaign-publication-event';
+export {
+  campaignPublicationEventId,
+  isValidPublicationEventType,
+  sanitizePublicationEventMetadata,
+} from './entities/campaign-publication-event';
+
+// CampaignPublicationWebhookEvent entity — Phase 8B.1
+export type {
+  CampaignPublicationWebhookEventId,
+  CampaignPublicationWebhookEvent,
+  RecordWebhookReceiptInput,
+  RecordWebhookReceiptResult,
+} from './entities/campaign-publication-webhook-event';
+export {
+  campaignPublicationWebhookEventId,
+  isValidPayloadHash,
+} from './entities/campaign-publication-webhook-event';
+
+// CampaignPublicationRepository — Phase 8B.1
+export type {
+  CampaignPublicationRepository,
+  CampaignPublicationJobWithAttempts,
+  StartPublicationJobInput,
+  CreatePublicationAttemptInput,
+  RecordPublicationSuccessInput,
+  RecordPublicationFailureInput,
+  RecordPublicationUnknownOutcomeInput,
+  ReconcilePublicationJobInput,
+  PrepareRetryInput,
+} from './repositories/campaign-publication.repository';

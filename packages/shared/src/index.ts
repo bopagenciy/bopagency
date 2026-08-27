@@ -145,6 +145,27 @@ export type {
   ActivationEventType,
 } from './constants/activation';
 
+// Constants — Campaign Publication (Phase 8B.1)
+export {
+  PUBLICATION_JOB_STATUSES,
+  PUBLICATION_JOB_TERMINAL_STATUSES,
+  PUBLICATION_ATTEMPT_OUTCOMES,
+  PUBLICATION_FAILURE_CATEGORIES,
+  PUBLICATION_RETRYABLE_FAILURE_CATEGORIES,
+  isRetryablePublicationFailure,
+  PUBLICATION_EVENT_TYPES,
+  PUBLICATION_WEBHOOK_EVENT_STATUSES,
+  DEFAULT_PUBLICATION_RECONCILIATION_TIMEOUT_MINUTES,
+  PUBLICATION_IDEMPOTENCY_KEY_PREFIX,
+} from './constants/publication';
+export type {
+  PublicationJobStatus,
+  PublicationAttemptOutcome,
+  PublicationFailureCategory,
+  PublicationEventType,
+  PublicationWebhookEventStatus,
+} from './constants/publication';
+
 // Schemas — Campaign Activation (Phase 8A.1)
 export {
   campaignActivationSnapshotSchema,

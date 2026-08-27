@@ -136,6 +136,33 @@ export interface CampaignActivationRepository {
     note?: string | null,
   ): Promise<Result<CampaignActivationTarget>>;
 
+  /**
+   * RPC `mark_activation_target_publishing` — Phase 8B.1. ready|scheduled →
+   * publishing. Invocada UNICAMENTE por el orquestador de publicacion
+   * (`start_publication_job`, ver `CampaignPublicationRepository`) cuando
+   * un `CampaignPublicationJob` automatizado entra en `in_progress` — NUNCA
+   * directamente por un usuario (el camino manual sigue usando
+   * `markTargetPublished` sin pasar por `publishing`). Rol: service_role
+   * (worker), no expuesta a `authenticated`.
+   */
+  markTargetPublishing(
+    id: CampaignActivationTargetId,
+    organizationId: OrganizationId,
+  ): Promise<Result<CampaignActivationTarget>>;
+
+  /**
+   * RPC `mark_activation_target_failed` — Phase 8B.1. publishing → failed.
+   * Invocada UNICAMENTE por `mark_publication_job_failed`/
+   * `reconcile_publication_job` (nunca directamente por un usuario). Rol:
+   * service_role (worker), no expuesta a `authenticated`.
+   */
+  markTargetFailed(
+    id: CampaignActivationTargetId,
+    organizationId: OrganizationId,
+    failureCode: string,
+    failureMessage?: string | null,
+  ): Promise<Result<CampaignActivationTarget>>;
+
   /** RPC `cancel_activation_target` — cancela un target individual. */
   cancelTarget(
     id: CampaignActivationTargetId,

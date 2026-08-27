@@ -171,6 +171,8 @@ function makeActivationRepo(overrides: Partial<CampaignActivationRepository> = {
     prepareTarget: vi.fn().mockResolvedValue(ok(makeTarget({ status: 'preparing' }))),
     markTargetReady: vi.fn().mockResolvedValue(ok(makeTarget({ status: 'ready' }))),
     markTargetPublished: vi.fn().mockResolvedValue(ok(makeTarget({ status: 'published' }))),
+    markTargetPublishing: vi.fn(),
+    markTargetFailed: vi.fn(),
     cancelTarget: vi.fn().mockResolvedValue(ok(makeTarget({ status: 'cancelled' }))),
     listEvents: vi.fn(),
     ...overrides,
