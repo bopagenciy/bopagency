@@ -330,3 +330,16 @@ y los 2 `index.ts` de exports) — ninguno introduce acoplamiento a
 proveedores de publicación, a n8n, ni auto-transición de
 `campaign`/`activation` — ver explicación completa en el reporte de
 8B.1, sección "Nota de re-revisión 2026-08-27".
+
+## Actualización — Phase 8B.2 (Publication Application Orchestration) — COMPLETE
+
+Ver `PHASE_8B2_PUBLICATION_APPLICATION_ORCHESTRATION_REPORT.md` para el detalle completo. Esta subfase implementa la capa de aplicación y orquestación para los `CampaignPublicationJob` de 8B.1.
+
+| ID | Estado tras 8B.2 |
+|---|---|
+| R-PUB-01 (duplicate publishing por timeout / unknown_outcome) | **Reforzado en aplicación.** `dispatchPublicationJob` captura excepciones no controladas y respuestas ambiguas del publisher, asignándolas incondicionalmente a `unknown_outcome` (nunca `failed` ni `succeeded`). La única salida es `reconcilePublicationOutcome` (strategist+), lo que impide retries ciegos o auto-failures. |
+| R-PUB-02 (credential leakage vía error de proveedor) | **Mitigado a nivel de contrato.** `PublishInput` no acepta tokens ni credenciales; `PublishReceipt` solo acepta tipos provider-neutral y sanitizados. El adapter de infraestructura (8B.3+) resolverá credenciales internamente. |
+| R-PUB-03 (n8n como autoridad de estado) | **Confirmado por decisión de arquitectura.** Opción A elegida en 8B.2 — n8n no se invoca ni se hace autoritativo sobre ningún use case; las RPCs de 8B.1 siguen siendo la única fuente de verdad. |
+| R-PUB-10 (UI duplica reglas de dominio) | **Mitigado en la capa de composición.** `publication.composition.ts` provee dos factories explícitas: `createPublicationComposition` (interactivo, sesión de usuario) y `createPublicationWorkerComposition` (service_role, worker). Las 11 RPCs `service_role` de orquestación no están expuestas al cliente interactivo de UI. |
+
+30 tests unitarios pasando en `packages/application/src/use-cases/publications/__tests__/`, 0 fallos, typecheck limpio en todos los workspaces. Sin llamadas a proveedores reales, sin modificar `supabase/config.toml`.

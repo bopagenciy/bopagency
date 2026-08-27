@@ -206,6 +206,35 @@ export class SupabaseCampaignPublicationRepository implements CampaignPublicatio
     );
   }
 
+  // -- listJobsByTarget (Phase 8B.2 — lectura nueva, no altera ninguna RPC) --
+
+  async listJobsByTarget(
+    targetId: CampaignActivationTargetId,
+    organizationId: OrganizationId,
+    pagination: PaginationParams,
+  ): Promise<PaginatedResult<CampaignPublicationJob>> {
+    const page = pagination.page ?? 1;
+    const pageSize = pagination.pageSize ?? DEFAULT_PAGE_SIZE;
+    const from = (page - 1) * pageSize;
+    const to = from + pageSize - 1;
+
+    const { data, error, count } = await this.supabase
+      .from('campaign_publication_jobs')
+      .select('*', { count: 'exact' })
+      .eq('target_id', targetId)
+      .eq('organization_id', organizationId)
+      .order('created_at', { ascending: false })
+      .range(from, to);
+
+    if (error) {
+      return emptyPaginatedResult(page, pageSize);
+    }
+
+    return buildPaginatedResult(data ?? [], count ?? 0, page, pageSize, (row) =>
+      rowToCampaignPublicationJob(row as unknown as CampaignPublicationJobRow),
+    );
+  }
+
   // -- createJob - RPC create_publication_job --
 
   async createJob(

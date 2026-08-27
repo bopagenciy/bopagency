@@ -141,6 +141,21 @@ export interface CampaignPublicationRepository {
     pagination: PaginationParams,
   ): Promise<PaginatedResult<CampaignPublicationJob>>;
 
+  /**
+   * Historial COMPLETO (terminal + no-terminal) de jobs de un target,
+   * mas reciente primero - Phase 8B.2 (necesario para
+   * `listPublicationJobsByTarget`; no existia en el contrato original de
+   * 8B.1, que solo exponia `findActiveJobByTarget` para el job no-terminal
+   * unico). Lectura pura (SELECT directo con RLS, igual que
+   * `listJobsByActivation`) - NO agrega ninguna RPC ni cambia ninguna
+   * migracion aplicada.
+   */
+  listJobsByTarget(
+    targetId: CampaignActivationTargetId,
+    organizationId: OrganizationId,
+    pagination: PaginationParams,
+  ): Promise<PaginatedResult<CampaignPublicationJob>>;
+
   // -- Jobs - writes (RPC-backed) --
 
   /** RPC `create_publication_job` - rol operator+. Crea en 'queued'. */

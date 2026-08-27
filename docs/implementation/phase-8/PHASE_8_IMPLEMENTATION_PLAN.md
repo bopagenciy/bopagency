@@ -234,11 +234,25 @@ llamada a proveedor externo — ver
       `application`/`apps/web`. Sin adapter de proveedor real, sin
       `ChannelPublisherPort` implementado, sin endpoint HTTP de webhook —
       todo diferido a 8B.2/8B.3 según el audit. Migración APLICADA contra Supabase local real por el usuario, junto con la migración de hardening (`20260827090000`) y la de retry-reset (`20260828100000`). Validación de runtime real completada en 7 corridas del fixture (Run 6 y Run 7 limpias, Run 7 inmediatamente después de Run 6 SIN limpieza, probando repetibilidad sin necesidad de reset entre ejecuciones) — ver reporte §27-§29 para el detalle completo de cada ronda de triage y la auditoría final pre-commit. Único residual: role matrix `viewer`/`operator`/`strategist` permanece ESTRUCTURAL (sin `auth.users` desechables en local), documentado honestamente, no convertido en PASS.
-    - **8B.2 — Publication Application Orchestration**:
-      `ChannelPublisherPort` como contrato (sin implementación real —
-      adapter de prueba determinístico), factory/registry, use case
-      `publishActivationTarget` (bifurcación manual/automatizado),
-      retry/cancel/reconcile, integración de señales.
+    - **8B.2 — Publication Application Orchestration**: ✅ **COMPLETE** (ver
+      `PHASE_8B2_PUBLICATION_APPLICATION_ORCHESTRATION_REPORT.md`) — puerto
+      provider-neutral `ChannelPublisherPort` + `ChannelPublisherRegistry` +
+      5 fakes deterministas en `@bop-agency/application`; 10 use cases
+      de aplicación (4 lectura, 6 escritura/orquestación: `getPublicationJob`,
+      `listPublicationJobsByActivation`, `listPublicationJobsByTarget`,
+      `getPublicationTimeline`, `queuePublication`, `dispatchPublicationJob`,
+      `cancelPublicationJob`, `preparePublicationRetry`, `retryPublication`,
+      `reconcilePublicationOutcome`); extensión aditiva `listJobsByTarget` en
+      `CampaignPublicationRepository` / `SupabaseCampaignPublicationRepository`;
+      composition root en `apps/web/src/lib/composition/publication.composition.ts`
+      con doble factory (`createPublicationComposition` interactivo con cliente
+      de usuario, `createPublicationWorkerComposition` con cliente service_role);
+      regla de seguridad de `unknown_outcome` (excepciones y respuestas ambiguas
+      no fuerzan `failed` ni `succeeded`); 30 tests unitarios pasando en
+      `packages/application/src/use-cases/publications/__tests__/` (7 en `dispatch-publication-job.test.ts`,
+      14 en `retry-cancel-reconcile.test.ts`, 9 en `queue-and-read.test.ts`);
+      typecheck limpio en todos los workspaces. Sin llamadas a proveedores reales,
+      sin OAuth, sin webhook HTTP real, sin modificación de `supabase/config.toml`.
     - **8B.3 — Publishing Gateway Runtime**: transporte real hacia n8n
       para dispatch de jobs, endpoint `/api/webhooks/publishing/[provider]`,
       worker/cron de reconciliación periódica. Sin credenciales reales de

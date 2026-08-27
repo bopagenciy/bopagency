@@ -402,3 +402,83 @@ export type {
   ActivationCreatedSignalInput,
   ActivationSignalDeps,
 } from './use-cases/activations/activation-signals';
+
+// Ports — Publication (Phase 8B.2)
+export {
+  ChannelPublisherRegistry,
+} from './ports/channel-publisher.port';
+export type {
+  ChannelPublisherPort,
+  PublishInput,
+  PublishReceipt,
+  PublishOutcome,
+} from './ports/channel-publisher.port';
+export {
+  FakeSuccessfulPublisher,
+  FakeFailedPublisher,
+  FakeUnknownOutcomePublisher,
+  FakeThrowingPublisher,
+  FakeMalformedSuccessPublisher,
+} from './ports/channel-publisher.fakes';
+
+// Use cases — Publications (Phase 8B.2)
+export { getPublicationJob } from './use-cases/publications/get-publication-job.use-case';
+export type {
+  GetPublicationJobInput,
+  GetPublicationJobDeps,
+} from './use-cases/publications/get-publication-job.use-case';
+
+export { listPublicationJobsByActivation } from './use-cases/publications/list-publication-jobs-by-activation.use-case';
+export type {
+  ListPublicationJobsByActivationInput,
+  ListPublicationJobsByActivationDeps,
+} from './use-cases/publications/list-publication-jobs-by-activation.use-case';
+
+export { listPublicationJobsByTarget } from './use-cases/publications/list-publication-jobs-by-target.use-case';
+export type {
+  ListPublicationJobsByTargetInput,
+  ListPublicationJobsByTargetDeps,
+} from './use-cases/publications/list-publication-jobs-by-target.use-case';
+
+export { getPublicationTimeline } from './use-cases/publications/get-publication-timeline.use-case';
+export type {
+  GetPublicationTimelineInput,
+  GetPublicationTimelineDeps,
+} from './use-cases/publications/get-publication-timeline.use-case';
+
+export { queuePublication } from './use-cases/publications/queue-publication.use-case';
+export type {
+  QueuePublicationInput,
+  QueuePublicationDeps,
+} from './use-cases/publications/queue-publication.use-case';
+
+export { dispatchPublicationJob } from './use-cases/publications/dispatch-publication-job.use-case';
+export type {
+  DispatchPublicationJobInput,
+  DispatchPublicationJobOutput,
+  DispatchPublicationJobDeps,
+} from './use-cases/publications/dispatch-publication-job.use-case';
+
+export { cancelPublicationJob } from './use-cases/publications/cancel-publication-job.use-case';
+export type {
+  CancelPublicationJobInput,
+  CancelPublicationJobDeps,
+} from './use-cases/publications/cancel-publication-job.use-case';
+
+export { preparePublicationRetry } from './use-cases/publications/prepare-publication-retry.use-case';
+export type {
+  PreparePublicationRetryInput,
+  PreparePublicationRetryDeps,
+} from './use-cases/publications/prepare-publication-retry.use-case';
+
+export { retryPublication } from './use-cases/publications/retry-publication.use-case';
+export type {
+  RetryPublicationInput,
+  RetryPublicationDeps,
+} from './use-cases/publications/retry-publication.use-case';
+
+export { reconcilePublicationOutcome } from './use-cases/publications/reconcile-publication-outcome.use-case';
+export type {
+  ReconcilePublicationOutcomeInput,
+  ReconcilePublicationOutcomeDeps,
+} from './use-cases/publications/reconcile-publication-outcome.use-case';
