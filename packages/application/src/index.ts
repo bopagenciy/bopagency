@@ -482,3 +482,22 @@ export type {
   ReconcilePublicationOutcomeInput,
   ReconcilePublicationOutcomeDeps,
 } from './use-cases/publications/reconcile-publication-outcome.use-case';
+
+// Use cases — Publications (Phase 8B.3 — Runtime Worker & Evidence)
+export {
+  listDispatchablePublicationJobs,
+  MAX_DISPATCHABLE_BATCH_SIZE,
+  DEFAULT_DISPATCHABLE_BATCH_SIZE,
+} from './use-cases/publications/list-dispatchable-publication-jobs.use-case';
+export type {
+  ListDispatchablePublicationJobsInput,
+  ListDispatchablePublicationJobsDeps,
+} from './use-cases/publications/list-dispatchable-publication-jobs.use-case';
+
+export { processPublicationWebhookEvidence } from './use-cases/publications/process-publication-webhook-evidence.use-case';
+export type {
+  ProcessPublicationWebhookEvidenceInput,
+  ProcessPublicationWebhookEvidenceDeps,
+  ProcessWebhookEvidenceResult,
+  ProcessWebhookEvidenceStatus,
+} from './use-cases/publications/process-publication-webhook-evidence.use-case';

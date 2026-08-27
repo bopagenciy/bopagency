@@ -42,7 +42,7 @@ import type {
   RecordWebhookReceiptInput,
   RecordWebhookReceiptResult,
 } from '../entities/campaign-publication-webhook-event';
-import type { PublicationFailureCategory, PublicationWebhookEventStatus } from '@bop-agency/shared';
+import type { ActivationProvider, PublicationFailureCategory, PublicationWebhookEventStatus } from '@bop-agency/shared';
 
 // --- Aggregate read type ---
 
@@ -155,6 +155,22 @@ export interface CampaignPublicationRepository {
     organizationId: OrganizationId,
     pagination: PaginationParams,
   ): Promise<PaginatedResult<CampaignPublicationJob>>;
+
+  /**
+   * Consulta multi-tenant global para workers (service_role únicamente) - Phase 8B.3.
+   * Retorna jobs en estado `queued` a través de todas las organizaciones en orden
+   * determinístico (`created_at ASC, id ASC`), limitado a `batchSize`.
+   */
+  listDispatchableJobs(batchSize?: number): Promise<Result<CampaignPublicationJob[]>>;
+
+  /**
+   * Consulta de evento de webhook almacenado por (provider, externalEventId) - Phase 8B.3.
+   * Usado para comparar `payload_hash` cuando se detecta un evento duplicado (`isNew = false`).
+   */
+  findWebhookEventByProviderAndExternalId(
+    provider: ActivationProvider,
+    externalEventId: string,
+  ): Promise<Result<CampaignPublicationWebhookEvent | null>>;
 
   // -- Jobs - writes (RPC-backed) --
 

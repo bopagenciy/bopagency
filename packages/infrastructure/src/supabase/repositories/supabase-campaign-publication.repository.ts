@@ -43,15 +43,17 @@ import type { CampaignActivationId } from '@bop-agency/domain';
 import type { CampaignActivationTargetId } from '@bop-agency/domain';
 import type { RecordWebhookReceiptInput, RecordWebhookReceiptResult } from '@bop-agency/domain';
 import type { CampaignPublicationWebhookEvent } from '@bop-agency/domain';
-import type { PublicationWebhookEventStatus } from '@bop-agency/shared';
+import type { ActivationProvider, PublicationWebhookEventStatus } from '@bop-agency/shared';
 import type { SupabaseClient } from '@supabase/supabase-js';
 import {
   rowToCampaignPublicationJob,
   rowToCampaignPublicationAttempt,
   rowToCampaignPublicationEvent,
+  rowToCampaignPublicationWebhookEvent,
   type CampaignPublicationJobRow,
   type CampaignPublicationAttemptRow,
   type CampaignPublicationEventRow,
+  type CampaignPublicationWebhookEventRow,
 } from '../mappers/campaign-publication.mapper';
 
 // --- Constants ---
@@ -233,6 +235,53 @@ export class SupabaseCampaignPublicationRepository implements CampaignPublicatio
     return buildPaginatedResult(data ?? [], count ?? 0, page, pageSize, (row) =>
       rowToCampaignPublicationJob(row as unknown as CampaignPublicationJobRow),
     );
+  }
+
+  // -- listDispatchableJobs (Phase 8B.3 — consulta multi-tenant worker) --
+
+  async listDispatchableJobs(batchSize = 10): Promise<Result<CampaignPublicationJob[]>> {
+    const limit = Math.min(Math.max(1, batchSize), 50);
+
+    const { data, error } = await this.supabase
+      .from('campaign_publication_jobs')
+      .select('*')
+      .eq('status', 'queued')
+      .order('created_at', { ascending: true })
+      .order('id', { ascending: true })
+      .limit(limit);
+
+    if (error) {
+      return err(mapPublicationRpcError(error.message, 'Error al listar jobs despachables'));
+    }
+
+    const items = (data ?? []).map((row) =>
+      rowToCampaignPublicationJob(row as unknown as CampaignPublicationJobRow),
+    );
+    return ok(items);
+  }
+
+  // -- findWebhookEventByProviderAndExternalId (Phase 8B.3 — dedupe/hash check) --
+
+  async findWebhookEventByProviderAndExternalId(
+    provider: ActivationProvider,
+    externalEventId: string,
+  ): Promise<Result<CampaignPublicationWebhookEvent | null>> {
+    const { data, error } = await this.supabase
+      .from('campaign_publication_webhook_events')
+      .select('*')
+      .eq('provider', provider)
+      .eq('external_event_id', externalEventId)
+      .maybeSingle();
+
+    if (error) {
+      return err(mapPublicationRpcError(error.message, 'Error al buscar evento de webhook'));
+    }
+
+    if (!data) {
+      return ok(null);
+    }
+
+    return ok(rowToCampaignPublicationWebhookEvent(data as unknown as CampaignPublicationWebhookEventRow));
   }
 
   // -- createJob - RPC create_publication_job --

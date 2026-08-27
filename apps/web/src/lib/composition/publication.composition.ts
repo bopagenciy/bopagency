@@ -69,6 +69,8 @@ import {
   listPublicationJobsByTarget,
   getPublicationTimeline,
   dispatchPublicationJob,
+  listDispatchablePublicationJobs,
+  processPublicationWebhookEvidence,
 } from '@bop-agency/application';
 import type {
   QueuePublicationInput,
@@ -81,6 +83,8 @@ import type {
   ListPublicationJobsByTargetInput,
   GetPublicationTimelineInput,
   DispatchPublicationJobInput,
+  ListDispatchablePublicationJobsInput,
+  ProcessPublicationWebhookEvidenceInput,
   ChannelPublisherRegistry,
 } from '@bop-agency/application';
 
@@ -146,6 +150,10 @@ export function createPublicationWorkerComposition(
 
   const useCases = {
     dispatchPublicationJob: (input: DispatchPublicationJobInput) => dispatchPublicationJob(input, deps),
+    listDispatchablePublicationJobs: (input: ListDispatchablePublicationJobsInput) =>
+      listDispatchablePublicationJobs(input, { publicationRepository }),
+    processPublicationWebhookEvidence: (input: ProcessPublicationWebhookEvidenceInput) =>
+      processPublicationWebhookEvidence(input, { publicationRepository }),
   };
 
   return {

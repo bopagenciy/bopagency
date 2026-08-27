@@ -253,10 +253,18 @@ llamada a proveedor externo — ver
       14 en `retry-cancel-reconcile.test.ts`, 9 en `queue-and-read.test.ts`);
       typecheck limpio en todos los workspaces. Sin llamadas a proveedores reales,
       sin OAuth, sin webhook HTTP real, sin modificación de `supabase/config.toml`.
-    - **8B.3 — Publishing Gateway Runtime**: transporte real hacia n8n
-      para dispatch de jobs, endpoint `/api/webhooks/publishing/[provider]`,
-      worker/cron de reconciliación periódica. Sin credenciales reales de
-      ningún proveedor.
+    - **8B.3 — Publishing Gateway Runtime**: ✅ **COMPLETE** (ver
+      `PHASE_8B3_PUBLISHING_GATEWAY_RUNTIME_REPORT.md`) — transporte HTTP
+      hacia n8n en MODELO A (sincrónico, `N8nPublicationTransportAdapter`),
+      worker multi-tenant `listDispatchablePublicationJobs` (Model W1, `POST /api/cron/publish-jobs`
+      protegido por `CRON_SECRET`), endpoint callback de evidencia
+      `/api/webhooks/publishing/callback` (evidencia/auditoría únicamente — NUNCA muta
+      el resultado de un job, 0 riesgo de doble escritura), módulo HMAC dedicado
+      `publication-hmac.ts` (`PUBLICATION_WEBHOOK_SECRET` obligatorio, fail closed,
+      sin fallback a `AUTOMATION_WEBHOOK_SECRET`), detección de hash mismatch
+      (`409 Conflict` en replay con hash distinto), stub de pruebas determinístico
+      `/api/test/publishing-provider-stub` (`TEST_PROVIDER_ENABLED=true` + HMAC), y
+      test suite completo de unit/integration tests pasando en todos los paquetes.
     - **8B.4 — Web Operations / Monitoring**: UI de jobs/attempts,
       vista de reconciliación manual, mapeo de errores de proveedor a la
       taxonomía cerrada.
