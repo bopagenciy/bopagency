@@ -23,6 +23,7 @@ describe('Phase 8B.3 Worker & Webhook Evidence Use Cases', () => {
       listJobsByTarget: vi.fn(),
       listDispatchableJobs: vi.fn().mockResolvedValue(ok([])),
       findWebhookEventByProviderAndExternalId: vi.fn().mockResolvedValue(ok(null)),
+      listWebhookEventsByJob: vi.fn().mockResolvedValue(ok([])),
       createJob: vi.fn(),
       claimJob: vi.fn(),
       startJob: vi.fn(),

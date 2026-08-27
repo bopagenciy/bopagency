@@ -501,3 +501,11 @@ export type {
   ProcessWebhookEvidenceResult,
   ProcessWebhookEvidenceStatus,
 } from './use-cases/publications/process-publication-webhook-evidence.use-case';
+
+// Use cases — Publications (Phase 8B.4 — Web Operations Evidence Read)
+export { listPublicationWebhookEvidenceByJob } from './use-cases/publications/list-publication-webhook-evidence-by-job.use-case';
+export type {
+  ListPublicationWebhookEvidenceByJobInput,
+  ListPublicationWebhookEvidenceByJobDeps,
+  PublicationWebhookEvidenceItem,
+} from './use-cases/publications/list-publication-webhook-evidence-by-job.use-case';

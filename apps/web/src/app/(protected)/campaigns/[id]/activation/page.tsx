@@ -12,6 +12,8 @@ import { requireOrganization } from '@/lib/auth/server';
 import { createServerSupabaseClient } from '@/lib/supabase/server';
 import { createCampaignComposition } from '@/lib/composition/campaign.composition';
 import { createActivationComposition } from '@/lib/composition/activation.composition';
+import { createPublicationComposition } from '@/lib/composition/publication.composition';
+import { PublicationOperationsPanel } from '@/components/publications/PublicationOperationsPanel';
 import { canCancelActivation } from '@bop-agency/domain';
 import { ACTIVATION_TERMINAL_STATUSES } from '@bop-agency/shared';
 import { selectActiveActivation } from '@/lib/activations/select-active-activation';
@@ -162,6 +164,27 @@ export default async function CampaignActivationPage({ params }: Props) {
 
   const { activation, events } = detailResult.value;
 
+  const { useCases: publicationUseCases } = createPublicationComposition(supabase);
+  const jobsResult = await publicationUseCases.listPublicationJobsByActivation({
+    activationId: nonTerminal.id as CampaignActivationId,
+    organizationId: orgId,
+    actorUserId: user.id,
+    pagination: { page: 1, pageSize: 50 },
+  });
+
+  const publicationJobs = jobsResult.success
+    ? jobsResult.value.data.map((j) => ({
+        id: j.id,
+        targetId: j.targetId,
+        channel: j.channel,
+        provider: j.provider,
+        status: j.status,
+        retryCount: j.retryCount,
+        retryOfJobId: j.retryOfJobId,
+        createdAt: j.createdAt.toISOString(),
+      }))
+    : [];
+
   return (
     <>
       <Header breadcrumbs={breadcrumbs} />
@@ -197,6 +220,13 @@ export default async function CampaignActivationPage({ params }: Props) {
             publishedAt: t.publishedAt ? t.publishedAt.toISOString() : null,
             createdAt: t.createdAt.toISOString(),
           }))}
+        />
+
+        <PublicationOperationsPanel
+          campaignId={campaign.id}
+          activationId={activation.id}
+          userRole={membership.role}
+          jobs={publicationJobs}
         />
 
         <CancelActivationPanel

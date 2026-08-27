@@ -172,6 +172,15 @@ export interface CampaignPublicationRepository {
     externalEventId: string,
   ): Promise<Result<CampaignPublicationWebhookEvent | null>>;
 
+  /**
+   * Consulta los eventos de evidencia de webhook asociados a un job de publicación - Phase 8B.4.
+   * Retorna eventos de `campaign_publication_webhook_events` asociados al jobId en orden `received_at DESC`.
+   */
+  listWebhookEventsByJob(
+    jobId: CampaignPublicationJobId,
+    organizationId: OrganizationId,
+  ): Promise<Result<CampaignPublicationWebhookEvent[]>>;
+
   // -- Jobs - writes (RPC-backed) --
 
   /** RPC `create_publication_job` - rol operator+. Crea en 'queued'. */

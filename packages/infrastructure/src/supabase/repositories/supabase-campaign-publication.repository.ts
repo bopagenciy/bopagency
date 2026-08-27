@@ -284,6 +284,29 @@ export class SupabaseCampaignPublicationRepository implements CampaignPublicatio
     return ok(rowToCampaignPublicationWebhookEvent(data as unknown as CampaignPublicationWebhookEventRow));
   }
 
+  // -- listWebhookEventsByJob (Phase 8B.4 — evidence read) --
+
+  async listWebhookEventsByJob(
+    jobId: CampaignPublicationJobId,
+    organizationId: OrganizationId,
+  ): Promise<Result<CampaignPublicationWebhookEvent[]>> {
+    const { data, error } = await this.supabase
+      .from('campaign_publication_webhook_events')
+      .select('*')
+      .eq('organization_id', organizationId)
+      .eq('payload->>jobId', jobId)
+      .order('received_at', { ascending: false });
+
+    if (error) {
+      return err(mapPublicationRpcError(error.message, 'Error al listar evidencia de webhook'));
+    }
+
+    const items = (data ?? []).map((row) =>
+      rowToCampaignPublicationWebhookEvent(row as unknown as CampaignPublicationWebhookEventRow),
+    );
+    return ok(items);
+  }
+
   // -- createJob - RPC create_publication_job --
 
   async createJob(

@@ -326,6 +326,16 @@ Ver `PHASE_8B3_PUBLISHING_GATEWAY_RUNTIME_REPORT.md` para el detalle completo. E
 | R-PUB-05 (arbitrary provider / hash mismatch en webhooks) | **Mitigado en webhook route.** HMAC SHA-256 verificado antes de crear cliente `service_role`. Replay con hash idéntico -> `200 duplicate`. Replay con payload hash distinto -> `409 Conflict` (replay sospechoso) con cero mutación de estado. `PUBLICATION_WEBHOOK_SECRET` obligatorio (mínimo 32 chars, fail closed, sin fallback a `AUTOMATION_WEBHOOK_SECRET`). |
 | R-PUB-06 (worker multi-tenant / job huérfano) | **Mitigado en worker cron.** `listDispatchablePublicationJobs` (Model W1) provee consulta multi-tenant global acotada (hard cap 50, default 10) en orden determinístico (`created_at ASC, id ASC`). La RPC `claim_publication_job` atomiza el reclamo por fila en Postgres. |
 
+## Actualización — Phase 8B.4 (Web Operations / Monitoring) — COMPLETE
+
+Ver `PHASE_8B4_WEB_OPERATIONS_MONITORING_REPORT.md` para el detalle completo. Esta subfase implementa el monitoreo interactivo de operaciones de publicación en `/campaigns/[id]/activation`.
+
+| ID | Estado tras 8B.4 |
+|---|---|
+| R-ACT-16 / R-PUB-10 (UI guards sin protección en backend) | **Mitigado.** La UI oculta/desactiva controles por conveniencia (`PublicationJobsTable`), pero cada Server Action en `publication-actions.ts` deriva `organizationId` y `actorUserId` de la sesión del servidor y los pasa a la capa de aplicación, donde las RPCs de Supabase y `hasMinimumRole` aplican la autorización autoritativa. |
+| R-PUB-01 (Límite de autoría de dispatch en UI) | **Cerrado en UI.** `dispatchPublicationJobAction` NUNCA se expone como Server Action ni en componentes interactivos. Las Server Actions de usuario únicamente encolan (`queuePublicationAction`) o reconcilian/cancelan; el dispatch permanece 100% exclusivo de workers/cron con `service_role`. |
+| R-PUB-05 (Fuga de datos de webhook evidence en UI) | **Mitigado.** El use case `listPublicationWebhookEvidenceByJob` filtra y sanitiza estrictamente los metadatos devueltos a la UI (ID, proveedor, timestamp, estado, hash truncado, código de error), omitiendo payloads crudos, firmas HMAC, secretos y tokens. |
+
 **Riesgos de Phase 8A/8B.0 referenciados y sin cambio de severidad**:
 R-ACT-14/R-PUB-09 (client_integrations sin vault — sigue sin resolverse,
 precondición de 8E/8F), R-ACT-16/R-PUB-10 (UI guards — no aplica hasta

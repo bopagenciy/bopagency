@@ -68,6 +68,7 @@ import {
   listPublicationJobsByActivation,
   listPublicationJobsByTarget,
   getPublicationTimeline,
+  listPublicationWebhookEvidenceByJob,
   dispatchPublicationJob,
   listDispatchablePublicationJobs,
   processPublicationWebhookEvidence,
@@ -82,6 +83,7 @@ import type {
   ListPublicationJobsByActivationInput,
   ListPublicationJobsByTargetInput,
   GetPublicationTimelineInput,
+  ListPublicationWebhookEvidenceByJobInput,
   DispatchPublicationJobInput,
   ListDispatchablePublicationJobsInput,
   ProcessPublicationWebhookEvidenceInput,
@@ -113,6 +115,8 @@ export function createPublicationComposition(supabase: SupabaseClient) {
     listPublicationJobsByTarget: (input: ListPublicationJobsByTargetInput) =>
       listPublicationJobsByTarget(input, deps),
     getPublicationTimeline: (input: GetPublicationTimelineInput) => getPublicationTimeline(input, deps),
+    listPublicationWebhookEvidenceByJob: (input: ListPublicationWebhookEvidenceByJobInput) =>
+      listPublicationWebhookEvidenceByJob(input, deps),
   };
 
   return {

@@ -265,9 +265,18 @@ llamada a proveedor externo — ver
       (`409 Conflict` en replay con hash distinto), stub de pruebas determinístico
       `/api/test/publishing-provider-stub` (`TEST_PROVIDER_ENABLED=true` + HMAC), y
       test suite completo de unit/integration tests pasando en todos los paquetes.
-    - **8B.4 — Web Operations / Monitoring**: UI de jobs/attempts,
-      vista de reconciliación manual, mapeo de errores de proveedor a la
-      taxonomía cerrada.
+    - **8B.4 — Web Operations / Monitoring**: ✅ **COMPLETE** (ver
+      `PHASE_8B4_WEB_OPERATIONS_MONITORING_REPORT.md`) — panel operativo
+      `PublicationOperationsPanel` integrado en la vista `/campaigns/[id]/activation`;
+      respeto estricto del límite de autoridad (sin dispatch interactivo — dispatch
+      permanece exclusivo de worker/service_role); nuevo use case sanitizado
+      `listPublicationWebhookEvidenceByJob` (con `listWebhookEventsByJob` en el repositorio);
+      Server Actions seguras `publication-actions.ts` (`queuePublicationAction`,
+      `cancelPublicationJobAction`, `retryPublicationAction`, `reconcilePublicationOutcomeAction`);
+      formulario modal de reconciliación `PublicationReconciliationModal` (Strategist+);
+      drawer de detalles con intentos y evidencia de webhooks sanitizada; badges accesibles
+      `PublicationJobStatusBadge` ("Resultado indeterminado" para `unknown_outcome`);
+      suite completo de pruebas unitarias y de componentes pasando.
   - **Explícitamente fuera de alcance de TODA la subfase 8B (incluida
     8B.0):** cualquier llamada real a Meta/Google/LinkedIn/email,
     cualquier credencial real, cualquier adapter de proveedor
