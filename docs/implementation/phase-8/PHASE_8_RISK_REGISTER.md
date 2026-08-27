@@ -364,3 +364,14 @@ Ver `PHASE_8B2_PUBLICATION_APPLICATION_ORCHESTRATION_REPORT.md` para el detalle 
 | R-PUB-10 (UI duplica reglas de dominio) | **Mitigado en la capa de composición.** `publication.composition.ts` provee dos factories explícitas: `createPublicationComposition` (interactivo, sesión de usuario) y `createPublicationWorkerComposition` (service_role, worker). Las 11 RPCs `service_role` de orquestación no están expuestas al cliente interactivo de UI. |
 
 30 tests unitarios pasando en `packages/application/src/use-cases/publications/__tests__/`, 0 fallos, typecheck limpio en todos los workspaces. Sin llamadas a proveedores reales, sin modificar `supabase/config.toml`.
+
+## Actualización — Phase 8C (Content Calendar & Editorial Planning) — COMPLETE
+
+Ver `PHASE_8C_CONTENT_CALENDAR_REPORT.md` para el detalle completo. Esta subfase implementa la capa de planificación editorial y vista de calendario global `/calendar`.
+
+| ID | Estado tras 8C |
+|---|---|
+| R-CAL-01 (Duplicación de autoridad de publicación) | **Mitigado.** El calendario es 100% una capa de planificación. No despacha publicaciones, no muta jobs ni marca nada como publicado directamente. |
+| R-CAL-02 (Escritura directa en BD por bypass de RLS) | **Cerrado en DB.** Permisos directos `INSERT`, `UPDATE`, `DELETE` revocados para `authenticated`. Todas las mutaciones se ejecutan mediante RPCs `SECURITY DEFINER` con verificación de roles y membresía. |
+| R-CAL-03 (Fuga cross-tenant en composite FKs) | **Cerrado en DB.** Composite FKs `(campaign_id, organization_id)`, `(activation_id, organization_id)`, y `(target_id, organization_id)` con `ON DELETE RESTRICT` garantizan aislamiento tenant a nivel relacional. |
+| R-CAL-04 (Colapso/duplicación de filas por retries) | **Mitigado en lectura.** La RPC `list_content_calendar_items_by_range` proyecta los jobs usando `LEFT JOIN LATERAL` (`ORDER BY retry_count DESC, created_at DESC, id DESC LIMIT 1`), asegurando exactamente una fila por elemento de calendario. |

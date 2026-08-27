@@ -31,6 +31,9 @@ export { SupabaseCampaignActivationRepository } from './supabase/repositories/su
 // Phase 8B.1 repositories
 export { SupabaseCampaignPublicationRepository } from './supabase/repositories/supabase-campaign-publication.repository';
 
+// Phase 8C repositories
+export { SupabaseContentCalendarRepository } from './supabase/repositories/supabase-content-calendar.repository';
+
 // Mappers
 export {
   rowToOrganization,

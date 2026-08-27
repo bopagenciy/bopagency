@@ -509,3 +509,22 @@ export type {
   ListPublicationWebhookEvidenceByJobDeps,
   PublicationWebhookEvidenceItem,
 } from './use-cases/publications/list-publication-webhook-evidence-by-job.use-case';
+
+// Use cases — Content Calendar (Phase 8C)
+export { createContentCalendarItem } from './use-cases/calendar/create-content-calendar-item.use-case';
+export type { CreateContentCalendarItemDeps } from './use-cases/calendar/create-content-calendar-item.use-case';
+
+export { updateContentCalendarItemSchedule } from './use-cases/calendar/update-content-calendar-item-schedule.use-case';
+export type { UpdateContentCalendarItemScheduleDeps } from './use-cases/calendar/update-content-calendar-item-schedule.use-case';
+
+export { cancelContentCalendarItem } from './use-cases/calendar/cancel-content-calendar-item.use-case';
+export type { CancelContentCalendarItemDeps } from './use-cases/calendar/cancel-content-calendar-item.use-case';
+
+export { linkContentCalendarItemTarget } from './use-cases/calendar/link-content-calendar-item-target.use-case';
+export type { LinkContentCalendarItemTargetDeps } from './use-cases/calendar/link-content-calendar-item-target.use-case';
+
+export { listContentCalendarItemsByRange } from './use-cases/calendar/list-content-calendar-items-by-range.use-case';
+export type { ListContentCalendarItemsByRangeDeps } from './use-cases/calendar/list-content-calendar-items-by-range.use-case';
+
+export { getContentCalendarItemDetail } from './use-cases/calendar/get-content-calendar-item-detail.use-case';
+export type { GetContentCalendarItemDetailDeps } from './use-cases/calendar/get-content-calendar-item-detail.use-case';

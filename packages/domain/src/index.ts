@@ -355,3 +355,27 @@ export type {
   ReconcilePublicationJobInput,
   PrepareRetryInput,
 } from './repositories/campaign-publication.repository';
+
+// ContentCalendarItem entity & repository — Phase 8C
+export type {
+  ContentCalendarItemId,
+  CalendarItemStatus,
+  ContentCalendarItem,
+  ContentCalendarItemProjection,
+  CalendarBlockedReason,
+  CalendarDerivedStatusLabel,
+  CreateContentCalendarItemInput,
+  UpdateContentCalendarItemScheduleInput,
+  CancelContentCalendarItemInput,
+  LinkContentCalendarItemTargetInput,
+  ListContentCalendarItemsByRangeFilter,
+} from './entities/content-calendar-item';
+export {
+  contentCalendarItemId,
+  computeCalendarDerivedState,
+  isValidIanaTimezone,
+} from './entities/content-calendar-item';
+export type { ContentCalendarRepository } from './repositories/content-calendar.repository';
+
+// Re-export shared channel/provider types for convenience
+export type { ActivationChannel, ActivationProvider } from '@bop-agency/shared';
