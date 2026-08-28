@@ -48,7 +48,7 @@ export function AIProviderSelect({
         value={value}
         onChange={(e) => onChange(e.target.value)}
         disabled={disabled}
-        className="w-full px-3 py-2 border border-gray-200 rounded-lg text-sm focus:outline-none focus:ring-2 focus:ring-red-500 disabled:opacity-50"
+        className="w-full px-3 py-2 border border-border rounded-lg text-sm focus:outline-none focus:ring-2 focus:ring-primary disabled:opacity-50"
       >
         <option value={AI_PROVIDER_DEFAULT_OPTION}>{defaultOptionLabel}</option>
         {AI_PROVIDER_IDS.map((providerId) => (

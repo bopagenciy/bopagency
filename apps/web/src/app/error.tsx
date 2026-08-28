@@ -20,7 +20,7 @@ export default function ErrorPage({ error, reset }: ErrorPageProps) {
       {error.digest && <p className="text-xs text-gray-400 mb-6 font-mono">ID: {error.digest}</p>}
       <button
         onClick={reset}
-        className="px-4 py-2 bg-red-600 text-white rounded-md hover:bg-red-700 transition-colors text-sm font-medium"
+        className="px-4 py-2 bg-primary text-primary-foreground rounded-md hover:bg-primary-hover transition-colors text-sm font-medium"
       >
         Intentar nuevamente
       </button>

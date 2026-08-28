@@ -84,13 +84,13 @@ export function ClientList({
           placeholder="Buscar clientes..."
           defaultValue={search}
           onChange={(e) => updateSearch('search', e.target.value)}
-          className="flex-1 px-4 py-2 border border-gray-200 rounded-lg text-sm focus:outline-none focus:ring-2 focus:ring-red-500"
+          className="flex-1 px-4 py-2 border border-gray-200 rounded-lg text-sm focus:outline-none focus:ring-2 focus:ring-primary"
           aria-label="Buscar clientes"
         />
         <select
           defaultValue={status}
           onChange={(e) => updateSearch('status', e.target.value)}
-          className="px-3 py-2 border border-gray-200 rounded-lg text-sm focus:outline-none focus:ring-2 focus:ring-red-500"
+          className="px-3 py-2 border border-gray-200 rounded-lg text-sm focus:outline-none focus:ring-2 focus:ring-primary"
           aria-label="Filtrar por estado"
         >
           <option value="">Todos los estados</option>
@@ -142,7 +142,7 @@ export function ClientList({
                     <div>
                       <Link
                         href={`/clients/${client.id}`}
-                        className="font-medium text-gray-900 hover:text-red-600 transition-colors"
+                        className="font-medium text-gray-900 hover:text-primary transition-colors"
                       >
                         {client.name}
                       </Link>
@@ -160,7 +160,7 @@ export function ClientList({
                   <td className="px-4 py-3 text-right">
                     <Link
                       href={`/clients/${client.id}`}
-                      className="text-xs text-red-600 hover:underline"
+                      className="text-xs text-primary hover:underline"
                     >
                       Ver →
                     </Link>

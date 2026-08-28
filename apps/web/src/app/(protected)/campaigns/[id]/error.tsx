@@ -24,7 +24,7 @@ export default function CampaignDetailError({ error, reset }: ErrorProps) {
         <p className="text-sm text-gray-500 mb-4">No se pudo cargar el detalle de esta campaña.</p>
         <button
           onClick={reset}
-          className="px-4 py-2 text-sm font-medium rounded-lg bg-red-600 text-white hover:bg-red-700 focus:outline-none focus:ring-2 focus:ring-red-500 transition-colors"
+          className="px-4 py-2 text-sm font-medium rounded-lg bg-primary text-primary-foreground hover:bg-primary-hover focus:outline-none focus:ring-2 focus:ring-primary transition-colors"
         >
           Intentar de nuevo
         </button>

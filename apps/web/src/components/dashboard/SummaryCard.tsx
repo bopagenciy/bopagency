@@ -20,13 +20,13 @@ const ACCENT_CLASSES: Record<NonNullable<SummaryCardProps['accent']>, string> = 
 export function SummaryCard({ label, value, icon, sub, accent = 'gray' }: SummaryCardProps) {
   return (
     <div
-      className={`bg-white rounded-lg border border-gray-200 border-l-4 ${ACCENT_CLASSES[accent]} p-5`}
+      className={`bg-card rounded-lg border border-border hover:border-primary-accent/30 transition-colors border-l-4 ${ACCENT_CLASSES[accent]} p-5`}
     >
       <div className="flex items-start justify-between">
         <div className="min-w-0">
-          <p className="text-xs font-medium text-gray-500 uppercase tracking-wide mb-1">{label}</p>
-          <p className="text-2xl font-bold text-gray-900 tabular-nums">{value}</p>
-          {sub && <p className="text-xs text-gray-400 mt-1 truncate">{sub}</p>}
+          <p className="text-xs font-medium text-muted-foreground uppercase tracking-wide mb-1">{label}</p>
+          <p className="text-2xl font-bold text-foreground tabular-nums">{value}</p>
+          {sub && <p className="text-xs text-muted-foreground/70 mt-1 truncate">{sub}</p>}
         </div>
         <span className="text-2xl ml-3 flex-shrink-0" aria-hidden="true">
           {icon}

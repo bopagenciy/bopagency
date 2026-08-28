@@ -20,11 +20,11 @@ export function Input({ label, error, helpText, className = '', id, ...props }: 
         {...props}
         className={[
           'block w-full rounded-md border px-3 py-2 text-sm shadow-sm',
-          'focus:outline-none focus:ring-2 focus:ring-red-500 focus:border-red-500',
+          'focus:outline-none focus:ring-2 focus:ring-primary focus:border-primary',
           'disabled:bg-gray-50 disabled:text-gray-500 disabled:cursor-not-allowed',
           error
             ? 'border-red-300 bg-red-50 text-red-900 placeholder-red-300'
-            : 'border-gray-300 bg-white text-gray-900 placeholder-gray-400',
+            : 'border-border bg-background text-foreground placeholder-muted-foreground',
           className,
         ].join(' ')}
       />

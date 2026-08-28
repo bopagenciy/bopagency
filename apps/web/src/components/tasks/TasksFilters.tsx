@@ -45,7 +45,7 @@ export function TasksFilters({ status, overdue }: TasksFiltersProps) {
       <select
         value={status}
         onChange={(e) => updateFilter('status', e.target.value)}
-        className="px-3 py-2 border border-gray-200 rounded-lg text-sm focus:outline-none focus:ring-2 focus:ring-red-500 bg-white"
+        className="px-3 py-2 border border-gray-200 rounded-lg text-sm focus:outline-none focus:ring-2 focus:ring-primary bg-white"
         aria-label="Filtrar por estado"
       >
         <option value="">Todos los estados</option>
@@ -59,7 +59,7 @@ export function TasksFilters({ status, overdue }: TasksFiltersProps) {
       <select
         value={overdue}
         onChange={(e) => updateFilter('overdue', e.target.value)}
-        className="px-3 py-2 border border-gray-200 rounded-lg text-sm focus:outline-none focus:ring-2 focus:ring-red-500 bg-white"
+        className="px-3 py-2 border border-gray-200 rounded-lg text-sm focus:outline-none focus:ring-2 focus:ring-primary bg-white"
         aria-label="Filtrar por vencimiento"
       >
         <option value="">Todas las tareas</option>

@@ -1,4 +1,4 @@
-﻿export type Json = string | number | boolean | null | { [key: string]: Json | undefined } | Json[];
+export type Json = string | number | boolean | null | { [key: string]: Json | undefined } | Json[];
 
 export type Database = {
   // Allows to automatically instantiate createClient with right options
@@ -735,6 +735,278 @@ export type Database = {
             columns: ['client_id'];
             isOneToOne: false;
             referencedRelation: 'clients';
+            referencedColumns: ['id'];
+          },
+        ];
+      };
+      campaign_activations: {
+        Row: {
+          approved_snapshot: Json;
+          campaign_approval_id: string;
+          campaign_id: string;
+          cancellation_reason: string | null;
+          cancelled_at: string | null;
+          cancelled_by: string | null;
+          client_id: string;
+          completed_at: string | null;
+          created_at: string;
+          created_by: string;
+          id: string;
+          metadata: Json;
+          notes: string | null;
+          organization_id: string;
+          prepared_at: string | null;
+          ready_at: string | null;
+          scheduled_at: string | null;
+          started_at: string | null;
+          status: Database['public']['Enums']['activation_status'];
+          updated_at: string;
+          updated_by: string | null;
+        };
+        // NOTA (Phase 8A.1): status se DERIVA de campaign_activation_targets vía
+        // el trigger recompute_campaign_activation_status_trigger — salvo la
+        // transición explícita a 'cancelled', que solo ocurre vía la RPC
+        // SECURITY DEFINER cancel_campaign_activation. authenticated solo tiene
+        // GRANT UPDATE (notes, metadata) — ver
+        // 20260824180000_phase8a1_campaign_activation_domain.sql SECCIÓN G.
+        Insert: {
+          approved_snapshot: Json;
+          campaign_approval_id: string;
+          campaign_id: string;
+          cancellation_reason?: string | null;
+          cancelled_at?: string | null;
+          cancelled_by?: string | null;
+          client_id: string;
+          completed_at?: string | null;
+          created_at?: string;
+          created_by: string;
+          id?: string;
+          metadata?: Json;
+          notes?: string | null;
+          organization_id: string;
+          prepared_at?: string | null;
+          ready_at?: string | null;
+          scheduled_at?: string | null;
+          started_at?: string | null;
+          status?: Database['public']['Enums']['activation_status'];
+          updated_at?: string;
+          updated_by?: string | null;
+        };
+        Update: {
+          approved_snapshot?: Json;
+          campaign_approval_id?: string;
+          campaign_id?: string;
+          cancellation_reason?: string | null;
+          cancelled_at?: string | null;
+          cancelled_by?: string | null;
+          client_id?: string;
+          completed_at?: string | null;
+          created_at?: string;
+          created_by?: string;
+          id?: string;
+          metadata?: Json;
+          notes?: string | null;
+          organization_id?: string;
+          prepared_at?: string | null;
+          ready_at?: string | null;
+          scheduled_at?: string | null;
+          started_at?: string | null;
+          status?: Database['public']['Enums']['activation_status'];
+          updated_at?: string;
+          updated_by?: string | null;
+        };
+        Relationships: [
+          {
+            foreignKeyName: 'campaign_activations_organization_id_fkey';
+            columns: ['organization_id'];
+            isOneToOne: false;
+            referencedRelation: 'organizations';
+            referencedColumns: ['id'];
+          },
+          {
+            foreignKeyName: 'campaign_activations_client_id_fkey';
+            columns: ['client_id'];
+            isOneToOne: false;
+            referencedRelation: 'clients';
+            referencedColumns: ['id'];
+          },
+          {
+            foreignKeyName: 'campaign_activations_campaign_id_fkey';
+            columns: ['campaign_id'];
+            isOneToOne: false;
+            referencedRelation: 'campaigns';
+            referencedColumns: ['id'];
+          },
+          {
+            foreignKeyName: 'campaign_activations_campaign_approval_id_fkey';
+            columns: ['campaign_approval_id'];
+            isOneToOne: false;
+            referencedRelation: 'campaign_approvals';
+            referencedColumns: ['id'];
+          },
+        ];
+      };
+      campaign_activation_events: {
+        Row: {
+          activation_id: string;
+          actor_user_id: string | null;
+          created_at: string;
+          event_type: Database['public']['Enums']['activation_event_type'];
+          from_status: string | null;
+          id: string;
+          is_system: boolean;
+          metadata: Json;
+          note: string | null;
+          organization_id: string;
+          target_id: string | null;
+          to_status: string | null;
+        };
+        // NOTA (Phase 8A.1): append-only real — authenticated no tiene ningún
+        // GRANT de escritura (ni INSERT, ni UPDATE, ni DELETE). Los Insert de
+        // esta tabla ocurren EXCLUSIVAMENTE dentro de triggers/RPCs SECURITY
+        // DEFINER (mismo criterio que campaign_approvals — ver esa tabla arriba).
+        Insert: {
+          activation_id: string;
+          actor_user_id?: string | null;
+          created_at?: string;
+          event_type: Database['public']['Enums']['activation_event_type'];
+          from_status?: string | null;
+          id?: string;
+          is_system?: boolean;
+          metadata?: Json;
+          note?: string | null;
+          organization_id: string;
+          target_id?: string | null;
+          to_status?: string | null;
+        };
+        Update: Record<string, never>;
+        Relationships: [
+          {
+            foreignKeyName: 'campaign_activation_events_organization_id_fkey';
+            columns: ['organization_id'];
+            isOneToOne: false;
+            referencedRelation: 'organizations';
+            referencedColumns: ['id'];
+          },
+          {
+            foreignKeyName: 'campaign_activation_events_activation_id_fkey';
+            columns: ['activation_id'];
+            isOneToOne: false;
+            referencedRelation: 'campaign_activations';
+            referencedColumns: ['id'];
+          },
+          {
+            foreignKeyName: 'campaign_activation_events_target_id_fkey';
+            columns: ['target_id'];
+            isOneToOne: false;
+            referencedRelation: 'campaign_activation_targets';
+            referencedColumns: ['id'];
+          },
+        ];
+      };
+      campaign_activation_targets: {
+        Row: {
+          activation_id: string;
+          cancelled_at: string | null;
+          cancelled_by: string | null;
+          channel: Database['public']['Enums']['activation_channel'];
+          client_id: string;
+          client_integration_id: string | null;
+          created_at: string;
+          external_reference: string | null;
+          failed_at: string | null;
+          failure_code: string | null;
+          failure_message: string | null;
+          id: string;
+          metadata: Json;
+          organization_id: string;
+          placement: string | null;
+          provider: Database['public']['Enums']['activation_provider'];
+          published_at: string | null;
+          published_by: string | null;
+          readiness_checklist: Json;
+          scheduled_at: string | null;
+          status: Database['public']['Enums']['activation_target_status'];
+          updated_at: string;
+        };
+        // NOTA (Phase 8A.1): authenticated solo tiene GRANT UPDATE
+        // (readiness_checklist, metadata) — las transiciones de status van
+        // exclusivamente por las RPCs SECURITY DEFINER de SECCIÓN F.
+        Insert: {
+          activation_id: string;
+          cancelled_at?: string | null;
+          cancelled_by?: string | null;
+          channel: Database['public']['Enums']['activation_channel'];
+          client_id: string;
+          client_integration_id?: string | null;
+          created_at?: string;
+          external_reference?: string | null;
+          failed_at?: string | null;
+          failure_code?: string | null;
+          failure_message?: string | null;
+          id?: string;
+          metadata?: Json;
+          organization_id: string;
+          placement?: string | null;
+          provider: Database['public']['Enums']['activation_provider'];
+          published_at?: string | null;
+          published_by?: string | null;
+          readiness_checklist?: Json;
+          scheduled_at?: string | null;
+          status?: Database['public']['Enums']['activation_target_status'];
+          updated_at?: string;
+        };
+        Update: {
+          activation_id?: string;
+          cancelled_at?: string | null;
+          cancelled_by?: string | null;
+          channel?: Database['public']['Enums']['activation_channel'];
+          client_id?: string;
+          client_integration_id?: string | null;
+          created_at?: string;
+          external_reference?: string | null;
+          failed_at?: string | null;
+          failure_code?: string | null;
+          failure_message?: string | null;
+          id?: string;
+          metadata?: Json;
+          organization_id?: string;
+          placement?: string | null;
+          provider?: Database['public']['Enums']['activation_provider'];
+          published_at?: string | null;
+          published_by?: string | null;
+          readiness_checklist?: Json;
+          scheduled_at?: string | null;
+          status?: Database['public']['Enums']['activation_target_status'];
+          updated_at?: string;
+        };
+        Relationships: [
+          {
+            foreignKeyName: 'campaign_activation_targets_activation_id_fkey';
+            columns: ['activation_id'];
+            isOneToOne: false;
+            referencedRelation: 'campaign_activations';
+            referencedColumns: ['id'];
+          },
+          {
+            foreignKeyName: 'campaign_activation_targets_organization_id_fkey';
+            columns: ['organization_id'];
+            isOneToOne: false;
+            referencedRelation: 'organizations';
+            referencedColumns: ['id'];
+          },
+          {
+            foreignKeyName: 'campaign_activation_targets_client_id_fkey';
+            columns: ['client_id'];
+            isOneToOne: false;
+            referencedRelation: 'clients';
+            referencedColumns: ['id'];
+          },
+          {
+            foreignKeyName: 'campaign_activation_targets_client_integration_id_fkey';
+            columns: ['client_integration_id'];
+            isOneToOne: false;
+            referencedRelation: 'client_integrations';
             referencedColumns: ['id'];
           },
         ];
@@ -1581,6 +1853,402 @@ export type Database = {
           },
         ];
       };
+      pending_oauth_connections: {
+        Row: {
+          id: string;
+          organization_id: string;
+          client_id: string;
+          user_id: string;
+          provider: string;
+          expires_at: string;
+          consumed_at: string | null;
+          created_at: string;
+        };
+        Insert: {
+          id?: string;
+          organization_id: string;
+          client_id: string;
+          user_id: string;
+          provider: string;
+          expires_at: string;
+          consumed_at?: string | null;
+          created_at?: string;
+        };
+        Update: {
+          id?: string;
+          organization_id?: string;
+          client_id?: string;
+          user_id?: string;
+          provider?: string;
+          expires_at?: string;
+          consumed_at?: string | null;
+          created_at?: string;
+        };
+        Relationships: [];
+      };
+      pending_oauth_resources: {
+        Row: {
+          id: string;
+          pending_connection_id: string;
+          page_id: string;
+          page_name: string;
+          instagram_account_id: string | null;
+          instagram_username: string | null;
+          key_version: number;
+          encrypted_page_token: string;
+          iv: string;
+          auth_tag: string;
+          token_expires_at: string | null;
+          created_at: string;
+        };
+        Insert: {
+          id?: string;
+          pending_connection_id: string;
+          page_id: string;
+          page_name: string;
+          instagram_account_id?: string | null;
+          instagram_username?: string | null;
+          key_version?: number;
+          encrypted_page_token: string;
+          iv: string;
+          auth_tag: string;
+          token_expires_at?: string | null;
+          created_at?: string;
+        };
+        Update: {
+          id?: string;
+          pending_connection_id?: string;
+          page_id?: string;
+          page_name?: string;
+          instagram_account_id?: string | null;
+          instagram_username?: string | null;
+          key_version?: number;
+          encrypted_page_token?: string;
+          iv?: string;
+          auth_tag?: string;
+          token_expires_at?: string | null;
+          created_at?: string;
+        };
+        Relationships: [];
+      };
+      pending_google_oauth_credentials: {
+        Row: {
+          id: string;
+          pending_connection_id: string;
+          key_version: number;
+          ciphertext: string;
+          iv: string;
+          auth_tag: string;
+          created_at: string;
+        };
+        Insert: {
+          id?: string;
+          pending_connection_id: string;
+          key_version?: number;
+          ciphertext: string;
+          iv: string;
+          auth_tag: string;
+          created_at?: string;
+        };
+        Update: {
+          id?: string;
+          pending_connection_id?: string;
+          key_version?: number;
+          ciphertext?: string;
+          iv?: string;
+          auth_tag?: string;
+          created_at?: string;
+        };
+        Relationships: [];
+      };
+      pending_google_oauth_resources: {
+        Row: {
+          id: string;
+          pending_connection_id: string;
+          customer_id: string;
+          customer_name: string;
+          manager_customer_id: string | null;
+          is_manager: boolean;
+          currency_code: string | null;
+          time_zone: string | null;
+          created_at: string;
+        };
+        Insert: {
+          id?: string;
+          pending_connection_id: string;
+          customer_id: string;
+          customer_name: string;
+          manager_customer_id?: string | null;
+          is_manager?: boolean;
+          currency_code?: string | null;
+          time_zone?: string | null;
+          created_at?: string;
+        };
+        Update: {
+          id?: string;
+          pending_connection_id?: string;
+          customer_id?: string;
+          customer_name?: string;
+          manager_customer_id?: string | null;
+          is_manager?: boolean;
+          currency_code?: string | null;
+          time_zone?: string | null;
+          created_at?: string;
+        };
+        Relationships: [];
+      };
+      oauth_states: {
+        Row: {
+          id: string;
+          organization_id: string;
+          client_id: string;
+          user_id: string;
+          provider: string;
+          state_hash: string;
+          expires_at: string;
+          consumed_at: string | null;
+          created_at: string;
+        };
+        Insert: {
+          id?: string;
+          organization_id: string;
+          client_id: string;
+          user_id: string;
+          provider: string;
+          state_hash: string;
+          expires_at: string;
+          consumed_at?: string | null;
+          created_at?: string;
+        };
+        Update: {
+          id?: string;
+          organization_id?: string;
+          client_id?: string;
+          user_id?: string;
+          provider?: string;
+          state_hash?: string;
+          expires_at?: string;
+          consumed_at?: string | null;
+          created_at?: string;
+        };
+        Relationships: [];
+      };
+      campaign_publication_jobs: {
+        Row: {
+          id: string;
+          organization_id: string;
+          client_id: string;
+          activation_id: string;
+          target_id: string;
+          channel: string;
+          provider: string;
+          client_integration_id: string | null;
+          status: string;
+          idempotency_key: string;
+          retry_of_job_id: string | null;
+          claim_count: number;
+          claimed_by: string | null;
+          claimed_at: string | null;
+          claim_expires_at: string | null;
+          started_at: string | null;
+          completed_at: string | null;
+          external_id: string | null;
+          external_url: string | null;
+          failure_category: string | null;
+          error_code: string | null;
+          error_message: string | null;
+          cancelled_at: string | null;
+          cancelled_by: string | null;
+          cancel_reason: string | null;
+          metadata: Json;
+          created_at: string;
+          updated_at: string;
+        };
+        Insert: {
+          id?: string;
+          organization_id: string;
+          client_id: string;
+          activation_id: string;
+          target_id: string;
+          channel: string;
+          provider: string;
+          client_integration_id?: string | null;
+          status?: string;
+          idempotency_key: string;
+          retry_of_job_id?: string | null;
+          claim_count?: number;
+          claimed_by?: string | null;
+          claimed_at?: string | null;
+          claim_expires_at?: string | null;
+          started_at?: string | null;
+          completed_at?: string | null;
+          external_id?: string | null;
+          external_url?: string | null;
+          failure_category?: string | null;
+          error_code?: string | null;
+          error_message?: string | null;
+          cancelled_at?: string | null;
+          cancelled_by?: string | null;
+          cancel_reason?: string | null;
+          metadata?: Json;
+          created_at?: string;
+          updated_at?: string;
+        };
+        Update: {
+          id?: string;
+          organization_id?: string;
+          client_id?: string;
+          activation_id?: string;
+          target_id?: string;
+          channel?: string;
+          provider?: string;
+          client_integration_id?: string | null;
+          status?: string;
+          idempotency_key?: string;
+          retry_of_job_id?: string | null;
+          claim_count?: number;
+          claimed_by?: string | null;
+          claimed_at?: string | null;
+          claim_expires_at?: string | null;
+          started_at?: string | null;
+          completed_at?: string | null;
+          external_id?: string | null;
+          external_url?: string | null;
+          failure_category?: string | null;
+          error_code?: string | null;
+          error_message?: string | null;
+          cancelled_at?: string | null;
+          cancelled_by?: string | null;
+          cancel_reason?: string | null;
+          metadata?: Json;
+          created_at?: string;
+          updated_at?: string;
+        };
+        Relationships: [];
+      };
+      campaign_publication_attempts: {
+        Row: {
+          id: string;
+          job_id: string;
+          organization_id: string;
+          client_id: string;
+          target_id: string;
+          attempt_number: number;
+          worker_id: string;
+          status: string;
+          started_at: string;
+          completed_at: string | null;
+          external_id: string | null;
+          external_url: string | null;
+          failure_category: string | null;
+          error_code: string | null;
+          error_message: string | null;
+          metadata: Json;
+          created_at: string;
+        };
+        Insert: {
+          id?: string;
+          job_id: string;
+          organization_id: string;
+          client_id: string;
+          target_id: string;
+          attempt_number: number;
+          worker_id: string;
+          status: string;
+          started_at?: string;
+          completed_at?: string | null;
+          external_id?: string | null;
+          external_url?: string | null;
+          failure_category?: string | null;
+          error_code?: string | null;
+          error_message?: string | null;
+          metadata?: Json;
+          created_at?: string;
+        };
+        Update: {
+          id?: string;
+          job_id?: string;
+          organization_id?: string;
+          client_id?: string;
+          target_id?: string;
+          attempt_number?: number;
+          worker_id?: string;
+          status?: string;
+          started_at?: string;
+          completed_at?: string | null;
+          external_id?: string | null;
+          external_url?: string | null;
+          failure_category?: string | null;
+          error_code?: string | null;
+          error_message?: string | null;
+          metadata?: Json;
+          created_at?: string;
+        };
+        Relationships: [];
+      };
+      campaign_provider_observations: {
+        Row: {
+          id: string;
+          organization_id: string;
+          client_id: string;
+          job_id: string;
+          target_id: string;
+          channel: string;
+          provider: string;
+          external_id: string;
+          observed_at: string;
+          availability: string;
+          unavailability_reason: string | null;
+          resource_status: string | null;
+          is_first_observation: boolean;
+          is_status_change: boolean;
+          previous_observation_id: string | null;
+          previous_resource_status: string | null;
+          metadata: Json;
+          created_at: string;
+        };
+        Insert: {
+          id?: string;
+          organization_id: string;
+          client_id: string;
+          job_id: string;
+          target_id: string;
+          channel: string;
+          provider: string;
+          external_id: string;
+          observed_at?: string;
+          availability: string;
+          unavailability_reason?: string | null;
+          resource_status?: string | null;
+          is_first_observation?: boolean;
+          is_status_change?: boolean;
+          previous_observation_id?: string | null;
+          previous_resource_status?: string | null;
+          metadata?: Json;
+          created_at?: string;
+        };
+        Update: {
+          id?: string;
+          organization_id?: string;
+          client_id?: string;
+          job_id?: string;
+          target_id?: string;
+          channel?: string;
+          provider?: string;
+          external_id?: string;
+          observed_at?: string;
+          availability?: string;
+          unavailability_reason?: string | null;
+          resource_status?: string | null;
+          is_first_observation?: boolean;
+          is_status_change?: boolean;
+          previous_observation_id?: string | null;
+          previous_resource_status?: string | null;
+          metadata?: Json;
+          created_at?: string;
+        };
+        Relationships: [];
+      };
     };
     Views: {
       [_ in never]: never;
@@ -1673,6 +2341,41 @@ export type Database = {
       alert_severity: 'info' | 'warning' | 'critical';
       alert_status: 'active' | 'acknowledged' | 'snoozed' | 'resolved';
       automation_status: 'active' | 'paused' | 'error' | 'disabled' | 'inactive' | 'draft' | 'archived';
+      activation_channel:
+        | 'manual'
+        | 'meta_ads'
+        | 'instagram_organic'
+        | 'facebook_organic'
+        | 'google_ads'
+        | 'linkedin_ads'
+        | 'email';
+      activation_event_type:
+        | 'activation_created'
+        | 'target_added'
+        | 'target_removed'
+        | 'status_changed'
+        | 'target_status_changed'
+        | 'activation_cancelled';
+      activation_provider: 'manual' | 'meta' | 'google' | 'linkedin' | 'email';
+      activation_status:
+        | 'pending'
+        | 'preparing'
+        | 'ready'
+        | 'scheduled'
+        | 'executing'
+        | 'completed'
+        | 'partially_completed'
+        | 'failed'
+        | 'cancelled';
+      activation_target_status:
+        | 'pending'
+        | 'preparing'
+        | 'ready'
+        | 'scheduled'
+        | 'publishing'
+        | 'published'
+        | 'failed'
+        | 'cancelled';
       campaign_approval_action: 'approved' | 'rejected';
       campaign_objective:
         | 'brand_awareness'
@@ -1829,6 +2532,45 @@ export const Constants = {
       alert_severity: ['info', 'warning', 'critical'],
       alert_status: ['active', 'acknowledged', 'snoozed', 'resolved'],
       automation_status: ['active', 'paused', 'error', 'disabled', 'inactive', 'draft', 'archived'],
+      activation_channel: [
+        'manual',
+        'meta_ads',
+        'instagram_organic',
+        'facebook_organic',
+        'google_ads',
+        'linkedin_ads',
+        'email',
+      ],
+      activation_event_type: [
+        'activation_created',
+        'target_added',
+        'target_removed',
+        'status_changed',
+        'target_status_changed',
+        'activation_cancelled',
+      ],
+      activation_provider: ['manual', 'meta', 'google', 'linkedin', 'email'],
+      activation_status: [
+        'pending',
+        'preparing',
+        'ready',
+        'scheduled',
+        'executing',
+        'completed',
+        'partially_completed',
+        'failed',
+        'cancelled',
+      ],
+      activation_target_status: [
+        'pending',
+        'preparing',
+        'ready',
+        'scheduled',
+        'publishing',
+        'published',
+        'failed',
+        'cancelled',
+      ],
       campaign_approval_action: ['approved', 'rejected'],
       campaign_objective: [
         'brand_awareness',

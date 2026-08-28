@@ -249,9 +249,22 @@ export default async function ClientDetailPage({ params }: Props) {
         </div>
 
         {/* Integrations */}
-        {typedIntegrations.length > 0 && (
-          <div className="bg-white rounded-xl border border-gray-200 p-6">
-            <h2 className="font-semibold text-gray-900 mb-4">Integraciones</h2>
+        <div className="bg-white rounded-xl border border-gray-200 p-6">
+          <div className="flex items-center justify-between mb-4">
+            <h2 className="font-semibold text-gray-900">Integraciones</h2>
+            {canManage && (
+              <a
+                href={`/api/auth/oauth/google/start?organizationId=${organization.id}&clientId=${clientId}&intent=connect`}
+                className="text-xs px-3 py-1.5 bg-indigo-600 text-white font-medium rounded-md hover:bg-indigo-700 transition-colors"
+              >
+                + Conectar Google Ads
+              </a>
+            )}
+          </div>
+
+          {typedIntegrations.length === 0 ? (
+            <p className="text-sm text-gray-400">Sin integraciones configuradas.</p>
+          ) : (
             <div className="divide-y divide-gray-50">
               {typedIntegrations.map((integration) => (
                 <div key={integration.id} className="flex items-center justify-between py-3">
@@ -259,24 +272,41 @@ export default async function ClientDetailPage({ params }: Props) {
                     <p className="font-medium text-gray-800 text-sm capitalize">
                       {integration.provider.replace('_', ' ')}
                     </p>
-                    <p className="text-xs text-gray-400">{integration.external_account_id}</p>
+                    <p className="text-xs text-gray-400 font-mono">{integration.external_account_id}</p>
+                    {typeof (integration.configuration as Record<string, unknown> | null)?.['customer_name'] === 'string' && (
+                      <p className="text-xs text-gray-500 font-medium">
+                        {(integration.configuration as Record<string, unknown>)['customer_name'] as string}
+                      </p>
+                    )}
                   </div>
-                  <span
-                    className={`text-xs px-2 py-0.5 rounded-full ${
-                      integration.status === 'active'
-                        ? 'bg-green-50 text-green-700'
-                        : integration.status === 'error'
-                          ? 'bg-red-50 text-red-700'
-                          : 'bg-gray-50 text-gray-500'
-                    }`}
-                  >
-                    {integration.status}
-                  </span>
+                  <div className="flex items-center gap-2">
+                    <span
+                      className={`text-xs px-2 py-0.5 rounded-full ${
+                        integration.status === 'active'
+                          ? 'bg-green-50 text-green-700'
+                          : integration.status === 'error'
+                            ? 'bg-red-50 text-red-700'
+                            : 'bg-gray-50 text-gray-500'
+                      }`}
+                    >
+                      {integration.status}
+                    </span>
+
+                    {integration.provider === 'google' && canManage && (
+                      <a
+                        href={`/api/auth/oauth/google/start?organizationId=${organization.id}&clientId=${clientId}&intent=reconnect`}
+                        className="text-xs text-indigo-600 hover:text-indigo-800 underline ml-2"
+                      >
+                        Reconectar
+                      </a>
+                    )}
+                  </div>
                 </div>
               ))}
             </div>
-          </div>
-        )}
+          )}
+        </div>
+
 
         {/* Danger zone */}
         {canDelete && (

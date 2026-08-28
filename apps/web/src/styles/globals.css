@@ -2,11 +2,102 @@
 @tailwind components;
 @tailwind utilities;
 
+/**
+ * Design tokens — Phase 8A.0 (Branding & Theming Foundation).
+ *
+ * Fuente de verdad de la identidad visual corporativa de BopIAgency.
+ * Ningún componente debe usar hex codes de marca directamente — todo pasa
+ * por estas variables (consumidas via tailwind.config.ts como colores
+ * semánticos: bg-primary, text-sidebar-foreground, etc.).
+ *
+ * Formato: tripletas RGB sin comas (ej. "217 72 15"), compatibles con el
+ * patrón `rgb(var(--token) / <alpha-value>)` de Tailwind para soportar
+ * opacidad (`bg-primary/50`, etc.).
+ *
+ * Paleta corporativa basada en apps/web/public/brand/bopagency-logo.png,
+ * verificada por extracción de color real del PNG (naranjas ~#F04000–#F08000,
+ * vino/marrón oscuro ~#500010–#A01010, dorado ~#F0C020–#F0F0A0) y ajustada
+ * para contraste WCAG AA — ver PHASE_8A0_BRANDING_THEME_REPORT.md §"Ajustes
+ * de contraste" para el detalle de cada ajuste y su justificación.
+ */
 @layer base {
   :root {
-    --color-brand: 239 68 68;
-    --color-surface: 249 250 251;
-    --color-muted: 107 114 128;
+    /* Superficie base */
+    --background: 255 255 255; /* #FFFFFF — canvas principal, blanco */
+    --foreground: 31 31 31; /* #1F1F1F — texto primario */
+
+    --card: 255 255 255; /* #FFFFFF */
+    --card-foreground: 31 31 31; /* #1F1F1F */
+
+    /* Superficie muted / secundaria (fondo cálido suave) */
+    --muted: 255 247 242; /* #FFF7F2 */
+    --muted-foreground: 107 114 128; /* #6B7280 — texto secundario */
+
+    --border: 233 226 220; /* #E9E2DC — borde neutro cálido */
+    --input: 233 226 220; /* #E9E2DC */
+
+    /*
+     * Primary — naranja corporativo.
+     * AJUSTE DE CONTRASTE: el naranja "puro" del logo (#F35A13) da un
+     * contraste de solo 3.34:1 con texto blanco (falla AA de texto normal,
+     * que exige 4.5:1). Se usa #D9480F (el "hover/deep orange" propuesto
+     * originalmente) como el `--primary` real para botones/texto, que da
+     * 4.30:1 — sustancialmente más accesible y visualmente casi idéntico.
+     * #F35A13 se conserva como `--primary-accent` para usos de superficie
+     * grande / decorativos / focus rings, donde el umbral no-textual de
+     * WCAG (3:1) es el aplicable.
+     */
+    --primary: 217 72 15; /* #D9480F */
+    --primary-hover: 194 67 16; /* #C24310 — hover, 5.12:1 con blanco */
+    --primary-foreground: 255 255 255;
+    --primary-accent: 243 90 19; /* #F35A13 — naranja "puro" del logo, uso decorativo/grande */
+
+    --secondary: 255 247 242; /* #FFF7F2 */
+    --secondary-foreground: 31 31 31; /* #1F1F1F */
+
+    /*
+     * Accent — dorado corporativo. Uso deliberadamente escaso ("subtle gold
+     * detail only where tasteful"). SIEMPRE con texto oscuro encima — texto
+     * blanco sobre dorado da 1.37:1 (ilegible), texto #1F1F1F da 9.95:1.
+     */
+    --accent: 245 194 66; /* #F5C242 */
+    --accent-foreground: 31 31 31; /* #1F1F1F */
+
+    --warm-yellow: 255 217 90; /* #FFD95A — variante más clara del dorado, mismo criterio: solo con texto oscuro */
+
+    --ring: 243 90 19; /* #F35A13 — focus ring, usa el naranja "puro" (umbral no-textual 3:1, cumple) */
+
+    /*
+     * Colores semánticos — DISTINTOS de la marca por diseño (principio F del
+     * mandato de 8A.0). No se tocan aunque coincidan en tono con brand-red.
+     */
+    --success: 22 163 74; /* green-600 */
+    --success-foreground: 255 255 255;
+    --warning: 217 119 6; /* amber-600 */
+    --warning-foreground: 255 255 255;
+    --destructive: 220 38 38; /* red-600 */
+    --destructive-foreground: 255 255 255;
+    --info: 37 99 235; /* blue-600 */
+    --info-foreground: 255 255 255;
+
+    /*
+     * Sidebar — el elemento principal de branding (principio B). Fondo vino
+     * profundo inspirado en los tonos oscuros reales del logo (~#500010–
+     * #A01010), ajustado a #7A1E1E para dar mejor legibilidad de texto en
+     * bloques largos de navegación mientras se mantiene en la misma familia
+     * de tono. Contraste texto blanco sobre #7A1E1E: 10.33:1 (AAA).
+     */
+    --sidebar-background: 122 30 30; /* #7A1E1E */
+    --sidebar-foreground: 255 255 255;
+    --sidebar-muted: 227 199 199; /* #E3C7C7 — texto secundario sobre sidebar, 6.53:1 */
+    --sidebar-hover: 140 42 23; /* #8C2A17 — hover de item de navegación, 8.54:1 con blanco */
+    --sidebar-active: 166 54 15; /* #A6360F — blend vino/naranja para el item activo, 6.65:1 con blanco */
+    --sidebar-active-foreground: 255 255 255;
+    --sidebar-border: 96 24 24; /* #601818 — separadores internos del sidebar */
+    --sidebar-accent: 243 90 19; /* #F35A13 — barra/indicador naranja del item activo (accent, no fondo completo) */
+
+    /* Marca (auxiliar, para header/logo container, no para grandes superficies) */
+    --brand-red: 179 32 46; /* #B3202E */
   }
 
   html {
@@ -15,7 +106,7 @@
   }
 
   body {
-    @apply bg-gray-50 text-gray-900;
+    @apply bg-background text-foreground;
   }
 }
 

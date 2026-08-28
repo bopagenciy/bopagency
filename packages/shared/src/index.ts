@@ -93,7 +93,9 @@ export type {
   ComplianceRuleFilterFormValues,
   GenerateCampaignDraftWithAiFormValues,
   RegenerateCampaignContentFormValues,
+  Currency,
 } from './schemas/campaign.schema';
+
 
 // Schemas — Campaign generated content (Phase 7D)
 export {
@@ -123,3 +125,106 @@ export type {
   CancelExecutionFormValues,
   RetryExecutionFormValues,
 } from './schemas/automation.schema';
+
+// Constants — Campaign Activation (Phase 8A.1)
+export {
+  ACTIVATION_STATUSES,
+  ACTIVATION_TERMINAL_STATUSES,
+  ACTIVATION_TARGET_STATUSES,
+  ACTIVATION_TARGET_TERMINAL_STATUSES,
+  ACTIVATION_CHANNELS,
+  ACTIVATION_PROVIDERS,
+  ACTIVATION_CHANNEL_LABELS,
+  ACTIVATION_CHANNEL_PROVIDER,
+  isValidChannelProviderPair,
+  ACTIVATION_EVENT_TYPES,
+} from './constants/activation';
+export type {
+  ActivationStatus,
+  ActivationTargetStatus,
+  ActivationChannel,
+  ActivationProvider,
+  ActivationEventType,
+} from './constants/activation';
+
+// Constants — Campaign Publication (Phase 8B.1)
+export {
+  PUBLICATION_JOB_STATUSES,
+  PUBLICATION_JOB_TERMINAL_STATUSES,
+  PUBLICATION_ATTEMPT_OUTCOMES,
+  PUBLICATION_FAILURE_CATEGORIES,
+  PUBLICATION_RETRYABLE_FAILURE_CATEGORIES,
+  isRetryablePublicationFailure,
+  PUBLICATION_EVENT_TYPES,
+  PUBLICATION_WEBHOOK_EVENT_STATUSES,
+  DEFAULT_PUBLICATION_RECONCILIATION_TIMEOUT_MINUTES,
+  PUBLICATION_IDEMPOTENCY_KEY_PREFIX,
+} from './constants/publication';
+export type {
+  PublicationJobStatus,
+  PublicationAttemptOutcome,
+  PublicationFailureCategory,
+  PublicationEventType,
+  PublicationWebhookEventStatus,
+} from './constants/publication';
+
+// Schemas — Campaign Activation (Phase 8A.1) & Google Ads Config (Phase 8F.0 & 8F.2A)
+export {
+  googleAdsActivationConfigSchema,
+  strictGoogleAdsActivationConfigSchema,
+  isPublishableGoogleAdsConfig,
+  GOOGLE_ADS_BIDDING_STRATEGIES,
+  GOOGLE_ADS_KEYWORD_MATCH_POLICIES,
+  GOOGLE_ADS_EU_POLITICAL_ADVERTISING_DECLARATIONS,
+} from './schemas/google-ads-config.schema';
+export type {
+  GoogleAdsBiddingStrategy,
+  GoogleAdsKeywordMatchPolicy,
+  GoogleAdsEuPoliticalAdvertisingDeclaration,
+  GoogleAdsActivationConfigShape,
+  PublishableGoogleAdsActivationConfig,
+} from './schemas/google-ads-config.schema';
+export {
+  campaignActivationSnapshotSchema,
+  ACTIVATION_SNAPSHOT_SCHEMA_VERSION,
+  activationChannelSchema,
+  activationProviderSchema,
+  activationPlacementSchema,
+  activationCancellationReasonSchema,
+  activationExternalReferenceSchema,
+} from './schemas/campaign-activation.schema';
+export type { CampaignActivationSnapshotShape } from './schemas/campaign-activation.schema';
+
+// Schemas — Campaign Activation use-case inputs (Phase 8A.2)
+export {
+  createCampaignActivationSchema,
+  addCampaignActivationTargetSchema,
+  prepareActivationTargetSchema,
+  markActivationTargetReadySchema,
+  markActivationTargetPublishedSchema,
+  cancelActivationTargetSchema,
+  cancelCampaignActivationSchema,
+} from './schemas/campaign-activation.schema';
+export type {
+  CreateCampaignActivationFormValues,
+  AddCampaignActivationTargetFormValues,
+  PrepareActivationTargetFormValues,
+  MarkActivationTargetReadyFormValues,
+  MarkActivationTargetPublishedFormValues,
+  CancelActivationTargetFormValues,
+  CancelCampaignActivationFormValues,
+} from './schemas/campaign-activation.schema';
+
+// Schemas — Google Integration (Phase 8F.1)
+export {
+  googleAdsIntegrationConfigSchema,
+  googleAdsDiscoveredCustomerSchema,
+  connectGoogleOAuthInputSchema,
+  finalizeGoogleConnectionInputSchema,
+} from './schemas/google-integration.schema';
+export type {
+  GoogleAdsIntegrationConfig,
+  GoogleAdsDiscoveredCustomer,
+  ConnectGoogleOAuthInput,
+  FinalizeGoogleConnectionInput,
+} from './schemas/google-integration.schema';

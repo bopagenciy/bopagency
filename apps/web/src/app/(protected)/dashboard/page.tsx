@@ -109,7 +109,7 @@ export default async function DashboardPage() {
               <h2 className="font-semibold text-gray-900">Tareas recientes</h2>
               <Link
                 href="/tasks"
-                className="text-xs text-red-600 hover:text-red-700 transition-colors"
+                className="text-xs text-primary hover:text-primary-hover transition-colors"
               >
                 Ver todas →
               </Link>

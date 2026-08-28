@@ -51,7 +51,7 @@ export default async function ClientsPage({ searchParams }: Props) {
   const total = count ?? 0;
   const totalPages = Math.ceil(total / pageSize);
 
-  const clients: ClientListItem[] = (data ?? []).map((row: ClientRow) => ({
+  const clients: ClientListItem[] = ((data ?? []) as unknown as ClientRow[]).map((row) => ({
     id: row.id,
     name: row.name,
     legalName: row.legal_name,
@@ -69,7 +69,7 @@ export default async function ClientsPage({ searchParams }: Props) {
         actions={
           <Link
             href="/clients/new"
-            className="px-4 py-2 bg-red-600 text-white text-sm font-medium rounded-lg hover:bg-red-700 transition-colors"
+            className="px-4 py-2 bg-primary text-primary-foreground text-sm font-medium rounded-lg hover:bg-primary-hover transition-colors"
           >
             + Nuevo cliente
           </Link>

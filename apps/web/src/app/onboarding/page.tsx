@@ -1,4 +1,5 @@
 import type { Metadata } from 'next';
+import Image from 'next/image';
 import { redirect } from 'next/navigation';
 import { createServerSupabaseClient } from '@/lib/supabase/server';
 import { OnboardingForm } from './OnboardingForm';
@@ -32,22 +33,30 @@ export default async function OnboardingPage() {
   }
 
   return (
-    <div className="min-h-screen bg-gray-950 flex items-center justify-center p-4">
+    <div className="min-h-screen bg-muted flex items-center justify-center p-4">
       <div className="w-full max-w-md">
-        {/* Brand */}
-        <div className="flex items-center gap-3 mb-8 justify-center">
-          <div className="w-10 h-10 rounded-xl bg-red-500 flex items-center justify-center text-white font-bold text-lg">
-            B
+        {/* Brand — mismo tratamiento que (auth)/layout.tsx (Phase 8A.0 polish),
+            asset recortado + contenedor no-cuadrado (149x80) en el micro-polish */}
+        <div className="flex flex-col items-center gap-3 mb-10">
+          <div className="shrink-0 w-[149px] h-20 rounded-2xl bg-white flex items-center justify-center overflow-hidden p-2 shadow-sm border border-border">
+            <Image
+              src="/brand/bopagency-logo-trimmed.png"
+              alt="Bop Agency"
+              width={149}
+              height={80}
+              priority
+              className="w-full h-full object-contain"
+            />
           </div>
-          <div>
-            <p className="font-bold text-white text-lg leading-tight">BopIAgency</p>
-            <p className="text-xs text-gray-400 leading-tight">Sistema Operativo Digital</p>
+          <div className="text-center">
+            <p className="font-bold text-foreground text-lg leading-tight">BopIAgency</p>
+            <p className="text-xs text-muted-foreground leading-tight">Sistema Operativo Digital</p>
           </div>
         </div>
 
-        <div className="bg-gray-900 rounded-2xl border border-gray-800 p-8">
-          <h1 className="text-xl font-bold text-white mb-1">Crea tu organización</h1>
-          <p className="text-sm text-gray-400 mb-6">
+        <div className="bg-card rounded-2xl border border-border p-8 shadow-sm">
+          <h1 className="text-xl font-bold text-foreground mb-1">Crea tu organización</h1>
+          <p className="text-sm text-muted-foreground mb-6">
             Bienvenido{profile?.full_name ? `, ${profile.full_name}` : ''}. Configura tu
             organización para empezar.
           </p>

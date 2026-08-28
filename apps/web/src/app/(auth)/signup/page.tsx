@@ -15,24 +15,24 @@ export default async function SignUpPage({ searchParams }: SignUpPageProps) {
 
   return (
     <>
-      <h1 className="text-xl font-bold text-white mb-1">Crear cuenta</h1>
-      <p className="text-sm text-gray-400 mb-6">Únete a BopIAgency</p>
+      <h1 className="text-xl font-bold text-foreground mb-1">Crear cuenta</h1>
+      <p className="text-sm text-muted-foreground mb-6">Únete a BopIAgency</p>
 
       {params.error && (
-        <div className="mb-4 p-3 rounded-lg bg-red-950 border border-red-800 text-red-300 text-sm">
+        <div className="mb-4 p-3 rounded-lg bg-red-50 border border-red-200 text-red-700 text-sm">
           {params.error}
         </div>
       )}
 
       {params.message && (
-        <div className="mb-4 p-3 rounded-lg bg-blue-950 border border-blue-800 text-blue-300 text-sm">
+        <div className="mb-4 p-3 rounded-lg bg-blue-50 border border-blue-200 text-blue-700 text-sm">
           {params.message}
         </div>
       )}
 
       <form action={signUp} className="space-y-4">
         <div>
-          <label htmlFor="fullName" className="block text-sm font-medium text-gray-300 mb-1.5">
+          <label htmlFor="fullName" className="block text-sm font-medium text-foreground mb-1.5">
             Nombre completo
           </label>
           <input
@@ -42,12 +42,12 @@ export default async function SignUpPage({ searchParams }: SignUpPageProps) {
             required
             autoComplete="name"
             placeholder="Francisco López"
-            className="w-full px-3 py-2 rounded-lg bg-gray-800 border border-gray-700 text-white placeholder-gray-500 text-sm focus:outline-none focus:ring-2 focus:ring-red-500 focus:border-transparent"
+            className="w-full px-3 py-2 rounded-lg bg-background border border-border text-foreground placeholder-muted-foreground text-sm focus:outline-none focus:ring-2 focus:ring-primary focus:border-transparent"
           />
         </div>
 
         <div>
-          <label htmlFor="email" className="block text-sm font-medium text-gray-300 mb-1.5">
+          <label htmlFor="email" className="block text-sm font-medium text-foreground mb-1.5">
             Email
           </label>
           <input
@@ -57,12 +57,12 @@ export default async function SignUpPage({ searchParams }: SignUpPageProps) {
             required
             autoComplete="email"
             placeholder="francisco@bopagency.co"
-            className="w-full px-3 py-2 rounded-lg bg-gray-800 border border-gray-700 text-white placeholder-gray-500 text-sm focus:outline-none focus:ring-2 focus:ring-red-500 focus:border-transparent"
+            className="w-full px-3 py-2 rounded-lg bg-background border border-border text-foreground placeholder-muted-foreground text-sm focus:outline-none focus:ring-2 focus:ring-primary focus:border-transparent"
           />
         </div>
 
         <div>
-          <label htmlFor="password" className="block text-sm font-medium text-gray-300 mb-1.5">
+          <label htmlFor="password" className="block text-sm font-medium text-foreground mb-1.5">
             Contraseña
           </label>
           <input
@@ -73,23 +73,23 @@ export default async function SignUpPage({ searchParams }: SignUpPageProps) {
             autoComplete="new-password"
             placeholder="Mínimo 8 caracteres"
             minLength={8}
-            className="w-full px-3 py-2 rounded-lg bg-gray-800 border border-gray-700 text-white placeholder-gray-500 text-sm focus:outline-none focus:ring-2 focus:ring-red-500 focus:border-transparent"
+            className="w-full px-3 py-2 rounded-lg bg-background border border-border text-foreground placeholder-muted-foreground text-sm focus:outline-none focus:ring-2 focus:ring-primary focus:border-transparent"
           />
         </div>
 
         <button
           type="submit"
-          className="w-full py-2.5 px-4 rounded-lg bg-red-600 hover:bg-red-500 text-white text-sm font-medium transition-colors focus:outline-none focus:ring-2 focus:ring-red-500 focus:ring-offset-2 focus:ring-offset-gray-900"
+          className="w-full py-2.5 px-4 rounded-lg bg-primary hover:bg-primary-hover text-primary-foreground text-sm font-medium transition-colors focus:outline-none focus:ring-2 focus:ring-primary focus:ring-offset-2"
         >
           Crear cuenta
         </button>
       </form>
 
-      <p className="mt-6 text-center text-sm text-gray-400">
+      <p className="mt-6 text-center text-sm text-muted-foreground">
         ¿Ya tienes cuenta?{' '}
         <Link
           href="/login"
-          className="text-red-400 hover:text-red-300 transition-colors font-medium"
+          className="text-primary hover:text-primary-hover transition-colors font-medium"
         >
           Inicia sesión
         </Link>

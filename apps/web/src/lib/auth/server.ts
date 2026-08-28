@@ -125,7 +125,7 @@ export async function requireOrganization(orgId?: string): Promise<OrganizationC
     redirect('/access-denied');
   }
 
-  return { user, organization, membership };
+  return { user, organization, membership: membership as unknown as OrganizationMemberRow };
 }
 
 /**
@@ -138,7 +138,7 @@ export async function requireOrganizationRole(
 ): Promise<OrganizationContext> {
   const context = await requireOrganization(orgId);
 
-  if (!hasMinimumRole(context.membership.role, requiredRole)) {
+  if (!hasMinimumRole(context.membership.role as OrganizationRole, requiredRole)) {
     redirect('/access-denied');
   }
 

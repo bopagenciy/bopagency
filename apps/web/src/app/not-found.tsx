@@ -8,7 +8,7 @@ export default function NotFound() {
       <p className="text-gray-500 mb-8 max-w-md">La página que buscas no existe o fue movida.</p>
       <Link
         href="/dashboard"
-        className="inline-flex items-center gap-2 px-4 py-2 bg-red-600 text-white rounded-md hover:bg-red-700 transition-colors text-sm font-medium"
+        className="inline-flex items-center gap-2 px-4 py-2 bg-primary text-primary-foreground rounded-md hover:bg-primary-hover transition-colors text-sm font-medium"
       >
         ← Volver al Dashboard
       </Link>

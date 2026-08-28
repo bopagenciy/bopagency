@@ -49,7 +49,7 @@ export function Pagination({
           <button
             onClick={() => goToPage(page - 1)}
             disabled={page <= 1 || isPending}
-            className="px-3 py-1.5 text-sm border border-gray-200 rounded-lg disabled:opacity-40 hover:bg-gray-50 transition-colors focus:outline-none focus:ring-2 focus:ring-red-500"
+            className="px-3 py-1.5 text-sm border border-gray-200 rounded-lg disabled:opacity-40 hover:bg-gray-50 transition-colors focus:outline-none focus:ring-2 focus:ring-primary"
             aria-label="Página anterior"
           >
             ← Anterior
@@ -60,7 +60,7 @@ export function Pagination({
           <button
             onClick={() => goToPage(page + 1)}
             disabled={page >= totalPages || isPending}
-            className="px-3 py-1.5 text-sm border border-gray-200 rounded-lg disabled:opacity-40 hover:bg-gray-50 transition-colors focus:outline-none focus:ring-2 focus:ring-red-500"
+            className="px-3 py-1.5 text-sm border border-gray-200 rounded-lg disabled:opacity-40 hover:bg-gray-50 transition-colors focus:outline-none focus:ring-2 focus:ring-primary"
             aria-label="Página siguiente"
           >
             Siguiente →

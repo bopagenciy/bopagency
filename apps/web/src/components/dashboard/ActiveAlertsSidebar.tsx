@@ -28,7 +28,7 @@ export function ActiveAlertsSidebar({ alerts }: ActiveAlertsSidebarProps) {
     <div className="bg-white rounded-lg border border-gray-200">
       <div className="px-5 py-4 border-b border-gray-100 flex items-center justify-between">
         <h2 className="font-semibold text-gray-900">Alertas activas</h2>
-        <Link href="/alerts" className="text-xs text-red-600 hover:text-red-700 transition-colors">
+        <Link href="/alerts" className="text-xs text-primary hover:text-primary-hover transition-colors">
           Ver todas →
         </Link>
       </div>

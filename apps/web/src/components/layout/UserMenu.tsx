@@ -53,7 +53,7 @@ export function UserMenu({ user }: UserMenuProps) {
         aria-haspopup="menu"
         aria-label={`Menú de ${displayName}`}
         disabled={isPending}
-        className="w-8 h-8 rounded-full bg-red-500 flex items-center justify-center text-white text-sm font-medium cursor-pointer hover:bg-red-600 transition-colors overflow-hidden focus:outline-none focus:ring-2 focus:ring-red-500 focus:ring-offset-2 disabled:opacity-50"
+        className="w-8 h-8 rounded-full bg-primary-accent flex items-center justify-center text-white text-sm font-medium cursor-pointer hover:bg-primary transition-colors overflow-hidden focus:outline-none focus:ring-2 focus:ring-primary focus:ring-offset-2 disabled:opacity-50"
       >
         {user?.avatarUrl ? (
           <Image
@@ -72,10 +72,10 @@ export function UserMenu({ user }: UserMenuProps) {
         <div
           role="menu"
           aria-label="Menú de usuario"
-          className="absolute right-0 mt-2 w-52 bg-white border border-gray-200 rounded-lg shadow-lg z-50 overflow-hidden"
+          className="absolute right-0 mt-2 w-52 bg-card border border-border rounded-lg shadow-lg z-50 overflow-hidden"
         >
           {/* Información del usuario */}
-          <div className="px-4 py-3 border-b border-gray-100">
+          <div className="px-4 py-3 border-b border-border">
             <p className="text-sm font-medium text-gray-900 truncate">{displayName}</p>
             {user?.email && <p className="text-xs text-gray-500 truncate">{user.email}</p>}
           </div>
@@ -86,14 +86,14 @@ export function UserMenu({ user }: UserMenuProps) {
               href="/settings"
               role="menuitem"
               onClick={() => setOpen(false)}
-              className="flex items-center gap-2 px-4 py-2 text-sm text-gray-700 hover:bg-gray-50 transition-colors focus:outline-none focus:bg-gray-50"
+              className="flex items-center gap-2 px-4 py-2 text-sm text-foreground hover:bg-muted transition-colors focus:outline-none focus:bg-muted"
             >
               <span aria-hidden="true">⚙️</span>
               <span>Configuración</span>
             </Link>
           </div>
 
-          <div className="border-t border-gray-100 py-1">
+          <div className="border-t border-border py-1">
             <button
               type="button"
               role="menuitem"

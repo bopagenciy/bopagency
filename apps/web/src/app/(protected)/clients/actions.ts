@@ -1,5 +1,7 @@
 'use server';
 
+import type { OrganizationRole } from '@/lib/supabase/types';
+
 import { revalidatePath } from 'next/cache';
 import { redirect } from 'next/navigation';
 import { createServerSupabaseClient } from '@/lib/supabase/server';
@@ -159,7 +161,7 @@ export async function softDeleteClientAction(clientId: string): Promise<ActionRe
       clientId: clientId as ClientId,
       organizationId: organization.id as OrganizationId,
       deletedBy: user.id,
-      callerRole: membership.role,
+      callerRole: membership.role as OrganizationRole,
     },
     { clientRepository: clientRepo, logger: consoleLogger },
   );

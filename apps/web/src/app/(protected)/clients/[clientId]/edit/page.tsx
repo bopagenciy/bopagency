@@ -4,7 +4,7 @@ import { createServerSupabaseClient } from '@/lib/supabase/server';
 import { Header } from '@/components/layout/Header';
 import { ClientForm } from '@/components/clients/ClientForm';
 import { updateClientAction } from '../../actions';
-import type { ClientRow } from '@/lib/supabase/types';
+import type { ClientRow, ClientIndustry } from '@/lib/supabase/types';
 
 type Params = Promise<{ clientId: string }>;
 type Props = { params: Params };
@@ -60,7 +60,7 @@ export default async function EditClientPage({ params }: Props) {
             legalName: typedClient.legal_name,
             slug: typedClient.slug,
             status: typedClient.status,
-            industry: typedClient.industry ?? null,
+            industry: (typedClient.industry as ClientIndustry | null) ?? null,
             timezone: typedClient.timezone,
             currency: typedClient.currency,
             website: typedClient.website,

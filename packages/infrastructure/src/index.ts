@@ -25,6 +25,15 @@ export { SupabaseComplianceRuleRepository } from './supabase/repositories/supaba
 export { SupabaseAutomationRepository } from './supabase/repositories/supabase-automation.repository';
 export { SupabaseAutomationExecutionRepository } from './supabase/repositories/supabase-automation-execution.repository';
 
+// Phase 8A.1 repositories
+export { SupabaseCampaignActivationRepository } from './supabase/repositories/supabase-campaign-activation.repository';
+
+// Phase 8B.1 repositories
+export { SupabaseCampaignPublicationRepository } from './supabase/repositories/supabase-campaign-publication.repository';
+
+// Phase 8C repositories
+export { SupabaseContentCalendarRepository } from './supabase/repositories/supabase-content-calendar.repository';
+
 // Mappers
 export {
   rowToOrganization,
@@ -57,6 +66,32 @@ export type { CampaignApprovalRow } from './supabase/mappers/campaign-approval.m
 export { rowToComplianceRule } from './supabase/mappers/compliance-rule.mapper';
 export type { ComplianceRuleRow } from './supabase/mappers/compliance-rule.mapper';
 
+// Phase 8A.1 mappers
+export {
+  rowToCampaignActivation,
+  rowToCampaignActivationTarget,
+  rowToCampaignActivationEvent,
+} from './supabase/mappers/campaign-activation.mapper';
+export type {
+  CampaignActivationRow,
+  CampaignActivationTargetRow,
+  CampaignActivationEventRow,
+} from './supabase/mappers/campaign-activation.mapper';
+
+// Phase 8B.1 mappers
+export {
+  rowToCampaignPublicationJob,
+  rowToCampaignPublicationAttempt,
+  rowToCampaignPublicationEvent,
+  rowToCampaignPublicationWebhookEvent,
+} from './supabase/mappers/campaign-publication.mapper';
+export type {
+  CampaignPublicationJobRow,
+  CampaignPublicationAttemptRow,
+  CampaignPublicationEventRow as CampaignPublicationEventRowType,
+  CampaignPublicationWebhookEventRow,
+} from './supabase/mappers/campaign-publication.mapper';
+
 // Phase 6B mappers
 export { rowToAutomation } from './supabase/mappers/automation.mapper';
 export type { AutomationRow } from './supabase/mappers/automation.mapper';
@@ -72,9 +107,15 @@ export { SupabaseExecutionLogRepository } from './supabase/repositories/supabase
 // Phase 6D — Dispatcher adapter
 export { N8nDispatcherAdapter } from './n8n/n8n-dispatcher-adapter';
 
+// Phase 8B.3 — Publication Transport adapter
+export { N8nPublicationTransportAdapter } from './n8n/n8n-publication-transport.adapter';
+
 // Phase 7D — AI Campaign Builder
 export { ClaudeAPIProvider, AnthropicAPIProvider } from './ai/claude-api.provider';
-export { buildCampaignGenerationPrompt, CAMPAIGN_BUILDER_PROMPT_VERSION } from './ai/campaign-prompt-builder';
+export {
+  buildCampaignGenerationPrompt,
+  CAMPAIGN_BUILDER_PROMPT_VERSION,
+} from './ai/campaign-prompt-builder';
 export { CampaignGeneratorAdapter } from './ai/campaign-generator.adapter';
 export type { CampaignAIProviderResolver } from './ai/campaign-generator.adapter';
 
@@ -94,3 +135,35 @@ export {
   DEFAULT_CAMPAIGN_AI_TIMEOUT_MS,
 } from './ai/ai-provider-config';
 export type { AIProviderConfig } from './ai/ai-provider-config';
+
+// Phase 8E — Meta Integration Infrastructure
+export { encryptCredential, decryptCredential } from './security/credential-cipher';
+export type { EncryptedPayload } from './security/credential-cipher';
+export { getMetaGraphApiVersion, getMetaAppConfig } from './meta/meta-config';
+export { MetaGraphApiClient } from './meta/meta-graph-api.client';
+export type { DiscoveredMetaPage, MetaPublishResult } from './meta/meta-graph-api.client';
+export { mapMetaErrorToFailureCategory } from './meta/meta-error.mapper';
+export { MetaPublisherAdapter } from './meta/meta-publisher.adapter';
+export type {
+  CheckpointRpcFunction,
+  FetchTargetMetadataFunction,
+} from './meta/meta-publisher.adapter';
+export { MetaMonitorAdapter } from './meta/meta-monitor.adapter';
+export type { MetaMonitorAdapterDeps } from './meta/meta-monitor.adapter';
+export { SupabaseCredentialRepository } from './supabase/repositories/supabase-credential.repository';
+export type { ResolvedPageCredential } from './supabase/repositories/supabase-credential.repository';
+export { SupabasePendingConnectionRepository } from './supabase/repositories/supabase-pending-connection.repository';
+export type { CreatePendingSessionInput } from './supabase/repositories/supabase-pending-connection.repository';
+
+// Phase 8F.1 & 8F.2 — Google Integration Infrastructure
+export { GoogleOAuthClient } from './google/google-oauth.client';
+export type { GoogleTokenExchangeResult } from './google/google-oauth.client';
+export { GoogleAdsDiscoveryClient } from './google/google-ads-discovery.client';
+export { GoogleAdsApiClient, GoogleAdsApiError, requireGoogleAdsApiVersion, requireGoogleAdsDeveloperToken } from './google/google-ads-api.client';
+export type { GoogleAdsMutateRequestPayload, GoogleAdsMutateResponse } from './google/google-ads-api.client';
+export { GoogleAdsPublisherAdapter, toGoogleBudgetMicros } from './google/google-ads-publisher.adapter';
+export type { GoogleAdsPublisherAdapterDeps } from './google/google-ads-publisher.adapter';
+export { GoogleAdsReconcilerAdapter } from './google/google-ads-reconciler.adapter';
+export type { GoogleAdsReconcilerAdapterDeps } from './google/google-ads-reconciler.adapter';
+export { GoogleAdsMonitorAdapter } from './google/google-ads-monitor.adapter';
+export type { GoogleAdsMonitorAdapterDeps } from './google/google-ads-monitor.adapter';

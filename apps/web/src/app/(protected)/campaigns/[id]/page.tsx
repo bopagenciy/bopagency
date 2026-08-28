@@ -3,6 +3,7 @@ import { notFound } from 'next/navigation';
 import { Header } from '@/components/layout/Header';
 import { CampaignStatusBadge } from '@/components/campaigns/CampaignStatusBadge';
 import { CampaignApprovalPanel } from '@/components/campaigns/CampaignApprovalPanel';
+import { CampaignActivationEntryCard } from '@/components/activations/CampaignActivationEntryCard';
 import { CampaignAutomationActivity } from '@/components/campaigns/CampaignAutomationActivity';
 import { EditCampaignModal } from '@/components/campaigns/EditCampaignModal';
 import { RegenerateContentButton } from '@/components/campaigns/RegenerateContentButton';
@@ -12,6 +13,9 @@ import { RepositoryErrorState } from '@/components/common/RepositoryErrorState';
 import { requireOrganization } from '@/lib/auth/server';
 import { createServerSupabaseClient } from '@/lib/supabase/server';
 import { createCampaignComposition } from '@/lib/composition/campaign.composition';
+import { createActivationComposition } from '@/lib/composition/activation.composition';
+import { ACTIVATION_TERMINAL_STATUSES } from '@bop-agency/shared';
+import type { ActivationStatus } from '@bop-agency/shared';
 import { OBJECTIVE_LABELS } from '@/lib/campaign-labels';
 import { PLATFORM_LABELS, isAIProviderId } from '@bop-agency/shared';
 import type { AdPlatform, AIProviderId } from '@bop-agency/shared';
@@ -84,7 +88,7 @@ type Props = { params: Promise<{ id: string }> };
 
 export default async function CampaignDetailPage({ params }: Props) {
   const { id } = await params;
-  const { organization, membership } = await requireOrganization();
+  const { organization, membership, user } = await requireOrganization();
 
   const supabase = await createServerSupabaseClient();
   const { useCases, repositories } = createCampaignComposition(supabase);
@@ -132,6 +136,34 @@ export default async function CampaignDetailPage({ params }: Props) {
     if (taskLookup?.success && taskLookup.value.length > 0) {
       automationTask = taskLookup.value[0] ?? null;
     }
+  }
+
+
+  // Phase 8A.3 — best-effort, solo lectura: activación NO-terminal más
+  // reciente (si existe) para mostrar el entry point de activación. Un
+  // fallo aquí NUNCA rompe el render del detalle de campaña (mismo
+  // criterio best-effort que automationTask arriba, Phase 7F).
+  let activeActivationSummary: { id: string; status: ActivationStatus } | null = null;
+  let hasAnyActivation = false;
+  try {
+    const { useCases: activationUseCases } = createActivationComposition(supabase);
+    const activationsResult = await activationUseCases.listCampaignActivationsByCampaign({
+      campaignId,
+      organizationId: orgId,
+      actorUserId: user.id,
+      pagination: { page: 1, pageSize: 5 },
+    });
+    if (activationsResult.success) {
+      hasAnyActivation = activationsResult.value.total > 0;
+      const nonTerminal = activationsResult.value.data.find(
+        (a) => !ACTIVATION_TERMINAL_STATUSES.includes(a.status),
+      );
+      if (nonTerminal) {
+        activeActivationSummary = { id: nonTerminal.id, status: nonTerminal.status };
+      }
+    }
+  } catch {
+    // best-effort — la sección de activación simplemente no se muestra.
   }
 
   return (
@@ -194,6 +226,15 @@ export default async function CampaignDetailPage({ params }: Props) {
 
         {/* Approval workflow */}
         <CampaignApprovalPanel campaign={campaign} userRole={membership.role} />
+
+        {/* Phase 8A.3 — Activación manual (nunca publicación externa) */}
+        <CampaignActivationEntryCard
+          campaignId={campaign.id}
+          campaignStatus={campaign.status}
+          userRole={membership.role}
+          activeActivation={activeActivationSummary}
+          hasAnyActivation={hasAnyActivation}
+        />
 
         {/* Phase 7F — Automatización interna (nunca publicación externa) */}
         <CampaignAutomationActivity task={automationTask} />

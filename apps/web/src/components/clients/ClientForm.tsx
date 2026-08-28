@@ -107,7 +107,7 @@ export function ClientForm({ action, defaultValues, mode }: ClientFormProps) {
               required
               defaultValue={defaultValues?.name ?? ''}
               placeholder="Ej: Restaurante Don Julio"
-              className="w-full px-3 py-2 border border-gray-200 rounded-lg text-sm focus:outline-none focus:ring-2 focus:ring-red-500"
+              className="w-full px-3 py-2 border border-gray-200 rounded-lg text-sm focus:outline-none focus:ring-2 focus:ring-primary"
             />
           </div>
 
@@ -121,7 +121,7 @@ export function ClientForm({ action, defaultValues, mode }: ClientFormProps) {
               type="text"
               defaultValue={defaultValues?.legalName ?? ''}
               placeholder="Nombre legal de la empresa"
-              className="w-full px-3 py-2 border border-gray-200 rounded-lg text-sm focus:outline-none focus:ring-2 focus:ring-red-500"
+              className="w-full px-3 py-2 border border-gray-200 rounded-lg text-sm focus:outline-none focus:ring-2 focus:ring-primary"
             />
           </div>
 
@@ -138,7 +138,7 @@ export function ClientForm({ action, defaultValues, mode }: ClientFormProps) {
                 defaultValue={defaultValues?.slug ?? ''}
                 placeholder="mi-cliente"
                 pattern="[a-z0-9-]+"
-                className="w-full px-3 py-2 border border-gray-200 rounded-lg text-sm focus:outline-none focus:ring-2 focus:ring-red-500"
+                className="w-full px-3 py-2 border border-gray-200 rounded-lg text-sm focus:outline-none focus:ring-2 focus:ring-primary"
               />
             </div>
           )}
@@ -151,7 +151,7 @@ export function ClientForm({ action, defaultValues, mode }: ClientFormProps) {
               id="status"
               name="status"
               defaultValue={defaultValues?.status ?? 'active'}
-              className="w-full px-3 py-2 border border-gray-200 rounded-lg text-sm focus:outline-none focus:ring-2 focus:ring-red-500"
+              className="w-full px-3 py-2 border border-gray-200 rounded-lg text-sm focus:outline-none focus:ring-2 focus:ring-primary"
             >
               {CLIENT_STATUSES.map((s) => (
                 <option key={s} value={s}>
@@ -169,7 +169,7 @@ export function ClientForm({ action, defaultValues, mode }: ClientFormProps) {
               id="industry"
               name="industry"
               defaultValue={defaultValues?.industry ?? ''}
-              className="w-full px-3 py-2 border border-gray-200 rounded-lg text-sm focus:outline-none focus:ring-2 focus:ring-red-500"
+              className="w-full px-3 py-2 border border-gray-200 rounded-lg text-sm focus:outline-none focus:ring-2 focus:ring-primary"
             >
               <option value="">Sin especificar</option>
               {CLIENT_INDUSTRIES.map((i) => (
@@ -197,7 +197,7 @@ export function ClientForm({ action, defaultValues, mode }: ClientFormProps) {
               type="email"
               defaultValue={defaultValues?.email ?? ''}
               placeholder="cliente@empresa.com"
-              className="w-full px-3 py-2 border border-gray-200 rounded-lg text-sm focus:outline-none focus:ring-2 focus:ring-red-500"
+              className="w-full px-3 py-2 border border-gray-200 rounded-lg text-sm focus:outline-none focus:ring-2 focus:ring-primary"
             />
           </div>
 
@@ -211,7 +211,7 @@ export function ClientForm({ action, defaultValues, mode }: ClientFormProps) {
               type="tel"
               defaultValue={defaultValues?.phone ?? ''}
               placeholder="+57 300 000 0000"
-              className="w-full px-3 py-2 border border-gray-200 rounded-lg text-sm focus:outline-none focus:ring-2 focus:ring-red-500"
+              className="w-full px-3 py-2 border border-gray-200 rounded-lg text-sm focus:outline-none focus:ring-2 focus:ring-primary"
             />
           </div>
 
@@ -225,7 +225,7 @@ export function ClientForm({ action, defaultValues, mode }: ClientFormProps) {
               type="url"
               defaultValue={defaultValues?.website ?? ''}
               placeholder="https://www.empresa.com"
-              className="w-full px-3 py-2 border border-gray-200 rounded-lg text-sm focus:outline-none focus:ring-2 focus:ring-red-500"
+              className="w-full px-3 py-2 border border-gray-200 rounded-lg text-sm focus:outline-none focus:ring-2 focus:ring-primary"
             />
           </div>
         </div>
@@ -244,7 +244,7 @@ export function ClientForm({ action, defaultValues, mode }: ClientFormProps) {
               id="timezone"
               name="timezone"
               defaultValue={defaultValues?.timezone ?? 'America/Bogota'}
-              className="w-full px-3 py-2 border border-gray-200 rounded-lg text-sm focus:outline-none focus:ring-2 focus:ring-red-500"
+              className="w-full px-3 py-2 border border-gray-200 rounded-lg text-sm focus:outline-none focus:ring-2 focus:ring-primary"
             >
               {TIMEZONE_OPTIONS.map((tz) => (
                 <option key={tz} value={tz}>
@@ -262,7 +262,7 @@ export function ClientForm({ action, defaultValues, mode }: ClientFormProps) {
               id="currency"
               name="currency"
               defaultValue={defaultValues?.currency ?? 'COP'}
-              className="w-full px-3 py-2 border border-gray-200 rounded-lg text-sm focus:outline-none focus:ring-2 focus:ring-red-500"
+              className="w-full px-3 py-2 border border-gray-200 rounded-lg text-sm focus:outline-none focus:ring-2 focus:ring-primary"
             >
               {CLIENT_CURRENCIES.map((c) => (
                 <option key={c} value={c}>
@@ -283,7 +283,7 @@ export function ClientForm({ action, defaultValues, mode }: ClientFormProps) {
           rows={4}
           defaultValue={defaultValues?.notes ?? ''}
           placeholder="Notas internas sobre el cliente..."
-          className="w-full px-3 py-2 border border-gray-200 rounded-lg text-sm focus:outline-none focus:ring-2 focus:ring-red-500 resize-y"
+          className="w-full px-3 py-2 border border-gray-200 rounded-lg text-sm focus:outline-none focus:ring-2 focus:ring-primary resize-y"
         />
       </div>
 
@@ -292,7 +292,7 @@ export function ClientForm({ action, defaultValues, mode }: ClientFormProps) {
         <button
           type="submit"
           disabled={isPending}
-          className="px-6 py-2.5 bg-red-600 text-white rounded-lg text-sm font-medium hover:bg-red-700 disabled:opacity-50 transition-colors"
+          className="px-6 py-2.5 bg-primary text-primary-foreground rounded-lg text-sm font-medium hover:bg-primary-hover disabled:opacity-50 transition-colors"
         >
           {isPending
             ? mode === 'create'

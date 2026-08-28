@@ -228,3 +228,157 @@ export type {
   CreateTaskForAutomationInput,
 } from './repositories/alert.repository';
 export type { CreateTaskInput } from './repositories/task.repository';
+
+// CampaignActivation entity — Phase 8A.1
+export type {
+  CampaignActivationId,
+  ActivationSnapshotSchemaVersion,
+  CampaignActivationSnapshotCampaign,
+  CampaignActivationSnapshotApproval,
+  CampaignActivationSnapshot,
+  CampaignActivation,
+  CampaignActivationFilter,
+  CreateCampaignActivationInput,
+} from './entities/campaign-activation';
+export {
+  campaignActivationId,
+  ACTIVATION_SNAPSHOT_SCHEMA_VERSION,
+  canTransitionActivation,
+  getActivationNextStates,
+  isActivationStatusTerminal,
+  canCancelActivation,
+  deriveActivationStatus,
+  isValidCancellationReason,
+} from './entities/campaign-activation';
+
+// CampaignActivationTarget entity — Phase 8A.1
+export type {
+  CampaignActivationTargetId,
+  CampaignActivationTarget,
+  CampaignActivationTargetFilter,
+  CreateActivationTargetInput,
+  GoogleAdsTargetResourceSnapshot,
+} from './entities/campaign-activation-target';
+export {
+  campaignActivationTargetId,
+  validateCreateActivationTargetInput,
+  canTransitionActivationTarget,
+  getActivationTargetNextStates,
+  isActivationTargetStatusTerminal,
+  canMarkActivationTargetPublished,
+  canCancelActivationTarget,
+} from './entities/campaign-activation-target';
+
+// CampaignActivationEvent entity — Phase 8A.1
+export type {
+  CampaignActivationEventId,
+  CampaignActivationEvent,
+  CreateActivationEventInput,
+} from './entities/campaign-activation-event';
+export {
+  campaignActivationEventId,
+  isValidActivationEventType,
+  sanitizeActivationEventMetadata,
+} from './entities/campaign-activation-event';
+
+// CampaignActivationRepository — Phase 8A.1
+export type {
+  CampaignActivationRepository,
+  CampaignActivationWithTargets,
+} from './repositories/campaign-activation.repository';
+
+// CampaignPublicationJob entity — Phase 8B.1
+export type {
+  CampaignPublicationJobId,
+  PublicationIdempotencyKey,
+  CampaignPublicationJob,
+  CreatePublicationJobInput,
+} from './entities/campaign-publication-job';
+export {
+  campaignPublicationJobId,
+  buildPublicationIdempotencyKey,
+  canTransitionPublicationJob,
+  getPublicationJobNextStates,
+  transitionPublicationJob,
+  isPublicationJobTerminal,
+  canDirectlyCancelPublicationJob,
+  canRequestCooperativeCancel,
+  canRetryPublicationJob,
+  canReconcilePublicationJob,
+  computeReconciliationDeadline,
+} from './entities/campaign-publication-job';
+
+// CampaignPublicationAttempt entity — Phase 8B.1
+export type {
+  CampaignPublicationAttemptId,
+  CampaignPublicationAttempt,
+} from './entities/campaign-publication-attempt';
+export {
+  campaignPublicationAttemptId,
+  isValidAttemptNumber as isValidPublicationAttemptNumber,
+  isPublicationAttemptOpen,
+  computeAttemptDurationMs,
+} from './entities/campaign-publication-attempt';
+
+// CampaignPublicationEvent entity — Phase 8B.1
+export type {
+  CampaignPublicationEventId,
+  CampaignPublicationEvent,
+  CreatePublicationEventInput,
+} from './entities/campaign-publication-event';
+export {
+  campaignPublicationEventId,
+  isValidPublicationEventType,
+  sanitizePublicationEventMetadata,
+} from './entities/campaign-publication-event';
+
+// CampaignPublicationWebhookEvent entity — Phase 8B.1
+export type {
+  CampaignPublicationWebhookEventId,
+  CampaignPublicationWebhookEvent,
+  RecordWebhookReceiptInput,
+  RecordWebhookReceiptResult,
+} from './entities/campaign-publication-webhook-event';
+export {
+  campaignPublicationWebhookEventId,
+  isValidPayloadHash,
+} from './entities/campaign-publication-webhook-event';
+
+// CampaignPublicationRepository — Phase 8B.1
+export type {
+  CampaignPublicationRepository,
+  CampaignPublicationJobWithAttempts,
+  StartPublicationJobInput,
+  CreatePublicationAttemptInput,
+  RecordPublicationSuccessInput,
+  RecordPublicationFailureInput,
+  RecordPublicationUnknownOutcomeInput,
+  ReconcilePublicationJobInput,
+  PrepareRetryInput,
+  RecordProviderObservationInput,
+  RecordProviderObservationResult,
+} from './repositories/campaign-publication.repository';
+
+// ContentCalendarItem entity & repository — Phase 8C
+export type {
+  ContentCalendarItemId,
+  CalendarItemStatus,
+  ContentCalendarItem,
+  ContentCalendarItemProjection,
+  CalendarBlockedReason,
+  CalendarDerivedStatusLabel,
+  CreateContentCalendarItemInput,
+  UpdateContentCalendarItemScheduleInput,
+  CancelContentCalendarItemInput,
+  LinkContentCalendarItemTargetInput,
+  ListContentCalendarItemsByRangeFilter,
+} from './entities/content-calendar-item';
+export {
+  contentCalendarItemId,
+  computeCalendarDerivedState,
+  isValidIanaTimezone,
+} from './entities/content-calendar-item';
+export type { ContentCalendarRepository } from './repositories/content-calendar.repository';
+
+// Re-export shared channel/provider types for convenience
+export type { ActivationChannel, ActivationProvider } from '@bop-agency/shared';

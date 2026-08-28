@@ -125,7 +125,7 @@ export async function AppShell({ children }: AppShellProps) {
         />
 
         {/* Contenido de página */}
-        <main className="flex-1 bg-gray-50">{children}</main>
+        <main className="flex-1 bg-background">{children}</main>
       </div>
     </div>
   );
