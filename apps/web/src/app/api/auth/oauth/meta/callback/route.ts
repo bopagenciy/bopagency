@@ -65,6 +65,7 @@ export async function GET(request: Request) {
   };
   const { data: stateResult, error: stateErr } = await rpcClient.rpc('consume_oauth_state', {
     p_state_hash: stateHash,
+    p_expected_provider: 'meta',
   });
 
   if (stateErr || !stateResult || stateResult.success !== true) {

@@ -207,3 +207,17 @@ export type {
   CancelActivationTargetFormValues,
   CancelCampaignActivationFormValues,
 } from './schemas/campaign-activation.schema';
+
+// Schemas — Google Integration (Phase 8F.1)
+export {
+  googleAdsIntegrationConfigSchema,
+  googleAdsDiscoveredCustomerSchema,
+  connectGoogleOAuthInputSchema,
+  finalizeGoogleConnectionInputSchema,
+} from './schemas/google-integration.schema';
+export type {
+  GoogleAdsIntegrationConfig,
+  GoogleAdsDiscoveredCustomer,
+  ConnectGoogleOAuthInput,
+  FinalizeGoogleConnectionInput,
+} from './schemas/google-integration.schema';

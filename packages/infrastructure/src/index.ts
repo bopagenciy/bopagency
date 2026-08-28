@@ -152,3 +152,8 @@ export { SupabaseCredentialRepository } from './supabase/repositories/supabase-c
 export type { ResolvedPageCredential } from './supabase/repositories/supabase-credential.repository';
 export { SupabasePendingConnectionRepository } from './supabase/repositories/supabase-pending-connection.repository';
 export type { CreatePendingSessionInput } from './supabase/repositories/supabase-pending-connection.repository';
+
+// Phase 8F.1 — Google Integration Infrastructure
+export { GoogleOAuthClient } from './google/google-oauth.client';
+export type { GoogleTokenExchangeResult } from './google/google-oauth.client';
+export { GoogleAdsDiscoveryClient } from './google/google-ads-discovery.client';

@@ -553,3 +553,29 @@ export type {
   FinalizeMetaConnectionInput,
   FinalizeMetaConnectionResult,
 } from './use-cases/integrations/finalize-meta-connection.use-case';
+
+// Use cases — Google Integration (Phase 8F.1)
+export { connectGoogleIntegration } from './use-cases/integrations/connect-google-integration.use-case';
+export type {
+  ConnectGoogleIntegrationInput,
+  ConnectGoogleIntegrationDeps,
+} from './use-cases/integrations/connect-google-integration.use-case';
+
+export { getPendingGoogleResources } from './use-cases/integrations/get-pending-google-resources.use-case';
+export type {
+  GetPendingGoogleResourcesInput,
+  GetPendingGoogleResourcesDeps,
+} from './use-cases/integrations/get-pending-google-resources.use-case';
+
+export { finalizeGoogleConnection } from './use-cases/integrations/finalize-google-connection.use-case';
+export type {
+  FinalizeGoogleConnectionInput,
+  FinalizeGoogleConnectionDeps,
+  FinalizeGoogleConnectionResult,
+} from './use-cases/integrations/finalize-google-connection.use-case';
+
+export { disconnectGoogleIntegration } from './use-cases/integrations/disconnect-google-integration.use-case';
+export type {
+  DisconnectGoogleIntegrationInput,
+  DisconnectGoogleIntegrationDeps,
+} from './use-cases/integrations/disconnect-google-integration.use-case';
