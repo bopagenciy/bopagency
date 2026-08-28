@@ -182,4 +182,117 @@ export class GoogleAdsApiClient {
       requestId,
     };
   }
+
+  /**
+   * GAQL read-only campaign search by exact correlation name.
+   * REST endpoint: POST https://googleads.googleapis.com/{version}/customers/{customerId}/googleAds:search
+   * Query: SELECT campaign.id, campaign.resource_name, campaign.name, campaign.status FROM campaign WHERE campaign.name = '{sanitizedName}'
+   */
+  async searchCampaignByExactName(params: {
+    readonly customerId: string;
+    readonly managerCustomerId?: string | null;
+    readonly accessToken: string;
+    readonly exactCorrelationName: string;
+  }): Promise<{
+    readonly results: readonly {
+      readonly campaign: {
+        readonly id: string;
+        readonly resourceName: string;
+        readonly name: string;
+        readonly status: string;
+      };
+    }[];
+    readonly requestId: string | null;
+  }> {
+    requireGoogleAdsApiVersion();
+    requireGoogleAdsDeveloperToken();
+
+    const cleanCustomerId = params.customerId.replace(/-/g, '').trim();
+    const sanitizedName = params.exactCorrelationName.replace(/\\/g, '\\\\').replace(/'/g, "\\'");
+    const query = `SELECT campaign.id, campaign.resource_name, campaign.name, campaign.status FROM campaign WHERE campaign.name = '${sanitizedName}'`;
+
+    const endpoint = `https://googleads.googleapis.com/${this.apiVersion}/customers/${cleanCustomerId}/googleAds:search`;
+
+    const headers: Record<string, string> = {
+      'Authorization': `Bearer ${params.accessToken}`,
+      'developer-token': this.developerToken,
+      'Content-Type': 'application/json',
+    };
+
+    if (params.managerCustomerId && params.managerCustomerId.trim().length > 0) {
+      const cleanManagerId = params.managerCustomerId.replace(/-/g, '').trim();
+      if (/^\d{10}$/.test(cleanManagerId)) {
+        headers['login-customer-id'] = cleanManagerId;
+      }
+    }
+
+    const allResults: { campaign: { id: string; resourceName: string; name: string; status: string } }[] = [];
+    let pageToken: string | null = null;
+    let lastRequestId: string | null = null;
+
+    do {
+      const requestBody: Record<string, unknown> = {
+        query,
+        pageSize: 10,
+      };
+      if (pageToken) {
+        requestBody['pageToken'] = pageToken;
+      }
+
+      let response: Response;
+      try {
+        response = await fetch(endpoint, {
+          method: 'POST',
+          headers,
+          body: JSON.stringify(requestBody),
+        });
+      } catch (netErr) {
+        this.logger.error('GoogleAdsApiClient: GAQL search network failure', { error: netErr });
+        throw new GoogleAdsApiError('Network failure executing Google Ads GAQL search', 503, netErr);
+      }
+
+      const requestId = response.headers.get('request-id');
+      if (requestId) lastRequestId = requestId;
+
+      const responseData = (await response.json().catch(() => ({}))) as Record<string, unknown>;
+
+      if (!response.ok) {
+        const message =
+          typeof responseData['message'] === 'string'
+            ? responseData['message']
+            : `Google Ads API search failed with status ${response.status}`;
+
+        this.logger.warn('GoogleAdsApiClient: search call rejected by provider', {
+          status: response.status,
+          requestId,
+        });
+
+        throw new GoogleAdsApiError(message, response.status, responseData, requestId);
+      }
+
+      const rawResults = Array.isArray(responseData['results']) ? responseData['results'] : [];
+      for (const r of rawResults) {
+        const camp = (r['campaign'] as Record<string, unknown>) || {};
+        allResults.push({
+          campaign: {
+            id: String(camp['id'] || ''),
+            resourceName: String(camp['resourceName'] || camp['resource_name'] || ''),
+            name: String(camp['name'] || ''),
+            status: String(camp['status'] || ''),
+          },
+        });
+      }
+
+      const exactMatchCount = allResults.filter((r) => r.campaign.name === params.exactCorrelationName).length;
+      if (exactMatchCount >= 2) {
+        break;
+      }
+
+      pageToken = typeof responseData['nextPageToken'] === 'string' && responseData['nextPageToken'].length > 0
+        ? responseData['nextPageToken']
+        : null;
+    } while (pageToken);
+
+    return { results: allResults, requestId: lastRequestId };
+  }
 }

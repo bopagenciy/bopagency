@@ -223,4 +223,58 @@ describe('GoogleAdsApiClient Unit Tests & Safety Matrix (Phase 8F.2)', () => {
     // Verify fetch was called EXACTLY ONCE (zero retries)
     expect(mockFetch).toHaveBeenCalledOnce();
   });
+
+  it('escapes single quotes and backslashes in searchCampaignByExactName GAQL query', async () => {
+    const mockFetch = vi.fn().mockResolvedValue({
+      ok: true,
+      headers: { get: () => 'req-search-escape' },
+      json: vi.fn().mockResolvedValue({ results: [] }),
+    });
+    vi.stubGlobal('fetch', mockFetch);
+
+    const client = new GoogleAdsApiClient({ developerToken: 'dev-123' }, makeLogger());
+    await client.searchCampaignByExactName({
+      customerId: '1234567890',
+      managerCustomerId: '1111111111',
+      accessToken: 'access-123',
+      exactCorrelationName: "BOP-job's\\name",
+    });
+
+    const callBodyStr = mockFetch.mock.calls[0]?.[1]?.body as string;
+    const bodyObj = JSON.parse(callBodyStr);
+    expect(bodyObj.query).toContain("WHERE campaign.name = 'BOP-job\\'s\\\\name'");
+  });
+
+  it('handles multi-page GAQL search using nextPageToken and stops early if >=2 exact matches found', async () => {
+    const mockFetch = vi.fn()
+      .mockResolvedValueOnce({
+        ok: true,
+        headers: { get: () => 'req-p1' },
+        json: vi.fn().mockResolvedValue({
+          results: [{ campaign: { id: '1', name: 'TARGET_CAMPAIGN' } }],
+          nextPageToken: 'token-page-2',
+        }),
+      })
+      .mockResolvedValueOnce({
+        ok: true,
+        headers: { get: () => 'req-p2' },
+        json: vi.fn().mockResolvedValue({
+          results: [{ campaign: { id: '2', name: 'TARGET_CAMPAIGN' } }],
+          nextPageToken: 'token-page-3',
+        }),
+      });
+    vi.stubGlobal('fetch', mockFetch);
+
+    const client = new GoogleAdsApiClient({ developerToken: 'dev-123' }, makeLogger());
+    const res = await client.searchCampaignByExactName({
+      customerId: '1234567890',
+      managerCustomerId: null,
+      accessToken: 'access-123',
+      exactCorrelationName: 'TARGET_CAMPAIGN',
+    });
+
+    expect(res.results.length).toBe(2);
+    // Should stop fetching after page 2 because 2 exact matches were observed
+    expect(mockFetch).toHaveBeenCalledTimes(2);
+  });
 });

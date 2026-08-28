@@ -492,6 +492,20 @@ export type {
   ReconcilePublicationOutcomeDeps,
 } from './use-cases/publications/reconcile-publication-outcome.use-case';
 
+// Phase 8G.0 — Publication Reconciliation Foundation Ports & Use Cases
+export { PublicationReconcilerRegistry } from './ports/publication-reconciler.port';
+export type {
+  PublicationReconcilerPort,
+  ReconcileInput,
+  ReconcileResult,
+} from './ports/publication-reconciler.port';
+export { reconcilePublicationWithProvider } from './use-cases/publications/reconcile-publication-with-provider.use-case';
+export type {
+  ReconcilePublicationWithProviderInput,
+  ReconcilePublicationWithProviderDeps,
+  ReconcilePublicationWithProviderOutput,
+} from './use-cases/publications/reconcile-publication-with-provider.use-case';
+
 // Use cases — Publications (Phase 8B.3 — Runtime Worker & Evidence)
 export {
   listDispatchablePublicationJobs,

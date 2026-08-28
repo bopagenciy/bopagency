@@ -161,3 +161,5 @@ export { GoogleAdsApiClient, GoogleAdsApiError, requireGoogleAdsApiVersion, requ
 export type { GoogleAdsMutateRequestPayload, GoogleAdsMutateResponse } from './google/google-ads-api.client';
 export { GoogleAdsPublisherAdapter, toGoogleBudgetMicros } from './google/google-ads-publisher.adapter';
 export type { GoogleAdsPublisherAdapterDeps } from './google/google-ads-publisher.adapter';
+export { GoogleAdsReconcilerAdapter } from './google/google-ads-reconciler.adapter';
+export type { GoogleAdsReconcilerAdapterDeps } from './google/google-ads-reconciler.adapter';
