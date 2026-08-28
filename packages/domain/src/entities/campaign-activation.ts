@@ -24,8 +24,15 @@ import type { ClientId } from './client';
 import type { CampaignId, CampaignObjective } from './campaign';
 import type { CampaignApprovalId } from './campaign-approval';
 import type { CampaignGeneratedContent } from './campaign-generated-content';
-import type { AdPlatform, ActivationStatus, ActivationTargetStatus } from '@bop-agency/shared';
+import type {
+  AdPlatform,
+  ActivationStatus,
+  ActivationTargetStatus,
+  GoogleAdsActivationConfigShape as GoogleAdsActivationConfig,
+} from '@bop-agency/shared';
 import { ACTIVATION_TERMINAL_STATUSES } from '@bop-agency/shared';
+
+export type { GoogleAdsActivationConfig };
 
 // ─── Branded ID ───────────────────────────────────────────────────────────────
 
@@ -79,6 +86,7 @@ export type CampaignActivationSnapshot = {
   readonly generatedContent: CampaignGeneratedContent | null;
   readonly metadata: Record<string, unknown>;
   readonly approval: CampaignActivationSnapshotApproval;
+  readonly googleAdsConfig?: GoogleAdsActivationConfig | null;
 };
 
 // ─── CampaignActivation entity ─────────────────────────────────────────────────

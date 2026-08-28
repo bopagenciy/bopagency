@@ -54,6 +54,7 @@ import {
   campaignActivationSnapshotSchema,
   campaignGeneratedContentSchema,
   createCampaignActivationSchema,
+  googleAdsActivationConfigSchema,
 } from '@bop-agency/shared';
 import type {
   CampaignActivation,
@@ -183,6 +184,29 @@ export async function createCampaignActivation(
       });
     }
   }
+  let snapshotGoogleAdsConfig: CampaignActivationSnapshot['googleAdsConfig'] = null;
+  if (campaign.platform === 'google_ads') {
+    const rawConfig = campaign.metadata?.['googleAdsConfig'];
+    if (!rawConfig) {
+      return err({
+        code: 'VALIDATION_ERROR' as const,
+        message: 'La activación de una campaña de Google Ads requiere una configuración válida en la campaña aprobada',
+      });
+    }
+    const configCheck = googleAdsActivationConfigSchema.safeParse(rawConfig);
+    if (!configCheck.success) {
+      return err({
+        code: 'VALIDATION_ERROR' as const,
+        message: `Configuración de Google Ads inválida en el snapshot: ${configCheck.error.errors.map((e) => e.message).join('; ')}`,
+      });
+    }
+    snapshotGoogleAdsConfig = configCheck.data;
+  } else if (campaign.metadata?.['googleAdsConfig']) {
+    const configCheck = googleAdsActivationConfigSchema.safeParse(campaign.metadata['googleAdsConfig']);
+    if (configCheck.success) {
+      snapshotGoogleAdsConfig = configCheck.data;
+    }
+  }
 
   const snapshot: CampaignActivationSnapshot = {
     schemaVersion: 'activation-snapshot-v1',
@@ -203,6 +227,7 @@ export async function createCampaignActivation(
       approvedAt: latestApproval.createdAt.toISOString(),
       approvedBy: latestApproval.actorUserId,
     },
+    googleAdsConfig: snapshotGoogleAdsConfig,
   };
 
   const snapshotCheck = campaignActivationSnapshotSchema.safeParse(snapshot);

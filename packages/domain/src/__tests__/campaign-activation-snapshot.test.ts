@@ -54,6 +54,39 @@ describe('campaignActivationSnapshotSchema', () => {
     expect(result.success).toBe(false);
   });
 
+  it('acepta un snapshot que incluye googleAdsConfig válido', () => {
+    const snapshot = {
+      ...buildValidSnapshot(),
+      campaign: {
+        ...buildValidSnapshot().campaign,
+        platform: 'google_ads',
+      },
+      googleAdsConfig: {
+        dailyBudget: { amount: 50, currency: 'USD' },
+        biddingStrategy: 'MAXIMIZE_CLICKS',
+        finalUrl: 'https://example.com/promo',
+        geoTargetIds: ['2170'],
+        languageCriterionIds: ['1003'],
+        keywordMatchPolicy: 'PHRASE',
+        negativeKeywordMatchPolicy: 'BROAD',
+      },
+    };
+    const result = campaignActivationSnapshotSchema.safeParse(snapshot);
+    expect(result.success).toBe(true);
+    if (result.success) {
+      expect(result.data.googleAdsConfig?.biddingStrategy).toBe('MAXIMIZE_CLICKS');
+    }
+  });
+
+  it('un snapshot legacy sin googleAdsConfig sigue siendo válido', () => {
+    const snapshot = buildValidSnapshot();
+    const result = campaignActivationSnapshotSchema.safeParse(snapshot);
+    expect(result.success).toBe(true);
+    if (result.success) {
+      expect(result.data.googleAdsConfig).toBeUndefined();
+    }
+  });
+
   it('rechaza budget negativo', () => {
     const snapshot = buildValidSnapshot();
     snapshot.campaign.budget = -10;

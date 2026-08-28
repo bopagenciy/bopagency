@@ -527,10 +527,61 @@ describe('createCampaignActivation use case', () => {
       findActiveBySignatureTag: vi.fn().mockRejectedValue(new Error('boom')),
     });
     const activationRepository = makeActivationRepo();
-
     const result = await createCampaignActivation(makeInput(), makeDeps({ taskRepository, activationRepository }));
 
     expect(result.success).toBe(true);
     expect(activationRepository.create).toHaveBeenCalledOnce();
+  });
+
+  describe('Google Ads Activation Config (Phase 8F.0)', () => {
+    const validGoogleAdsConfig = {
+      dailyBudget: { amount: 50, currency: 'USD' },
+      biddingStrategy: 'MAXIMIZE_CLICKS',
+      finalUrl: 'https://client.com/promo',
+      geoTargetIds: ['2170'],
+      languageCriterionIds: ['1003'],
+      keywordMatchPolicy: 'PHRASE',
+      negativeKeywordMatchPolicy: 'BROAD',
+    };
+
+    it('rechaza la creación de activación de Google Ads si la campaña aprobada no tiene googleAdsConfig', async () => {
+      const campaignRepository = makeCampaignRepo({
+        findById: vi.fn().mockResolvedValue(ok(makeCampaign({ platform: 'google_ads', metadata: {} }))),
+      });
+
+      const result = await createCampaignActivation(makeInput(), makeDeps({ campaignRepository }));
+
+      expect(result.success).toBe(false);
+      if (!result.success) {
+        expect(result.error.code).toBe('VALIDATION_ERROR');
+      }
+    });
+
+    it('congela googleAdsConfig válido en el snapshot aprobado de la activación', async () => {
+      const campaignRepository = makeCampaignRepo({
+        findById: vi.fn().mockResolvedValue(
+          ok(makeCampaign({ platform: 'google_ads', metadata: { googleAdsConfig: validGoogleAdsConfig } })),
+        ),
+      });
+      const activationRepository = makeActivationRepo();
+
+      const result = await createCampaignActivation(makeInput(), makeDeps({ campaignRepository, activationRepository }));
+
+      expect(result.success).toBe(true);
+      expect(activationRepository.create).toHaveBeenCalledOnce();
+      const createInput = (activationRepository.create as ReturnType<typeof vi.fn>).mock.calls[0]?.[0] as { approvedSnapshot: Record<string, unknown> };
+      expect(createInput.approvedSnapshot.googleAdsConfig).toBeDefined();
+      expect(createInput.approvedSnapshot.googleAdsConfig.biddingStrategy).toBe('MAXIMIZE_CLICKS');
+    });
+
+    it('las activaciones que no son de Google Ads (Meta) se crean sin requerir googleAdsConfig', async () => {
+      const campaignRepository = makeCampaignRepo({
+        findById: vi.fn().mockResolvedValue(ok(makeCampaign({ platform: 'meta_ads', metadata: {} }))),
+      });
+
+      const result = await createCampaignActivation(makeInput(), makeDeps({ campaignRepository }));
+
+      expect(result.success).toBe(true);
+    });
   });
 });

@@ -15,13 +15,14 @@
  * estado, solo la propaga.
  */
 
-import { ok, isOk, err } from '@bop-agency/shared';
+import { googleAdsActivationConfigSchema, ok, isOk, err } from '@bop-agency/shared';
 import type { Result } from '@bop-agency/shared';
 import type {
   CampaignPublicationJob,
   CampaignActivationTargetId,
   CampaignPublicationJobId,
   CampaignPublicationRepository,
+  CampaignActivationRepository,
   OrganizationRepository,
   OrganizationId,
 } from '@bop-agency/domain';
@@ -39,6 +40,7 @@ export type QueuePublicationInput = {
 export type QueuePublicationDeps = {
   publicationRepository: CampaignPublicationRepository;
   organizationRepository: OrganizationRepository;
+  activationRepository?: CampaignActivationRepository;
   logger: LoggerPort;
 };
 
@@ -62,6 +64,40 @@ export async function queuePublication(
   }
   if (!hasMinimumRole(memberResult.value.role, 'operator')) {
     return err(insufficientRole('operator', memberResult.value.role));
+  }
+
+  // Defense-in-depth: Si activationRepository está disponible y el target es de canal google_ads, verificar snapshot
+  if (deps.activationRepository) {
+    const targetResult = await deps.activationRepository.findTargetById(
+      input.targetId as CampaignActivationTargetId,
+      input.organizationId,
+    );
+    if (isOk(targetResult) && targetResult.value && targetResult.value.channel === 'google_ads') {
+      const activationResult = await deps.activationRepository.findById(
+        targetResult.value.activationId,
+        input.organizationId,
+      );
+      if (!isOk(activationResult) || !activationResult.value) {
+        return err({
+          code: 'VALIDATION_ERROR' as const,
+          message: 'No se encontró la activación asociada al target de Google Ads',
+        });
+      }
+      const rawConfig = activationResult.value.approvedSnapshot.googleAdsConfig;
+      if (!rawConfig) {
+        return err({
+          code: 'VALIDATION_ERROR' as const,
+          message: 'El target de Google Ads requiere una configuración de activación (googleAdsConfig) válida en el snapshot aprobado para encolar publicación',
+        });
+      }
+      const configCheck = googleAdsActivationConfigSchema.safeParse(rawConfig);
+      if (!configCheck.success) {
+        return err({
+          code: 'VALIDATION_ERROR' as const,
+          message: `Configuración de Google Ads en snapshot es inválida: ${configCheck.error.errors.map((e) => e.message).join('; ')}`,
+        });
+      }
+    }
   }
 
   const result = await deps.publicationRepository.createJob(

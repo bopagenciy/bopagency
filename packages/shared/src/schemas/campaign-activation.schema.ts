@@ -23,6 +23,8 @@ import {
   ACTIVATION_PROVIDERS,
 } from '../constants/activation';
 
+import { googleAdsActivationConfigSchema } from './google-ads-config.schema';
+
 export const ACTIVATION_SNAPSHOT_SCHEMA_VERSION = 'activation-snapshot-v1' as const;
 
 // ─── Metadata — mismo límite de forma que Campaign.metadata (jsonb objeto) ─────
@@ -52,6 +54,7 @@ export const campaignActivationSnapshotSchema = z.object({
     approvedAt: z.string().datetime(),
     approvedBy: z.string().uuid(),
   }),
+  googleAdsConfig: googleAdsActivationConfigSchema.optional().nullable(),
 });
 
 export type CampaignActivationSnapshotShape = z.infer<typeof campaignActivationSnapshotSchema>;

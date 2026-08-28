@@ -399,4 +399,93 @@ describe('cancelCampaignActivation — role matrix + terminal guard', () => {
     if (!result.success) expect(result.error.code).toBe('VALIDATION_ERROR');
     expect(activationRepository.cancel).not.toHaveBeenCalled();
   });
+
+  describe('markActivationTargetReady — Google Ads Config (Phase 8F.0)', () => {
+    const validGoogleAdsConfig = {
+      dailyBudget: { amount: 50, currency: 'USD' },
+      biddingStrategy: 'MAXIMIZE_CLICKS',
+      finalUrl: 'https://client.com/promo',
+      geoTargetIds: ['2170'],
+      languageCriterionIds: ['1003'],
+      keywordMatchPolicy: 'PHRASE',
+      negativeKeywordMatchPolicy: 'BROAD',
+    };
+
+    it('rechaza marcar como ready un target de google_ads si el snapshot no tiene googleAdsConfig', async () => {
+      const activationRepository = makeActivationRepo({
+        findTargetById: vi.fn().mockResolvedValue(
+          ok({
+            id: TARGET_ID,
+            activationId: ACTIVATION_ID,
+            channel: 'google_ads',
+            provider: 'google',
+          } as CampaignActivationTarget),
+        ),
+        findById: vi.fn().mockResolvedValue(
+          ok({
+            id: ACTIVATION_ID,
+            approvedSnapshot: { googleAdsConfig: null },
+          } as CampaignActivation),
+        ),
+      });
+
+      const result = await markActivationTargetReady(
+        { targetId: TARGET_ID, organizationId: ORG_ID, actorUserId: ACTOR_ID },
+        { activationRepository, organizationRepository: makeOrgRepo('operator'), logger: makeLogger() },
+      );
+
+      expect(result.success).toBe(false);
+      if (!result.success) {
+        expect(result.error.code).toBe('VALIDATION_ERROR');
+      }
+    });
+
+    it('permite marcar como ready un target de google_ads con googleAdsConfig válido', async () => {
+      const activationRepository = makeActivationRepo({
+        findTargetById: vi.fn().mockResolvedValue(
+          ok({
+            id: TARGET_ID,
+            activationId: ACTIVATION_ID,
+            channel: 'google_ads',
+            provider: 'google',
+          } as CampaignActivationTarget),
+        ),
+        findById: vi.fn().mockResolvedValue(
+          ok({
+            id: ACTIVATION_ID,
+            approvedSnapshot: { googleAdsConfig: validGoogleAdsConfig },
+          } as CampaignActivation),
+        ),
+        markTargetReady: vi.fn().mockResolvedValue(ok({ id: TARGET_ID, status: 'ready' } as CampaignActivationTarget)),
+      });
+
+      const result = await markActivationTargetReady(
+        { targetId: TARGET_ID, organizationId: ORG_ID, actorUserId: ACTOR_ID },
+        { activationRepository, organizationRepository: makeOrgRepo('operator'), logger: makeLogger() },
+      );
+
+      expect(result.success).toBe(true);
+    });
+
+    it('un target no-google (meta_ads) se marca como ready sin verificar googleAdsConfig', async () => {
+      const activationRepository = makeActivationRepo({
+        findTargetById: vi.fn().mockResolvedValue(
+          ok({
+            id: TARGET_ID,
+            activationId: ACTIVATION_ID,
+            channel: 'meta_ads',
+            provider: 'meta',
+          } as CampaignActivationTarget),
+        ),
+        markTargetReady: vi.fn().mockResolvedValue(ok({ id: TARGET_ID, status: 'ready' } as CampaignActivationTarget)),
+      });
+
+      const result = await markActivationTargetReady(
+        { targetId: TARGET_ID, organizationId: ORG_ID, actorUserId: ACTOR_ID },
+        { activationRepository, organizationRepository: makeOrgRepo('operator'), logger: makeLogger() },
+      );
+
+      expect(result.success).toBe(true);
+    });
+  });
 });

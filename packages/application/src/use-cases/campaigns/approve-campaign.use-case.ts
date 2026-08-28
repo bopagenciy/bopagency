@@ -37,6 +37,7 @@ import type {
   Campaign,
   CampaignId,
   CampaignRepository,
+  ClientRepository,
   OrganizationRepository,
   TaskRepository,
 } from '@bop-agency/domain';
@@ -48,7 +49,7 @@ import {
   insufficientRole,
   notOrganizationMember,
 } from '@bop-agency/domain';
-import { approveCampaignSchema } from '@bop-agency/shared';
+import { approveCampaignSchema, googleAdsActivationConfigSchema } from '@bop-agency/shared';
 import type { LoggerPort } from '../../ports/logger.port';
 import { evalCampaignAutomationSilently } from './campaign-automation-dispatch';
 
@@ -63,6 +64,7 @@ export type ApproveCampaignInput = {
 export type ApproveCampaignDeps = {
   campaignRepository: CampaignRepository;
   organizationRepository: OrganizationRepository;
+  clientRepository?: ClientRepository;
   /** Phase 7F — opcional para no romper callers/tests preexistentes que no lo pasen. */
   alertRepository?: AlertRepository;
   taskRepository?: TaskRepository;
@@ -105,10 +107,52 @@ export async function approveCampaign(
   if (!isOk(campaignResult)) {
     return campaignResult;
   }
+  const campaign = campaignResult.value;
 
   // 3. Verificar la transición de dominio.
-  if (!canTransitionCampaign(campaignResult.value.status, 'approved')) {
-    return err(campaignInvalidStatus(campaignResult.value.status, 'approved'));
+  if (!canTransitionCampaign(campaign.status, 'approved')) {
+    return err(campaignInvalidStatus(campaign.status, 'approved'));
+  }
+
+  // 3b. Phase 8F.0 — Si la campaña es para Google Ads, la configuración de activación debe ser válida y estar aprobada.
+  if (campaign.platform === 'google_ads') {
+    const rawConfig = campaign.metadata?.['googleAdsConfig'];
+    if (!rawConfig) {
+      return err({
+        code: 'VALIDATION_ERROR' as const,
+        message: 'La campaña de Google Ads requiere una configuración de activación (googleAdsConfig) válida antes de ser aprobada',
+      });
+    }
+    const configCheck = googleAdsActivationConfigSchema.safeParse(rawConfig);
+    if (!configCheck.success) {
+      return err({
+        code: 'VALIDATION_ERROR' as const,
+        message: `Configuración de Google Ads inválida: ${configCheck.error.errors.map((e) => e.message).join('; ')}`,
+      });
+    }
+
+    // Validar propiedad de la URL final contra el dominio del cliente (si clientRepository está disponible)
+    if (deps.clientRepository) {
+      const clientResult = await deps.clientRepository.findById(campaign.clientId, input.organizationId);
+      if (isOk(clientResult) && clientResult.value.website) {
+        try {
+          const rawWebsite = clientResult.value.website.trim();
+          const websiteUrl = rawWebsite.startsWith('http') ? rawWebsite : `https://${rawWebsite}`;
+          const clientHost = new URL(websiteUrl).hostname.replace(/^www\./i, '').toLowerCase();
+          const finalHost = new URL(configCheck.data.finalUrl).hostname.replace(/^www\./i, '').toLowerCase();
+
+          const isValidHostname = finalHost === clientHost || finalHost.endsWith(`.${clientHost}`);
+          if (!isValidHostname) {
+            return err({
+              code: 'VALIDATION_ERROR' as const,
+              message: `La URL final (${configCheck.data.finalUrl}) debe pertenecer al sitio web registrado del cliente (${clientResult.value.website})`,
+            });
+          }
+        } catch {
+          // Si el website registrado es URL inválida, omitir hostname check
+        }
+      }
+    }
   }
 
   // 4. Aprobar vía RPC (approve_campaign) — actualiza campaigns e inserta

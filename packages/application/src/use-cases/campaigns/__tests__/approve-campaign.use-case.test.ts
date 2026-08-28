@@ -382,4 +382,121 @@ describe('Phase 7F — campaign automation hook (best-effort, post-commit)', () 
     // afectado por un fallo del side effect interno.
     expect(result.success).toBe(true);
   });
+
+  describe('Google Ads Activation Config (Phase 8F.0)', () => {
+    const validGoogleAdsConfig = {
+      dailyBudget: { amount: 50, currency: 'USD' },
+      biddingStrategy: 'MAXIMIZE_CLICKS',
+      finalUrl: 'https://app.client.com/landing',
+      geoTargetIds: ['2170'],
+      languageCriterionIds: ['1003'],
+      keywordMatchPolicy: 'PHRASE',
+      negativeKeywordMatchPolicy: 'BROAD',
+    };
+
+    const makeMockClientRepo = (website: string | null = 'https://client.com') => ({
+      findById: vi.fn().mockResolvedValue(ok({ id: 'client_1', website })),
+    });
+
+    it('rechaza una campaña de Google Ads sin googleAdsConfig en metadata', async () => {
+      const campaignRepository = makeCampaignRepo({
+        findById: vi.fn().mockResolvedValue(ok(makeCampaign({ platform: 'google_ads', metadata: {} }))),
+      });
+      const organizationRepository = makeOrgRepo();
+      const logger = makeLogger();
+
+      const result = await approveCampaign(makeInput(), {
+        campaignRepository,
+        organizationRepository,
+        logger,
+      });
+
+      expect(result.success).toBe(false);
+      if (!result.success) {
+        expect(result.error.code).toBe('VALIDATION_ERROR');
+        expect(result.error.message).toContain('googleAdsConfig');
+      }
+    });
+
+    it('rechaza una campaña de Google Ads con config inválida', async () => {
+      const campaignRepository = makeCampaignRepo({
+        findById: vi.fn().mockResolvedValue(
+          ok(makeCampaign({ platform: 'google_ads', metadata: { googleAdsConfig: { dailyBudget: -10 } } })),
+        ),
+      });
+      const organizationRepository = makeOrgRepo();
+      const logger = makeLogger();
+
+      const result = await approveCampaign(makeInput(), {
+        campaignRepository,
+        organizationRepository,
+        logger,
+      });
+
+      expect(result.success).toBe(false);
+      if (!result.success) {
+        expect(result.error.code).toBe('VALIDATION_ERROR');
+      }
+    });
+
+    it('aprueba una campaña de Google Ads con config válida y hostname de cliente válido', async () => {
+      const campaignRepository = makeCampaignRepo({
+        findById: vi.fn().mockResolvedValue(
+          ok(makeCampaign({ platform: 'google_ads', metadata: { googleAdsConfig: validGoogleAdsConfig } })),
+        ),
+      });
+      const organizationRepository = makeOrgRepo();
+      const clientRepository = makeMockClientRepo('https://client.com') as unknown as ClientRepository;
+      const logger = makeLogger();
+
+      const result = await approveCampaign(makeInput(), {
+        campaignRepository,
+        organizationRepository,
+        clientRepository,
+        logger,
+      });
+
+      expect(result.success).toBe(true);
+    });
+
+    it('rechaza aprobaciones de Google Ads cuando finalUrl no coincide con el dominio del cliente', async () => {
+      const campaignRepository = makeCampaignRepo({
+        findById: vi.fn().mockResolvedValue(
+          ok(makeCampaign({ platform: 'google_ads', metadata: { googleAdsConfig: validGoogleAdsConfig } })),
+        ),
+      });
+      const organizationRepository = makeOrgRepo();
+      const clientRepository = makeMockClientRepo('https://otherdomain.com') as unknown as ClientRepository;
+      const logger = makeLogger();
+
+      const result = await approveCampaign(makeInput(), {
+        campaignRepository,
+        organizationRepository,
+        clientRepository,
+        logger,
+      });
+
+      expect(result.success).toBe(false);
+      if (!result.success) {
+        expect(result.error.code).toBe('VALIDATION_ERROR');
+        expect(result.error.message).toContain('pertenecer al sitio web registrado');
+      }
+    });
+
+    it('no afecta a campañas que no son de Google Ads (Meta Ads sin config)', async () => {
+      const campaignRepository = makeCampaignRepo({
+        findById: vi.fn().mockResolvedValue(ok(makeCampaign({ platform: 'meta_ads', metadata: {} }))),
+      });
+      const organizationRepository = makeOrgRepo();
+      const logger = makeLogger();
+
+      const result = await approveCampaign(makeInput(), {
+        campaignRepository,
+        organizationRepository,
+        logger,
+      });
+
+      expect(result.success).toBe(true);
+    });
+  });
 });

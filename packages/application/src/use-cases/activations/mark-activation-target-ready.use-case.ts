@@ -9,7 +9,7 @@
 
 import { ok, err, isOk } from '@bop-agency/shared';
 import type { Result } from '@bop-agency/shared';
-import { markActivationTargetReadySchema } from '@bop-agency/shared';
+import { googleAdsActivationConfigSchema, markActivationTargetReadySchema } from '@bop-agency/shared';
 import type {
   CampaignActivationTarget,
   CampaignActivationTargetId,
@@ -59,6 +59,44 @@ export async function markActivationTargetReady(
   }
   if (!hasMinimumRole(memberResult.value.role, 'operator')) {
     return err(insufficientRole('operator', memberResult.value.role));
+  }
+
+  // Cargar el target y la activación para validar requisitos específicos del canal (si el repo expone findTargetById)
+  if (deps.activationRepository.findTargetById) {
+    const targetResult = await deps.activationRepository.findTargetById(
+      parsed.data.targetId as CampaignActivationTargetId,
+      input.organizationId,
+    );
+    if (targetResult && isOk(targetResult) && targetResult.value) {
+      const target = targetResult.value;
+      if (target.channel === 'google_ads') {
+        const activationResult = await deps.activationRepository.findById(
+          target.activationId,
+          input.organizationId,
+        );
+        if (!isOk(activationResult) || !activationResult.value) {
+          return err({
+            code: 'VALIDATION_ERROR' as const,
+            message: 'No se encontró la activación asociada al target de Google Ads',
+          });
+        }
+        const activation = activationResult.value;
+        const rawConfig = activation.approvedSnapshot.googleAdsConfig;
+        if (!rawConfig) {
+          return err({
+            code: 'VALIDATION_ERROR' as const,
+            message: 'El target de Google Ads requiere una configuración de activación (googleAdsConfig) válida en el snapshot aprobado antes de marcarse como ready',
+          });
+        }
+        const configCheck = googleAdsActivationConfigSchema.safeParse(rawConfig);
+        if (!configCheck.success) {
+          return err({
+            code: 'VALIDATION_ERROR' as const,
+            message: `Configuración de Google Ads en snapshot es inválida: ${configCheck.error.errors.map((e) => e.message).join('; ')}`,
+          });
+        }
+      }
+    }
   }
 
   const result = await deps.activationRepository.markTargetReady(

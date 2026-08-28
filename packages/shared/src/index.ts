@@ -166,7 +166,17 @@ export type {
   PublicationWebhookEventStatus,
 } from './constants/publication';
 
-// Schemas — Campaign Activation (Phase 8A.1)
+// Schemas — Campaign Activation (Phase 8A.1) & Google Ads Config (Phase 8F.0)
+export {
+  googleAdsActivationConfigSchema,
+  GOOGLE_ADS_BIDDING_STRATEGIES,
+  GOOGLE_ADS_KEYWORD_MATCH_POLICIES,
+} from './schemas/google-ads-config.schema';
+export type {
+  GoogleAdsBiddingStrategy,
+  GoogleAdsKeywordMatchPolicy,
+  GoogleAdsActivationConfigShape,
+} from './schemas/google-ads-config.schema';
 export {
   campaignActivationSnapshotSchema,
   ACTIVATION_SNAPSHOT_SCHEMA_VERSION,
