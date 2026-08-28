@@ -24,6 +24,10 @@ import {
   MetaPublisherAdapter,
   MetaGraphApiClient,
   SupabaseCredentialRepository,
+  GoogleAdsPublisherAdapter,
+  SupabaseCampaignActivationRepository,
+  SupabaseClientRepository,
+  consoleLogger,
 } from '@bop-agency/infrastructure';
 import { ChannelPublisherRegistry } from '@bop-agency/application';
 
@@ -107,8 +111,14 @@ export async function POST(request: NextRequest): Promise<Response> {
     undefined,
     checkpointRpc,
   );
+  const googleAdsAdapter = new GoogleAdsPublisherAdapter({
+    activationRepository: new SupabaseCampaignActivationRepository(adminClient),
+    clientRepository: new SupabaseClientRepository(adminClient),
+    credentialRepository: credentialRepo,
+    logger: consoleLogger,
+  });
   const n8nAdapter = new N8nPublicationTransportAdapter();
-  const registry = new ChannelPublisherRegistry([metaAdapter, n8nAdapter]);
+  const registry = new ChannelPublisherRegistry([metaAdapter, googleAdsAdapter, n8nAdapter]);
 
   const workerComp = createPublicationWorkerComposition(adminClient, {
     registry,

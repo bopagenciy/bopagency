@@ -153,7 +153,11 @@ export type { ResolvedPageCredential } from './supabase/repositories/supabase-cr
 export { SupabasePendingConnectionRepository } from './supabase/repositories/supabase-pending-connection.repository';
 export type { CreatePendingSessionInput } from './supabase/repositories/supabase-pending-connection.repository';
 
-// Phase 8F.1 — Google Integration Infrastructure
+// Phase 8F.1 & 8F.2 — Google Integration Infrastructure
 export { GoogleOAuthClient } from './google/google-oauth.client';
 export type { GoogleTokenExchangeResult } from './google/google-oauth.client';
 export { GoogleAdsDiscoveryClient } from './google/google-ads-discovery.client';
+export { GoogleAdsApiClient, GoogleAdsApiError, requireGoogleAdsApiVersion, requireGoogleAdsDeveloperToken } from './google/google-ads-api.client';
+export type { GoogleAdsMutateRequestPayload, GoogleAdsMutateResponse } from './google/google-ads-api.client';
+export { GoogleAdsPublisherAdapter, toGoogleBudgetMicros } from './google/google-ads-publisher.adapter';
+export type { GoogleAdsPublisherAdapterDeps } from './google/google-ads-publisher.adapter';
