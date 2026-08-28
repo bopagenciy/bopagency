@@ -7,8 +7,19 @@ import type {
   CampaignActivationTarget,
   CampaignActivationRepository,
   ClientIntegration,
+  CampaignActivationId,
+  OrganizationId,
+  ClientId,
+  CampaignId,
+  CampaignApprovalId,
+  CampaignActivationTargetId,
+  ClientIntegrationId,
+  CampaignPublicationJobId,
+  ClientRepository,
 } from '@bop-agency/domain';
+import type { SupabaseCredentialRepository } from '../../supabase/repositories/supabase-credential.repository';
 import type { LoggerPort } from '@bop-agency/application';
+import type { ActivationChannel, ActivationProvider } from '@bop-agency/shared';
 
 function makeLogger(): LoggerPort {
   return { debug: vi.fn(), info: vi.fn(), warn: vi.fn(), error: vi.fn() };
@@ -50,17 +61,17 @@ describe('GoogleAdsPublisherAdapter Unit Tests & Safety Matrix (Phase 8F.2)', ()
     negativeKeywordSuggestions: ['free'],
   };
 
-  const mockActivation = {
-    id: 'act-1' as any,
-    organizationId: 'org-1' as any,
-    clientId: 'client-1' as any,
-    campaignId: 'camp-1' as any,
-    campaignApprovalId: 'app-1' as any,
+  const mockActivation: CampaignActivation = {
+    id: 'act-1' as unknown as CampaignActivationId,
+    organizationId: 'org-1' as unknown as OrganizationId,
+    clientId: 'client-1' as unknown as ClientId,
+    campaignId: 'camp-1' as unknown as CampaignId,
+    campaignApprovalId: 'app-1' as unknown as CampaignApprovalId,
     status: 'ready',
     approvedSnapshot: {
       schemaVersion: 'activation-snapshot-v1',
       campaign: {
-        id: 'camp-1' as any,
+        id: 'camp-1' as unknown as CampaignId,
         name: 'Summer Campaign',
         objective: 'lead_generation',
         platform: 'google_ads',
@@ -69,10 +80,10 @@ describe('GoogleAdsPublisherAdapter Unit Tests & Safety Matrix (Phase 8F.2)', ()
         startDate: null,
         endDate: null,
       },
-      generatedContent: validGeneratedContent as any,
+      generatedContent: validGeneratedContent,
       metadata: {},
-      approval: { campaignApprovalId: 'app-1' as any, approvedAt: '2026-08-01', approvedBy: 'user-1' },
-      googleAdsConfig: validGoogleAdsConfig as any,
+      approval: { campaignApprovalId: 'app-1' as unknown as CampaignApprovalId, approvedAt: '2026-08-01', approvedBy: 'user-1' },
+      googleAdsConfig: validGoogleAdsConfig,
     },
     metadata: {},
     createdAt: new Date(),
@@ -80,14 +91,14 @@ describe('GoogleAdsPublisherAdapter Unit Tests & Safety Matrix (Phase 8F.2)', ()
   } as unknown as CampaignActivation;
 
   const mockTarget: CampaignActivationTarget = {
-    id: 'target-1' as any,
-    activationId: 'act-1' as any,
-    organizationId: 'org-1' as any,
-    clientId: 'client-1' as any,
+    id: 'target-1' as unknown as CampaignActivationTargetId,
+    activationId: 'act-1' as unknown as CampaignActivationId,
+    organizationId: 'org-1' as unknown as OrganizationId,
+    clientId: 'client-1' as unknown as ClientId,
     channel: 'google_ads',
     provider: 'google',
     placement: null,
-    clientIntegrationId: 'integ-1' as any,
+    clientIntegrationId: 'integ-1' as unknown as ClientIntegrationId,
     status: 'ready',
     readinessChecklist: {},
     scheduledAt: null,
@@ -107,9 +118,9 @@ describe('GoogleAdsPublisherAdapter Unit Tests & Safety Matrix (Phase 8F.2)', ()
   };
 
   const mockIntegration: ClientIntegration = {
-    id: 'integ-1' as any,
-    organizationId: 'org-1' as any,
-    clientId: 'client-1' as any,
+    id: 'integ-1' as unknown as ClientIntegrationId,
+    organizationId: 'org-1' as unknown as OrganizationId,
+    clientId: 'client-1' as unknown as ClientId,
     provider: 'google',
     externalAccountId: '1234567890',
     status: 'active',
@@ -123,10 +134,10 @@ describe('GoogleAdsPublisherAdapter Unit Tests & Safety Matrix (Phase 8F.2)', ()
     updatedAt: new Date(),
   };
 
-  function makeClientRepo(integrations: ClientIntegration[] = [mockIntegration]) {
+  function makeClientRepo(integrations: ClientIntegration[] = [mockIntegration]): ClientRepository {
     return {
       listIntegrations: vi.fn().mockResolvedValue(ok(integrations)),
-    } as any;
+    } as unknown as ClientRepository;
   }
 
   beforeEach(() => {
@@ -140,14 +151,14 @@ describe('GoogleAdsPublisherAdapter Unit Tests & Safety Matrix (Phase 8F.2)', ()
 
   it('supports channel google_ads and provider google exclusively', () => {
     const adapter = new GoogleAdsPublisherAdapter({
-      activationRepository: {} as any,
+      activationRepository: {} as unknown as CampaignActivationRepository,
       clientRepository: makeClientRepo(),
-      credentialRepository: {} as any,
+      credentialRepository: {} as unknown as SupabaseCredentialRepository,
       logger: makeLogger(),
     });
 
-    expect(adapter.supports('google_ads' as any, 'google' as any)).toBe(true);
-    expect(adapter.supports('meta_ads' as any, 'facebook' as any)).toBe(false);
+    expect(adapter.supports('google_ads' as unknown as ActivationChannel, 'google' as unknown as ActivationProvider)).toBe(true);
+    expect(adapter.supports('meta_ads' as unknown as ActivationChannel, 'facebook' as unknown as ActivationProvider)).toBe(false);
   });
 
   it('converts budget amount to micros integer safely without silent rounding errors', () => {
@@ -170,7 +181,7 @@ describe('GoogleAdsPublisherAdapter Unit Tests & Safety Matrix (Phase 8F.2)', ()
     const clientRepository = makeClientRepo();
     const credentialRepository = {
       resolveGoogleRefreshToken: vi.fn().mockResolvedValue({ refreshToken: 'refresh-token-123' }),
-    } as any;
+    } as unknown as SupabaseCredentialRepository;
 
     const mockApiClient = {
       refreshAccessToken: vi.fn().mockResolvedValue({ accessToken: 'access-token-999', expiresIn: 3600 }),
@@ -194,12 +205,12 @@ describe('GoogleAdsPublisherAdapter Unit Tests & Safety Matrix (Phase 8F.2)', ()
     });
 
     const result = await adapter.publish({
-      jobId: '11111111-1111-1111-1111-111111111111' as any,
-      organizationId: 'org-1' as any,
-      clientId: 'client-1' as any,
-      targetId: 'target-1' as any,
-      channel: 'google_ads' as any,
-      provider: 'google' as any,
+      jobId: '11111111-1111-1111-1111-111111111111' as unknown as CampaignPublicationJobId,
+      organizationId: 'org-1' as unknown as OrganizationId,
+      clientId: 'client-1' as unknown as ClientId,
+      targetId: 'target-1' as unknown as CampaignActivationTargetId,
+      channel: 'google_ads' as unknown as ActivationChannel,
+      provider: 'google' as unknown as ActivationProvider,
       clientIntegrationId: 'integ-1',
       attemptNumber: 1,
       idempotencyKey: 'idemp-1',
@@ -275,10 +286,11 @@ describe('GoogleAdsPublisherAdapter Unit Tests & Safety Matrix (Phase 8F.2)', ()
   });
 
   it('accepts maximum allowed payload (164 operations) and rejects 165 operations before mutate', async () => {
+    const approvedSnap = mockActivation.approvedSnapshot;
     const maxActivation = {
       ...mockActivation,
       approvedSnapshot: {
-        ...mockActivation.approvedSnapshot!,
+        ...approvedSnap,
         generatedContent: {
           ...validGeneratedContent,
           keywordSuggestions: Array.from({ length: 50 }, (_, i) => `pos-kw-${i}`),
@@ -308,18 +320,18 @@ describe('GoogleAdsPublisherAdapter Unit Tests & Safety Matrix (Phase 8F.2)', ()
     const adapter = new GoogleAdsPublisherAdapter({
       activationRepository,
       clientRepository: makeClientRepo(),
-      credentialRepository: { resolveGoogleRefreshToken: vi.fn().mockResolvedValue({ refreshToken: 'ref-1' }) } as any,
+      credentialRepository: { resolveGoogleRefreshToken: vi.fn().mockResolvedValue({ refreshToken: 'ref-1' }) } as unknown as SupabaseCredentialRepository,
       logger: makeLogger(),
       apiClient: mockApiClient,
     });
 
     const result = await adapter.publish({
-      jobId: '11111111-1111-1111-1111-111111111111' as any,
-      organizationId: 'org-1' as any,
-      clientId: 'client-1' as any,
-      targetId: 'target-1' as any,
-      channel: 'google_ads' as any,
-      provider: 'google' as any,
+      jobId: '11111111-1111-1111-1111-111111111111' as unknown as CampaignPublicationJobId,
+      organizationId: 'org-1' as unknown as OrganizationId,
+      clientId: 'client-1' as unknown as ClientId,
+      targetId: 'target-1' as unknown as CampaignActivationTargetId,
+      channel: 'google_ads' as unknown as ActivationChannel,
+      provider: 'google' as unknown as ActivationProvider,
       clientIntegrationId: 'integ-1',
       attemptNumber: 1,
       idempotencyKey: 'idemp-1',
@@ -331,12 +343,14 @@ describe('GoogleAdsPublisherAdapter Unit Tests & Safety Matrix (Phase 8F.2)', ()
     expect(ops.length).toBe(164); // Exactly 164 total operations
 
     // Now test 165 operations (e.g. 51 positive keywords) -> fails fast with INVALID_ASSET before mutate
+    const maxSnap = maxActivation.approvedSnapshot;
+    const maxGen = maxSnap.generatedContent as typeof validGeneratedContent;
     const overflowActivation = {
       ...maxActivation,
       approvedSnapshot: {
-        ...maxActivation.approvedSnapshot!,
+        ...maxSnap,
         generatedContent: {
-          ...maxActivation.approvedSnapshot!.generatedContent,
+          ...maxGen,
           keywordSuggestions: Array.from({ length: 51 }, (_, i) => `pos-kw-${i}`),
         },
       },
@@ -346,20 +360,20 @@ describe('GoogleAdsPublisherAdapter Unit Tests & Safety Matrix (Phase 8F.2)', ()
       activationRepository: {
         findById: vi.fn().mockResolvedValue(ok(overflowActivation)),
         findTargetById: vi.fn().mockResolvedValue(ok(mockTarget)),
-      } as any,
+      } as unknown as CampaignActivationRepository,
       clientRepository: makeClientRepo(),
-      credentialRepository: { resolveGoogleRefreshToken: vi.fn().mockResolvedValue({ refreshToken: 'ref-1' }) } as any,
+      credentialRepository: { resolveGoogleRefreshToken: vi.fn().mockResolvedValue({ refreshToken: 'ref-1' }) } as unknown as SupabaseCredentialRepository,
       logger: makeLogger(),
       apiClient: mockApiClient,
     });
 
     const overflowResult = await overflowAdapter.publish({
-      jobId: '11111111-1111-1111-1111-111111111111' as any,
-      organizationId: 'org-1' as any,
-      clientId: 'client-1' as any,
-      targetId: 'target-1' as any,
-      channel: 'google_ads' as any,
-      provider: 'google' as any,
+      jobId: '11111111-1111-1111-1111-111111111111' as unknown as CampaignPublicationJobId,
+      organizationId: 'org-1' as unknown as OrganizationId,
+      clientId: 'client-1' as unknown as ClientId,
+      targetId: 'target-1' as unknown as CampaignActivationTargetId,
+      channel: 'google_ads' as unknown as ActivationChannel,
+      provider: 'google' as unknown as ActivationProvider,
       clientIntegrationId: 'integ-1',
       attemptNumber: 1,
       idempotencyKey: 'idemp-1',
@@ -373,10 +387,11 @@ describe('GoogleAdsPublisherAdapter Unit Tests & Safety Matrix (Phase 8F.2)', ()
   });
 
   it('rejects publication when headlines <3 or >15, or descriptions <2 or >4', async () => {
+    const baseSnap = mockActivation.approvedSnapshot;
     const invalidHeadlinesActivation = {
       ...mockActivation,
       approvedSnapshot: {
-        ...mockActivation.approvedSnapshot!,
+        ...baseSnap,
         generatedContent: {
           ...validGeneratedContent,
           adGroups: [
@@ -390,19 +405,19 @@ describe('GoogleAdsPublisherAdapter Unit Tests & Safety Matrix (Phase 8F.2)', ()
       activationRepository: {
         findById: vi.fn().mockResolvedValue(ok(invalidHeadlinesActivation)),
         findTargetById: vi.fn().mockResolvedValue(ok(mockTarget)),
-      } as any,
+      } as unknown as CampaignActivationRepository,
       clientRepository: makeClientRepo(),
-      credentialRepository: {} as any,
+      credentialRepository: {} as unknown as SupabaseCredentialRepository,
       logger: makeLogger(),
     });
 
     const result = await adapter.publish({
-      jobId: '11111111-1111-1111-1111-111111111111' as any,
-      organizationId: 'org-1' as any,
-      clientId: 'client-1' as any,
-      targetId: 'target-1' as any,
-      channel: 'google_ads' as any,
-      provider: 'google' as any,
+      jobId: '11111111-1111-1111-1111-111111111111' as unknown as CampaignPublicationJobId,
+      organizationId: 'org-1' as unknown as OrganizationId,
+      clientId: 'client-1' as unknown as ClientId,
+      targetId: 'target-1' as unknown as CampaignActivationTargetId,
+      channel: 'google_ads' as unknown as ActivationChannel,
+      provider: 'google' as unknown as ActivationProvider,
       clientIntegrationId: 'integ-1',
       attemptNumber: 1,
       idempotencyKey: 'idemp-1',
@@ -428,18 +443,18 @@ describe('GoogleAdsPublisherAdapter Unit Tests & Safety Matrix (Phase 8F.2)', ()
     const adapter = new GoogleAdsPublisherAdapter({
       activationRepository,
       clientRepository: makeClientRepo(),
-      credentialRepository: { resolveGoogleRefreshToken: vi.fn().mockResolvedValue({ refreshToken: 'ref-1' }) } as any,
+      credentialRepository: { resolveGoogleRefreshToken: vi.fn().mockResolvedValue({ refreshToken: 'ref-1' }) } as unknown as SupabaseCredentialRepository,
       logger: makeLogger(),
       apiClient: mockApiClient,
     });
 
     const result = await adapter.publish({
-      jobId: '11111111-1111-1111-1111-111111111111' as any,
-      organizationId: 'org-1' as any,
-      clientId: 'client-1' as any,
-      targetId: 'target-1' as any,
-      channel: 'google_ads' as any,
-      provider: 'google' as any,
+      jobId: '11111111-1111-1111-1111-111111111111' as unknown as CampaignPublicationJobId,
+      organizationId: 'org-1' as unknown as OrganizationId,
+      clientId: 'client-1' as unknown as ClientId,
+      targetId: 'target-1' as unknown as CampaignActivationTargetId,
+      channel: 'google_ads' as unknown as ActivationChannel,
+      provider: 'google' as unknown as ActivationProvider,
       clientIntegrationId: 'integ-1',
       attemptNumber: 1,
       idempotencyKey: 'idemp-1',
@@ -466,18 +481,18 @@ describe('GoogleAdsPublisherAdapter Unit Tests & Safety Matrix (Phase 8F.2)', ()
     const adapter = new GoogleAdsPublisherAdapter({
       activationRepository,
       clientRepository: makeClientRepo(),
-      credentialRepository: { resolveGoogleRefreshToken: vi.fn().mockResolvedValue({ refreshToken: 'ref-1' }) } as any,
+      credentialRepository: { resolveGoogleRefreshToken: vi.fn().mockResolvedValue({ refreshToken: 'ref-1' }) } as unknown as SupabaseCredentialRepository,
       logger: makeLogger(),
       apiClient: mockApiClient,
     });
 
     const result = await adapter.publish({
-      jobId: '11111111-1111-1111-1111-111111111111' as any,
-      organizationId: 'org-1' as any,
-      clientId: 'client-1' as any,
-      targetId: 'target-1' as any,
-      channel: 'google_ads' as any,
-      provider: 'google' as any,
+      jobId: '11111111-1111-1111-1111-111111111111' as unknown as CampaignPublicationJobId,
+      organizationId: 'org-1' as unknown as OrganizationId,
+      clientId: 'client-1' as unknown as ClientId,
+      targetId: 'target-1' as unknown as CampaignActivationTargetId,
+      channel: 'google_ads' as unknown as ActivationChannel,
+      provider: 'google' as unknown as ActivationProvider,
       clientIntegrationId: 'integ-1',
       attemptNumber: 1,
       idempotencyKey: 'idemp-1',

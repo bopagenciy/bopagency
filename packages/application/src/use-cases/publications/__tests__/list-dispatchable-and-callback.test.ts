@@ -38,6 +38,7 @@ describe('Phase 8B.3 Worker & Webhook Evidence Use Cases', () => {
       appendEvent: vi.fn(),
       recordWebhookReceipt: vi.fn(),
       markWebhookEventProcessed: vi.fn(),
+      recordProviderObservation: vi.fn(),
       ...overrides,
     };
   }

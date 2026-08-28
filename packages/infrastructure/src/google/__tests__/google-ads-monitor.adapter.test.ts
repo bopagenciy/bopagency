@@ -2,8 +2,10 @@ import { describe, it, expect, vi, beforeEach } from 'vitest';
 import { GoogleAdsMonitorAdapter } from '../google-ads-monitor.adapter';
 import type { GoogleAdsApiClient } from '../google-ads-api.client';
 import { ok } from '@bop-agency/shared';
-import type { ClientIntegration } from '@bop-agency/domain';
+import type { ClientIntegration, ClientIntegrationId, OrganizationId, ClientId, ClientRepository } from '@bop-agency/domain';
+import type { SupabaseCredentialRepository } from '../../supabase/repositories/supabase-credential.repository';
 import type { LoggerPort } from '@bop-agency/application';
+import type { ActivationChannel, ActivationProvider } from '@bop-agency/shared';
 
 function makeLogger(): LoggerPort {
   return { debug: vi.fn(), info: vi.fn(), warn: vi.fn(), error: vi.fn() };
@@ -26,9 +28,9 @@ describe('GoogleAdsMonitorAdapter Unit Tests (Phase 8G.1)', () => {
   };
 
   const mockIntegration: ClientIntegration = {
-    id: 'integ-1' as any,
-    organizationId: 'org-1' as any,
-    clientId: 'client-1' as any,
+    id: 'integ-1' as unknown as ClientIntegrationId,
+    organizationId: 'org-1' as unknown as OrganizationId,
+    clientId: 'client-1' as unknown as ClientId,
     provider: 'google',
     externalAccountId: '1234567890',
     status: 'active',
@@ -42,10 +44,10 @@ describe('GoogleAdsMonitorAdapter Unit Tests (Phase 8G.1)', () => {
     updatedAt: new Date(),
   };
 
-  function makeClientRepo(integrations: ClientIntegration[] = [mockIntegration]) {
+  function makeClientRepo(integrations: ClientIntegration[] = [mockIntegration]): ClientRepository {
     return {
       listIntegrations: vi.fn().mockResolvedValue(ok(integrations)),
-    } as any;
+    } as unknown as ClientRepository;
   }
 
   beforeEach(() => {
@@ -59,18 +61,18 @@ describe('GoogleAdsMonitorAdapter Unit Tests (Phase 8G.1)', () => {
 
   it('supports channel google_ads and provider google exclusively', () => {
     const adapter = new GoogleAdsMonitorAdapter({
-      credentialRepository: {} as any,
+      credentialRepository: {} as unknown as SupabaseCredentialRepository,
       logger: makeLogger(),
     });
 
-    expect(adapter.supports('google_ads' as any, 'google' as any)).toBe(true);
-    expect(adapter.supports('facebook_organic' as any, 'meta' as any)).toBe(false);
+    expect(adapter.supports('google_ads' as unknown as ActivationChannel, 'google' as unknown as ActivationProvider)).toBe(true);
+    expect(adapter.supports('facebook_organic' as unknown as ActivationChannel, 'meta' as unknown as ActivationProvider)).toBe(false);
   });
 
   it('observes PAUSED campaign status with primary and serving status indicators', async () => {
     const credentialRepository = {
       resolveGoogleRefreshToken: vi.fn().mockResolvedValue({ refreshToken: 'ref-token-1' }),
-    } as any;
+    } as unknown as SupabaseCredentialRepository;
 
     const mockApiClient = {
       refreshAccessToken: vi.fn().mockResolvedValue({ accessToken: 'access-123' }),
@@ -102,8 +104,8 @@ describe('GoogleAdsMonitorAdapter Unit Tests (Phase 8G.1)', () => {
       targetId: 'target-1',
       organizationId: 'org-1',
       clientId: 'client-1',
-      channel: 'google_ads' as any,
-      provider: 'google' as any,
+      channel: 'google_ads' as unknown as ActivationChannel,
+      provider: 'google' as unknown as ActivationProvider,
       externalId: 'customers/1234567890/campaigns/9876543210',
       clientIntegrationId: 'integ-1',
       attemptMetadata: validAttemptMetadata,
@@ -130,7 +132,7 @@ describe('GoogleAdsMonitorAdapter Unit Tests (Phase 8G.1)', () => {
   it('observes ENABLED status without performing any provider write mutation', async () => {
     const credentialRepository = {
       resolveGoogleRefreshToken: vi.fn().mockResolvedValue({ refreshToken: 'ref-token-1' }),
-    } as any;
+    } as unknown as SupabaseCredentialRepository;
 
     const mockApiClient = {
       refreshAccessToken: vi.fn().mockResolvedValue({ accessToken: 'access-123' }),
@@ -162,8 +164,8 @@ describe('GoogleAdsMonitorAdapter Unit Tests (Phase 8G.1)', () => {
       targetId: 'target-1',
       organizationId: 'org-1',
       clientId: 'client-1',
-      channel: 'google_ads' as any,
-      provider: 'google' as any,
+      channel: 'google_ads' as unknown as ActivationChannel,
+      provider: 'google' as unknown as ActivationProvider,
       externalId: 'customers/1234567890/campaigns/9876543210',
       clientIntegrationId: 'integ-1',
       attemptMetadata: validAttemptMetadata,
@@ -180,7 +182,7 @@ describe('GoogleAdsMonitorAdapter Unit Tests (Phase 8G.1)', () => {
   it('returns availability not_found when campaign is deleted or missing on provider', async () => {
     const credentialRepository = {
       resolveGoogleRefreshToken: vi.fn().mockResolvedValue({ refreshToken: 'ref-token-1' }),
-    } as any;
+    } as unknown as SupabaseCredentialRepository;
 
     const mockApiClient = {
       refreshAccessToken: vi.fn().mockResolvedValue({ accessToken: 'access-123' }),
@@ -202,8 +204,8 @@ describe('GoogleAdsMonitorAdapter Unit Tests (Phase 8G.1)', () => {
       targetId: 'target-1',
       organizationId: 'org-1',
       clientId: 'client-1',
-      channel: 'google_ads' as any,
-      provider: 'google' as any,
+      channel: 'google_ads' as unknown as ActivationChannel,
+      provider: 'google' as unknown as ActivationProvider,
       externalId: 'customers/1234567890/campaigns/9876543210',
       clientIntegrationId: 'integ-1',
       attemptMetadata: validAttemptMetadata,
@@ -224,7 +226,7 @@ describe('GoogleAdsMonitorAdapter Unit Tests (Phase 8G.1)', () => {
 
     const adapter = new GoogleAdsMonitorAdapter({
       clientRepository: makeClientRepo([driftedIntegration]),
-      credentialRepository: {} as any,
+      credentialRepository: {} as unknown as SupabaseCredentialRepository,
       logger: makeLogger(),
     });
 
@@ -233,8 +235,8 @@ describe('GoogleAdsMonitorAdapter Unit Tests (Phase 8G.1)', () => {
       targetId: 'target-1',
       organizationId: 'org-1',
       clientId: 'client-1',
-      channel: 'google_ads' as any,
-      provider: 'google' as any,
+      channel: 'google_ads' as unknown as ActivationChannel,
+      provider: 'google' as unknown as ActivationProvider,
       externalId: 'customers/1234567890/campaigns/9876543210',
       clientIntegrationId: 'integ-1',
       attemptMetadata: validAttemptMetadata,
@@ -251,7 +253,7 @@ describe('GoogleAdsMonitorAdapter Unit Tests (Phase 8G.1)', () => {
   it('returns unavailable PROVIDER_QUERY_FAILED on HTTP 500 / 503 / 429 query errors', async () => {
     const credentialRepository = {
       resolveGoogleRefreshToken: vi.fn().mockResolvedValue({ refreshToken: 'ref-token-1' }),
-    } as any;
+    } as unknown as SupabaseCredentialRepository;
 
     const mockApiClient = {
       refreshAccessToken: vi.fn().mockResolvedValue({ accessToken: 'access-123' }),
@@ -270,8 +272,8 @@ describe('GoogleAdsMonitorAdapter Unit Tests (Phase 8G.1)', () => {
       targetId: 'target-1',
       organizationId: 'org-1',
       clientId: 'client-1',
-      channel: 'google_ads' as any,
-      provider: 'google' as any,
+      channel: 'google_ads' as unknown as ActivationChannel,
+      provider: 'google' as unknown as ActivationProvider,
       externalId: 'customers/1234567890/campaigns/9876543210',
       clientIntegrationId: 'integ-1',
       attemptMetadata: validAttemptMetadata,

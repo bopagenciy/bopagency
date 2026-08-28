@@ -233,7 +233,14 @@ export class GoogleAdsPublisherAdapter implements ChannelPublisherPort {
         metadata: { message: 'Phase 8F.2 Search publisher MVP supports single ad group content only' },
       });
     }
-    const adGroupContent = generatedContent.adGroups[0]!;
+    const adGroupContent = generatedContent.adGroups[0];
+    if (!adGroupContent) {
+      return ok({
+        outcome: 'failed',
+        failureCategory: 'INVALID_ASSET',
+        metadata: { message: 'Missing ad group content in approved snapshot' },
+      });
+    }
 
     if (!Array.isArray(adGroupContent.headlines) || adGroupContent.headlines.length < 3 || adGroupContent.headlines.length > 15) {
       return ok({

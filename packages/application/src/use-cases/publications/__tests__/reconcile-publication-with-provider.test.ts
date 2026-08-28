@@ -1,11 +1,18 @@
 import { describe, it, expect, vi, beforeEach } from 'vitest';
 import { reconcilePublicationWithProvider } from '../reconcile-publication-with-provider.use-case';
 import { PublicationReconcilerRegistry, type PublicationReconcilerPort } from '../../../ports/publication-reconciler.port';
-import { ok, err } from '@bop-agency/shared';
+import { ok } from '@bop-agency/shared';
 import type {
   CampaignPublicationJob,
   CampaignPublicationRepository,
   OrganizationRepository,
+  OrganizationId,
+  ClientId,
+  CampaignActivationId,
+  CampaignActivationTargetId,
+  CampaignPublicationJobId,
+  ClientIntegrationId,
+  PublicationIdempotencyKey,
 } from '@bop-agency/domain';
 import type { LoggerPort } from '../../../ports/logger.port';
 
@@ -13,23 +20,24 @@ function makeLogger(): LoggerPort {
   return { debug: vi.fn(), info: vi.fn(), warn: vi.fn(), error: vi.fn() };
 }
 
-function makeOrgRepo(role: string = 'strategist'): OrganizationRepository {
+function makeOrgRepo(role = 'strategist'): OrganizationRepository {
   return {
     findMember: vi.fn().mockResolvedValue(ok({ role })),
-  } as any;
+  } as unknown as OrganizationRepository;
 }
 
 describe('reconcilePublicationWithProvider Use Case (Phase 8G.0)', () => {
   const mockJob: CampaignPublicationJob = {
-    id: 'job-1' as any,
-    organizationId: 'org-1' as any,
-    clientId: 'client-1' as any,
-    targetId: 'target-1' as any,
+    id: 'job-1' as unknown as CampaignPublicationJobId,
+    organizationId: 'org-1' as unknown as OrganizationId,
+    clientId: 'client-1' as unknown as ClientId,
+    activationId: 'act-1' as unknown as CampaignActivationId,
+    targetId: 'target-1' as unknown as CampaignActivationTargetId,
     channel: 'google_ads',
     provider: 'google',
-    clientIntegrationId: 'integ-1' as any,
+    clientIntegrationId: 'integ-1' as unknown as ClientIntegrationId,
     status: 'unknown_outcome',
-    idempotencyKey: 'idemp-1' as any,
+    idempotencyKey: 'idemp-1' as unknown as PublicationIdempotencyKey,
     retryOfJobId: null,
     retryCount: 0,
     claimedAt: null,
@@ -59,11 +67,11 @@ describe('reconcilePublicationWithProvider Use Case (Phase 8G.0)', () => {
     const result = await reconcilePublicationWithProvider(
       {
         jobId: 'job-1',
-        organizationId: 'org-1' as any,
+        organizationId: 'org-1' as unknown as OrganizationId,
         actorUserId: 'user-op',
       },
       {
-        publicationRepository: {} as any,
+        publicationRepository: {} as unknown as CampaignPublicationRepository,
         organizationRepository: operatorOrgRepo,
         reconcilerRegistry: new PublicationReconcilerRegistry(),
         logger: makeLogger(),
@@ -84,7 +92,7 @@ describe('reconcilePublicationWithProvider Use Case (Phase 8G.0)', () => {
     const result = await reconcilePublicationWithProvider(
       {
         jobId: 'job-1',
-        organizationId: 'org-other' as any,
+        organizationId: 'org-other' as unknown as OrganizationId,
         actorUserId: 'user-strat',
       },
       {
@@ -110,7 +118,7 @@ describe('reconcilePublicationWithProvider Use Case (Phase 8G.0)', () => {
     const result = await reconcilePublicationWithProvider(
       {
         jobId: 'job-1',
-        organizationId: 'org-1' as any,
+        organizationId: 'org-1' as unknown as OrganizationId,
         actorUserId: 'user-strat',
       },
       {
@@ -150,7 +158,7 @@ describe('reconcilePublicationWithProvider Use Case (Phase 8G.0)', () => {
     const result = await reconcilePublicationWithProvider(
       {
         jobId: 'job-1',
-        organizationId: 'org-1' as any,
+        organizationId: 'org-1' as unknown as OrganizationId,
         actorUserId: 'user-strat',
       },
       {
@@ -196,7 +204,7 @@ describe('reconcilePublicationWithProvider Use Case (Phase 8G.0)', () => {
     const result = await reconcilePublicationWithProvider(
       {
         jobId: 'job-1',
-        organizationId: 'org-1' as any,
+        organizationId: 'org-1' as unknown as OrganizationId,
         actorUserId: 'user-strat',
       },
       {
@@ -240,7 +248,7 @@ describe('reconcilePublicationWithProvider Use Case (Phase 8G.0)', () => {
     const result = await reconcilePublicationWithProvider(
       {
         jobId: 'job-1',
-        organizationId: 'org-1' as any,
+        organizationId: 'org-1' as unknown as OrganizationId,
         actorUserId: 'user-strat',
       },
       {

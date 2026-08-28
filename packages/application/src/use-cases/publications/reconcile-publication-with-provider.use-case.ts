@@ -71,7 +71,6 @@ export async function reconcilePublicationWithProvider(
     return err({ code: 'NOT_FOUND', message: `Job ${input.jobId} not found` });
   }
   const job = jobWithAttemptsRes.value;
-  const attempts = job.attempts || [];
 
   if (job.status !== 'unknown_outcome') {
     return err({
@@ -93,8 +92,6 @@ export async function reconcilePublicationWithProvider(
     };
     return ok({ job, reconcileResult: fallbackResult });
   }
-
-  const latestAttempt = attempts.length > 0 ? attempts[attempts.length - 1] : null;
 
   let targetMetadata: Record<string, unknown> | null = null;
   if (deps.activationRepository) {

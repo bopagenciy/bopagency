@@ -45,7 +45,8 @@ describe('MetaGraphApiClient Direct Unit Tests (Phase 8G.2 Hardened)', () => {
     // Token leakage security audit: token must not be in returned result object
     expect(JSON.stringify(obs)).not.toContain('secret-page-token-123');
 
-    const calledUrl = new URL(mockFetch.mock.calls[0]![0] as string);
+    const firstCall = mockFetch.mock.calls[0];
+    const calledUrl = new URL((firstCall?.[0] ?? '') as string);
     expect(calledUrl.pathname).toBe('/v21.0/12345_67890');
     expect(calledUrl.searchParams.get('fields')).toBe('id,created_time,permalink_url,is_published');
     expect(calledUrl.searchParams.get('access_token')).toBe('secret-page-token-123');
@@ -79,7 +80,8 @@ describe('MetaGraphApiClient Direct Unit Tests (Phase 8G.2 Hardened)', () => {
     // Token leakage security audit
     expect(JSON.stringify(obs)).not.toContain('secret-page-token-123');
 
-    const calledUrl = new URL(mockFetch.mock.calls[0]![0] as string);
+    const secondCall = mockFetch.mock.calls[0];
+    const calledUrl = new URL((secondCall?.[0] ?? '') as string);
     expect(calledUrl.pathname).toBe('/v21.0/17841400000000000');
     expect(calledUrl.searchParams.get('fields')).toBe('id,media_type,media_product_type,permalink,timestamp');
   });

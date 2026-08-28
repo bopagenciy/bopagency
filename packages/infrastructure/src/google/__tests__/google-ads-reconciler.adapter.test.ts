@@ -2,8 +2,10 @@ import { describe, it, expect, vi, beforeEach } from 'vitest';
 import { GoogleAdsReconcilerAdapter } from '../google-ads-reconciler.adapter';
 import type { GoogleAdsApiClient } from '../google-ads-api.client';
 import { ok } from '@bop-agency/shared';
-import type { ClientIntegration } from '@bop-agency/domain';
+import type { ClientIntegration, ClientIntegrationId, OrganizationId, ClientId, ClientRepository, CampaignActivationRepository } from '@bop-agency/domain';
+import type { SupabaseCredentialRepository } from '../../supabase/repositories/supabase-credential.repository';
 import type { LoggerPort } from '@bop-agency/application';
+import type { ActivationChannel, ActivationProvider } from '@bop-agency/shared';
 
 function makeLogger(): LoggerPort {
   return { debug: vi.fn(), info: vi.fn(), warn: vi.fn(), error: vi.fn() };
@@ -27,9 +29,9 @@ describe('GoogleAdsReconcilerAdapter Unit Tests (Phase 8G.0)', () => {
   };
 
   const mockIntegration: ClientIntegration = {
-    id: 'integ-1' as any,
-    organizationId: 'org-1' as any,
-    clientId: 'client-1' as any,
+    id: 'integ-1' as unknown as ClientIntegrationId,
+    organizationId: 'org-1' as unknown as OrganizationId,
+    clientId: 'client-1' as unknown as ClientId,
     provider: 'google',
     externalAccountId: '1234567890',
     status: 'active',
@@ -43,10 +45,10 @@ describe('GoogleAdsReconcilerAdapter Unit Tests (Phase 8G.0)', () => {
     updatedAt: new Date(),
   };
 
-  function makeClientRepo(integrations: ClientIntegration[] = [mockIntegration]) {
+  function makeClientRepo(integrations: ClientIntegration[] = [mockIntegration]): ClientRepository {
     return {
       listIntegrations: vi.fn().mockResolvedValue(ok(integrations)),
-    } as any;
+    } as unknown as ClientRepository;
   }
 
   beforeEach(() => {
@@ -60,20 +62,20 @@ describe('GoogleAdsReconcilerAdapter Unit Tests (Phase 8G.0)', () => {
 
   it('supports channel google_ads and provider google exclusively', () => {
     const adapter = new GoogleAdsReconcilerAdapter({
-      activationRepository: {} as any,
+      activationRepository: {} as unknown as CampaignActivationRepository,
       clientRepository: makeClientRepo(),
-      credentialRepository: {} as any,
+      credentialRepository: {} as unknown as SupabaseCredentialRepository,
       logger: makeLogger(),
     });
 
-    expect(adapter.supports('google_ads' as any, 'google' as any)).toBe(true);
-    expect(adapter.supports('facebook_organic' as any, 'meta' as any)).toBe(false);
+    expect(adapter.supports('google_ads' as unknown as ActivationChannel, 'google' as unknown as ActivationProvider)).toBe(true);
+    expect(adapter.supports('facebook_organic' as unknown as ActivationChannel, 'meta' as unknown as ActivationProvider)).toBe(false);
   });
 
   it('returns confirmed_not_published when GAQL search returns 0 matches for exact correlation name', async () => {
     const credentialRepository = {
       resolveGoogleRefreshToken: vi.fn().mockResolvedValue({ refreshToken: 'ref-token-1' }),
-    } as any;
+    } as unknown as SupabaseCredentialRepository;
 
     const mockApiClient = {
       refreshAccessToken: vi.fn().mockResolvedValue({ accessToken: 'access-123' }),
@@ -84,7 +86,7 @@ describe('GoogleAdsReconcilerAdapter Unit Tests (Phase 8G.0)', () => {
     } as unknown as GoogleAdsApiClient;
 
     const adapter = new GoogleAdsReconcilerAdapter({
-      activationRepository: {} as any,
+      activationRepository: {} as unknown as CampaignActivationRepository,
       clientRepository: makeClientRepo(),
       credentialRepository,
       logger: makeLogger(),
@@ -96,8 +98,8 @@ describe('GoogleAdsReconcilerAdapter Unit Tests (Phase 8G.0)', () => {
       targetId: 'target-1',
       organizationId: 'org-1',
       clientId: 'client-1',
-      channel: 'google_ads' as any,
-      provider: 'google' as any,
+      channel: 'google_ads' as unknown as ActivationChannel,
+      provider: 'google' as unknown as ActivationProvider,
       clientIntegrationId: 'integ-1',
       attemptMetadata: validAttemptMetadata,
       targetMetadata: { googleAdsTargetResource: validTargetResource },
@@ -120,7 +122,7 @@ describe('GoogleAdsReconcilerAdapter Unit Tests (Phase 8G.0)', () => {
   it('returns confirmed_published when GAQL search returns exactly 1 match', async () => {
     const credentialRepository = {
       resolveGoogleRefreshToken: vi.fn().mockResolvedValue({ refreshToken: 'ref-token-1' }),
-    } as any;
+    } as unknown as SupabaseCredentialRepository;
 
     const mockApiClient = {
       refreshAccessToken: vi.fn().mockResolvedValue({ accessToken: 'access-123' }),
@@ -140,7 +142,7 @@ describe('GoogleAdsReconcilerAdapter Unit Tests (Phase 8G.0)', () => {
     } as unknown as GoogleAdsApiClient;
 
     const adapter = new GoogleAdsReconcilerAdapter({
-      activationRepository: {} as any,
+      activationRepository: {} as unknown as CampaignActivationRepository,
       clientRepository: makeClientRepo(),
       credentialRepository,
       logger: makeLogger(),
@@ -152,8 +154,8 @@ describe('GoogleAdsReconcilerAdapter Unit Tests (Phase 8G.0)', () => {
       targetId: 'target-1',
       organizationId: 'org-1',
       clientId: 'client-1',
-      channel: 'google_ads' as any,
-      provider: 'google' as any,
+      channel: 'google_ads' as unknown as ActivationChannel,
+      provider: 'google' as unknown as ActivationProvider,
       clientIntegrationId: 'integ-1',
       attemptMetadata: validAttemptMetadata,
       targetMetadata: { googleAdsTargetResource: validTargetResource },
@@ -172,7 +174,7 @@ describe('GoogleAdsReconcilerAdapter Unit Tests (Phase 8G.0)', () => {
   it('returns unresolved when GAQL search returns >1 exact matches (ambiguous)', async () => {
     const credentialRepository = {
       resolveGoogleRefreshToken: vi.fn().mockResolvedValue({ refreshToken: 'ref-token-1' }),
-    } as any;
+    } as unknown as SupabaseCredentialRepository;
 
     const mockApiClient = {
       refreshAccessToken: vi.fn().mockResolvedValue({ accessToken: 'access-123' }),
@@ -186,7 +188,7 @@ describe('GoogleAdsReconcilerAdapter Unit Tests (Phase 8G.0)', () => {
     } as unknown as GoogleAdsApiClient;
 
     const adapter = new GoogleAdsReconcilerAdapter({
-      activationRepository: {} as any,
+      activationRepository: {} as unknown as CampaignActivationRepository,
       clientRepository: makeClientRepo(),
       credentialRepository,
       logger: makeLogger(),
@@ -198,8 +200,8 @@ describe('GoogleAdsReconcilerAdapter Unit Tests (Phase 8G.0)', () => {
       targetId: 'target-1',
       organizationId: 'org-1',
       clientId: 'client-1',
-      channel: 'google_ads' as any,
-      provider: 'google' as any,
+      channel: 'google_ads' as unknown as ActivationChannel,
+      provider: 'google' as unknown as ActivationProvider,
       clientIntegrationId: 'integ-1',
       attemptMetadata: validAttemptMetadata,
       targetMetadata: { googleAdsTargetResource: validTargetResource },
@@ -215,10 +217,10 @@ describe('GoogleAdsReconcilerAdapter Unit Tests (Phase 8G.0)', () => {
   it('returns unresolved with AUTH_EXPIRED when refresh token is missing or token refresh fails', async () => {
     const credentialRepository = {
       resolveGoogleRefreshToken: vi.fn().mockResolvedValue(null),
-    } as any;
+    } as unknown as SupabaseCredentialRepository;
 
     const adapter = new GoogleAdsReconcilerAdapter({
-      activationRepository: {} as any,
+      activationRepository: {} as unknown as CampaignActivationRepository,
       clientRepository: makeClientRepo(),
       credentialRepository,
       logger: makeLogger(),
@@ -229,8 +231,8 @@ describe('GoogleAdsReconcilerAdapter Unit Tests (Phase 8G.0)', () => {
       targetId: 'target-1',
       organizationId: 'org-1',
       clientId: 'client-1',
-      channel: 'google_ads' as any,
-      provider: 'google' as any,
+      channel: 'google_ads' as unknown as ActivationChannel,
+      provider: 'google' as unknown as ActivationProvider,
       clientIntegrationId: 'integ-1',
       attemptMetadata: validAttemptMetadata,
       targetMetadata: { googleAdsTargetResource: validTargetResource },
@@ -250,9 +252,9 @@ describe('GoogleAdsReconcilerAdapter Unit Tests (Phase 8G.0)', () => {
     };
 
     const adapter = new GoogleAdsReconcilerAdapter({
-      activationRepository: {} as any,
+      activationRepository: {} as unknown as CampaignActivationRepository,
       clientRepository: makeClientRepo([driftedIntegration]),
-      credentialRepository: {} as any,
+      credentialRepository: {} as unknown as SupabaseCredentialRepository,
       logger: makeLogger(),
     });
 
@@ -261,8 +263,8 @@ describe('GoogleAdsReconcilerAdapter Unit Tests (Phase 8G.0)', () => {
       targetId: 'target-1',
       organizationId: 'org-1',
       clientId: 'client-1',
-      channel: 'google_ads' as any,
-      provider: 'google' as any,
+      channel: 'google_ads' as unknown as ActivationChannel,
+      provider: 'google' as unknown as ActivationProvider,
       clientIntegrationId: 'integ-1',
       attemptMetadata: validAttemptMetadata,
       targetMetadata: { googleAdsTargetResource: validTargetResource },
@@ -278,7 +280,7 @@ describe('GoogleAdsReconcilerAdapter Unit Tests (Phase 8G.0)', () => {
   it('returns unresolved with PROVIDER_QUERY_FAILED when GAQL search throws network/API error', async () => {
     const credentialRepository = {
       resolveGoogleRefreshToken: vi.fn().mockResolvedValue({ refreshToken: 'ref-token-1' }),
-    } as any;
+    } as unknown as SupabaseCredentialRepository;
 
     const mockApiClient = {
       refreshAccessToken: vi.fn().mockResolvedValue({ accessToken: 'access-123' }),
@@ -286,7 +288,7 @@ describe('GoogleAdsReconcilerAdapter Unit Tests (Phase 8G.0)', () => {
     } as unknown as GoogleAdsApiClient;
 
     const adapter = new GoogleAdsReconcilerAdapter({
-      activationRepository: {} as any,
+      activationRepository: {} as unknown as CampaignActivationRepository,
       clientRepository: makeClientRepo(),
       credentialRepository,
       logger: makeLogger(),
@@ -298,8 +300,8 @@ describe('GoogleAdsReconcilerAdapter Unit Tests (Phase 8G.0)', () => {
       targetId: 'target-1',
       organizationId: 'org-1',
       clientId: 'client-1',
-      channel: 'google_ads' as any,
-      provider: 'google' as any,
+      channel: 'google_ads' as unknown as ActivationChannel,
+      provider: 'google' as unknown as ActivationProvider,
       clientIntegrationId: 'integ-1',
       attemptMetadata: validAttemptMetadata,
       targetMetadata: { googleAdsTargetResource: validTargetResource },

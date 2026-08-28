@@ -62,6 +62,7 @@ describe('listPublicationWebhookEvidenceByJob Use Case (Phase 8B.4)', () => {
       appendEvent: vi.fn(),
       recordWebhookReceipt: vi.fn(),
       markWebhookEventProcessed: vi.fn(),
+      recordProviderObservation: vi.fn(),
     };
   }
 

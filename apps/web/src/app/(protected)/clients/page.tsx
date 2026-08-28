@@ -51,7 +51,7 @@ export default async function ClientsPage({ searchParams }: Props) {
   const total = count ?? 0;
   const totalPages = Math.ceil(total / pageSize);
 
-  const clients: ClientListItem[] = (data ?? []).map((row: ClientRow) => ({
+  const clients: ClientListItem[] = ((data ?? []) as unknown as ClientRow[]).map((row) => ({
     id: row.id,
     name: row.name,
     legalName: row.legal_name,

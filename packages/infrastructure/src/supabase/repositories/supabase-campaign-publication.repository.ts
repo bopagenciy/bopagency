@@ -690,7 +690,10 @@ export class SupabaseCampaignPublicationRepository implements CampaignPublicatio
       return err({ code: 'INTERNAL_ERROR', message: 'RPC record_provider_observation no retornó filas' });
     }
 
-    const first = rows[0]!;
+    const first = rows[0];
+    if (!first) {
+      return err({ code: 'INTERNAL_ERROR', message: 'RPC record_provider_observation no retornó filas válidas' });
+    }
     return ok({
       inserted: Boolean(first.inserted),
       observationId: String(first.observation_id),

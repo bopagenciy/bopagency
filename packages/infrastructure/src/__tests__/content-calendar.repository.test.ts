@@ -5,15 +5,16 @@ import type { OrganizationId, CampaignId, ContentCalendarItemId } from '@bop-age
 import type { SupabaseClient } from '@supabase/supabase-js';
 
 describe('SupabaseContentCalendarRepository Unit Tests (Mocked Client)', () => {
+  const mockRpc = vi.fn();
   const mockClient = {
-    rpc: vi.fn(),
+    rpc: mockRpc,
     from: vi.fn(),
   } as unknown as SupabaseClient;
 
   const repo = new SupabaseContentCalendarRepository(mockClient);
 
   it('create invokes create_content_calendar_item RPC with correct parameters', async () => {
-    mockClient.rpc.mockResolvedValue({
+    mockRpc.mockResolvedValue({
       data: {
         success: true,
         data: {
@@ -60,7 +61,7 @@ describe('SupabaseContentCalendarRepository Unit Tests (Mocked Client)', () => {
   });
 
   it('reschedule handles RPC errors cleanly', async () => {
-    mockClient.rpc.mockResolvedValue({
+    mockRpc.mockResolvedValue({
       data: {
         success: false,
         error_code: 'STATE_CONFLICT',
@@ -83,7 +84,7 @@ describe('SupabaseContentCalendarRepository Unit Tests (Mocked Client)', () => {
   });
 
   it('listByRange maps SQL rows to projections correctly', async () => {
-    mockClient.rpc.mockResolvedValue({
+    mockRpc.mockResolvedValue({
       data: [
         {
           id: 'cal-1',

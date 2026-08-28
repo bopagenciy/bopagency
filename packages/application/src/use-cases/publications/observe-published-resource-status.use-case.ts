@@ -84,7 +84,9 @@ export async function observePublishedResourceStatus(
     });
   }
 
-  const externalId = (job as { externalId?: string | null }).externalId || null;
+  const attempts = job.attempts || [];
+  const latestAttempt = attempts.length > 0 ? attempts[attempts.length - 1] : null;
+  const externalId = latestAttempt?.externalId || null;
 
   if (!externalId) {
     return err({

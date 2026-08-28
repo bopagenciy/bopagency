@@ -9,6 +9,8 @@ import type {
   CampaignActivationRepository,
   ClientRepository,
   GoogleAdsTargetResourceSnapshot,
+  ClientId,
+  OrganizationId,
 } from '@bop-agency/domain';
 import type { SupabaseCredentialRepository } from '../supabase/repositories/supabase-credential.repository';
 import {
@@ -122,8 +124,8 @@ export class GoogleAdsMonitorAdapter implements PublicationProviderMonitorPort {
     // 3. Integration status & drift validation
     if (this.clientRepository && input.clientId && input.organizationId) {
       const integrationsRes = await this.clientRepository.listIntegrations(
-        input.clientId as any,
-        input.organizationId as any,
+        input.clientId as unknown as ClientId,
+        input.organizationId as unknown as OrganizationId,
       );
 
       if (!integrationsRes.success) {

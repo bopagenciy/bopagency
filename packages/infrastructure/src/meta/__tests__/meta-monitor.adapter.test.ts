@@ -2,8 +2,10 @@ import { describe, it, expect, vi, beforeEach } from 'vitest';
 import { MetaMonitorAdapter } from '../meta-monitor.adapter';
 import type { MetaGraphApiClient } from '../meta-graph-api.client';
 import { ok } from '@bop-agency/shared';
-import type { ClientIntegration } from '@bop-agency/domain';
+import type { ClientIntegration, OrganizationId, ClientId, ClientIntegrationId, ClientRepository } from '@bop-agency/domain';
+import type { SupabaseCredentialRepository } from '../../supabase/repositories/supabase-credential.repository';
 import type { LoggerPort } from '@bop-agency/application';
+import type { ActivationChannel, ActivationProvider } from '@bop-agency/shared';
 
 function makeLogger(): LoggerPort {
   return { debug: vi.fn(), info: vi.fn(), warn: vi.fn(), error: vi.fn() };
@@ -11,9 +13,9 @@ function makeLogger(): LoggerPort {
 
 describe('MetaMonitorAdapter Unit Tests (Phase 8G.2 Hardened Gate)', () => {
   const mockIntegration: ClientIntegration = {
-    id: 'integ-meta-1' as any,
-    organizationId: 'org-1' as any,
-    clientId: 'client-1' as any,
+    id: 'integ-meta-1' as unknown as ClientIntegrationId,
+    organizationId: 'org-1' as unknown as OrganizationId,
+    clientId: 'client-1' as unknown as ClientId,
     provider: 'meta',
     externalAccountId: 'page-12345',
     status: 'active',
@@ -25,10 +27,10 @@ describe('MetaMonitorAdapter Unit Tests (Phase 8G.2 Hardened Gate)', () => {
     updatedAt: new Date(),
   };
 
-  function makeClientRepo(integrations: ClientIntegration[] = [mockIntegration]) {
+  function makeClientRepo(integrations: ClientIntegration[] = [mockIntegration]): ClientRepository {
     return {
       listIntegrations: vi.fn().mockResolvedValue(ok(integrations)),
-    } as any;
+    } as unknown as ClientRepository;
   }
 
   beforeEach(() => {
@@ -37,22 +39,22 @@ describe('MetaMonitorAdapter Unit Tests (Phase 8G.2 Hardened Gate)', () => {
 
   it('supports channel facebook_organic and instagram_organic with provider meta', () => {
     const adapter = new MetaMonitorAdapter({
-      credentialRepository: {} as any,
+      credentialRepository: {} as unknown as SupabaseCredentialRepository,
       logger: makeLogger(),
-      apiClient: {} as any,
+      apiClient: {} as unknown as MetaGraphApiClient,
     });
 
-    expect(adapter.supports('facebook_organic' as any, 'meta' as any)).toBe(true);
-    expect(adapter.supports('instagram_organic' as any, 'meta' as any)).toBe(true);
-    expect(adapter.supports('google_ads' as any, 'google' as any)).toBe(false);
+    expect(adapter.supports('facebook_organic', 'meta')).toBe(true);
+    expect(adapter.supports('instagram_organic', 'meta')).toBe(true);
+    expect(adapter.supports('google_ads', 'google')).toBe(false);
   });
 
   it('rejects malformed external ID format before making provider API calls', async () => {
     const adapter = new MetaMonitorAdapter({
       clientRepository: makeClientRepo(),
-      credentialRepository: {} as any,
+      credentialRepository: {} as unknown as SupabaseCredentialRepository,
       logger: makeLogger(),
-      apiClient: {} as any,
+      apiClient: {} as unknown as MetaGraphApiClient,
     });
 
     const result = await adapter.observe({
@@ -60,8 +62,8 @@ describe('MetaMonitorAdapter Unit Tests (Phase 8G.2 Hardened Gate)', () => {
       targetId: 'target-1',
       organizationId: 'org-1',
       clientId: 'client-1',
-      channel: 'facebook_organic' as any,
-      provider: 'meta' as any,
+      channel: 'facebook_organic' as unknown as ActivationChannel,
+      provider: 'meta' as unknown as ActivationProvider,
       externalId: 'invalid/id/injection',
       clientIntegrationId: 'integ-meta-1',
       attemptMetadata: null,
@@ -78,7 +80,7 @@ describe('MetaMonitorAdapter Unit Tests (Phase 8G.2 Hardened Gate)', () => {
   it('observes Facebook post state (PUBLISHED) when query succeeds', async () => {
     const credentialRepository = {
       resolvePageAccessToken: vi.fn().mockResolvedValue({ pageAccessToken: 'secret-page-token-123' }),
-    } as any;
+    } as unknown as SupabaseCredentialRepository;
 
     const mockApiClient = {
       observeFacebookPost: vi.fn().mockResolvedValue({
@@ -105,8 +107,8 @@ describe('MetaMonitorAdapter Unit Tests (Phase 8G.2 Hardened Gate)', () => {
       targetId: 'target-1',
       organizationId: 'org-1',
       clientId: 'client-1',
-      channel: 'facebook_organic' as any,
-      provider: 'meta' as any,
+      channel: 'facebook_organic' as unknown as ActivationChannel,
+      provider: 'meta' as unknown as ActivationProvider,
       externalId: '12345_67890',
       clientIntegrationId: 'integ-meta-1',
       attemptMetadata: null,
@@ -128,7 +130,7 @@ describe('MetaMonitorAdapter Unit Tests (Phase 8G.2 Hardened Gate)', () => {
   it('maps Facebook is_published = false to resourceStatus UNPUBLISHED (NOT not_found)', async () => {
     const credentialRepository = {
       resolvePageAccessToken: vi.fn().mockResolvedValue({ pageAccessToken: 'token-abc' }),
-    } as any;
+    } as unknown as SupabaseCredentialRepository;
 
     const mockApiClient = {
       observeFacebookPost: vi.fn().mockResolvedValue({
@@ -153,8 +155,8 @@ describe('MetaMonitorAdapter Unit Tests (Phase 8G.2 Hardened Gate)', () => {
       targetId: 'target-1',
       organizationId: 'org-1',
       clientId: 'client-1',
-      channel: 'facebook_organic' as any,
-      provider: 'meta' as any,
+      channel: 'facebook_organic' as unknown as ActivationChannel,
+      provider: 'meta' as unknown as ActivationProvider,
       externalId: '12345_67890',
       clientIntegrationId: 'integ-meta-1',
       attemptMetadata: null,
@@ -171,7 +173,7 @@ describe('MetaMonitorAdapter Unit Tests (Phase 8G.2 Hardened Gate)', () => {
   it('maps definitive missing subcode 33 to not_found / REMOVED', async () => {
     const credentialRepository = {
       resolvePageAccessToken: vi.fn().mockResolvedValue({ pageAccessToken: 'token-abc' }),
-    } as any;
+    } as unknown as SupabaseCredentialRepository;
 
     const mockApiClient = {
       observeFacebookPost: vi.fn().mockResolvedValue({
@@ -195,8 +197,8 @@ describe('MetaMonitorAdapter Unit Tests (Phase 8G.2 Hardened Gate)', () => {
       targetId: 'target-1',
       organizationId: 'org-1',
       clientId: 'client-1',
-      channel: 'facebook_organic' as any,
-      provider: 'meta' as any,
+      channel: 'facebook_organic' as unknown as ActivationChannel,
+      provider: 'meta' as unknown as ActivationProvider,
       externalId: '12345_67890',
       clientIntegrationId: 'integ-meta-1',
       attemptMetadata: null,
@@ -213,7 +215,7 @@ describe('MetaMonitorAdapter Unit Tests (Phase 8G.2 Hardened Gate)', () => {
   it('maps generic HTTP 404 WITHOUT missing subcode to PROVIDER_QUERY_FAILED (NOT not_found)', async () => {
     const credentialRepository = {
       resolvePageAccessToken: vi.fn().mockResolvedValue({ pageAccessToken: 'token-abc' }),
-    } as any;
+    } as unknown as SupabaseCredentialRepository;
 
     const mockApiClient = {
       observeFacebookPost: vi.fn().mockResolvedValue({
@@ -237,8 +239,8 @@ describe('MetaMonitorAdapter Unit Tests (Phase 8G.2 Hardened Gate)', () => {
       targetId: 'target-1',
       organizationId: 'org-1',
       clientId: 'client-1',
-      channel: 'facebook_organic' as any,
-      provider: 'meta' as any,
+      channel: 'facebook_organic' as unknown as ActivationChannel,
+      provider: 'meta' as unknown as ActivationProvider,
       externalId: '12345_67890',
       clientIntegrationId: 'integ-meta-1',
       attemptMetadata: null,
@@ -255,7 +257,7 @@ describe('MetaMonitorAdapter Unit Tests (Phase 8G.2 Hardened Gate)', () => {
   it('maps permission / scope access error (HTTP 403 / code 200) to INTEGRATION_NOT_AVAILABLE', async () => {
     const credentialRepository = {
       resolvePageAccessToken: vi.fn().mockResolvedValue({ pageAccessToken: 'token-abc' }),
-    } as any;
+    } as unknown as SupabaseCredentialRepository;
 
     const mockApiClient = {
       observeFacebookPost: vi.fn().mockResolvedValue({
@@ -279,8 +281,8 @@ describe('MetaMonitorAdapter Unit Tests (Phase 8G.2 Hardened Gate)', () => {
       targetId: 'target-1',
       organizationId: 'org-1',
       clientId: 'client-1',
-      channel: 'facebook_organic' as any,
-      provider: 'meta' as any,
+      channel: 'facebook_organic' as unknown as ActivationChannel,
+      provider: 'meta' as unknown as ActivationProvider,
       externalId: '12345_67890',
       clientIntegrationId: 'integ-meta-1',
       attemptMetadata: null,
@@ -297,13 +299,13 @@ describe('MetaMonitorAdapter Unit Tests (Phase 8G.2 Hardened Gate)', () => {
   it('detects Instagram account ID drift and returns INTEGRATION_NOT_AVAILABLE', async () => {
     const credentialRepository = {
       resolvePageAccessToken: vi.fn().mockResolvedValue({ pageAccessToken: 'token-abc' }),
-    } as any;
+    } as unknown as SupabaseCredentialRepository;
 
     const adapter = new MetaMonitorAdapter({
       clientRepository: makeClientRepo(),
       credentialRepository,
       logger: makeLogger(),
-      apiClient: {} as any,
+      apiClient: {} as unknown as MetaGraphApiClient,
     });
 
     const result = await adapter.observe({
@@ -311,8 +313,8 @@ describe('MetaMonitorAdapter Unit Tests (Phase 8G.2 Hardened Gate)', () => {
       targetId: 'target-1',
       organizationId: 'org-1',
       clientId: 'client-1',
-      channel: 'instagram_organic' as any,
-      provider: 'meta' as any,
+      channel: 'instagram_organic' as unknown as ActivationChannel,
+      provider: 'meta' as unknown as ActivationProvider,
       externalId: '17841400000000000',
       clientIntegrationId: 'integ-meta-1',
       attemptMetadata: { instagram_account_id: 'different-ig-account-11111' },

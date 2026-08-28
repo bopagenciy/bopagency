@@ -273,9 +273,9 @@ export default async function ClientDetailPage({ params }: Props) {
                       {integration.provider.replace('_', ' ')}
                     </p>
                     <p className="text-xs text-gray-400 font-mono">{integration.external_account_id}</p>
-                    {integration.configuration && (integration.configuration as Record<string, unknown>).customer_name && (
+                    {typeof (integration.configuration as Record<string, unknown> | null)?.['customer_name'] === 'string' && (
                       <p className="text-xs text-gray-500 font-medium">
-                        {String((integration.configuration as Record<string, unknown>).customer_name)}
+                        {(integration.configuration as Record<string, unknown>)['customer_name'] as string}
                       </p>
                     )}
                   </div>

@@ -7,6 +7,8 @@ import {
 } from '../entities/content-calendar-item';
 import type { OrganizationId } from '../entities/organization';
 import type { CampaignId } from '../entities/campaign';
+import type { CampaignActivationId } from '../entities/campaign-activation';
+import type { CampaignActivationTargetId } from '../entities/campaign-activation-target';
 
 describe('ContentCalendarItem Domain Entity & Pure Helpers', () => {
   it('contentCalendarItemId creates branded id or throws on empty', () => {

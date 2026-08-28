@@ -16,7 +16,7 @@ import type {
   ProviderResourceObservation,
   LoggerPort,
 } from '@bop-agency/application';
-import type { ClientRepository } from '@bop-agency/domain';
+import type { ClientRepository, ClientId, OrganizationId } from '@bop-agency/domain';
 import type { SupabaseCredentialRepository } from '../supabase/repositories/supabase-credential.repository';
 import type { MetaGraphApiClient } from './meta-graph-api.client';
 
@@ -90,8 +90,8 @@ export class MetaMonitorAdapter implements PublicationProviderMonitorPort {
     // 2. Integration Status & Drift Validation (Facebook Page & Instagram Account)
     if (this.clientRepository && input.clientIntegrationId) {
       const integrationsRes = await this.clientRepository.listIntegrations(
-        input.clientId as any,
-        input.organizationId as any,
+        input.clientId as unknown as ClientId,
+        input.organizationId as unknown as OrganizationId,
       );
 
       if (integrationsRes.success && integrationsRes.value) {

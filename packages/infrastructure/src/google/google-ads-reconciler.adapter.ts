@@ -9,6 +9,8 @@ import type {
   CampaignActivationRepository,
   ClientRepository,
   GoogleAdsTargetResourceSnapshot,
+  ClientId,
+  OrganizationId,
 } from '@bop-agency/domain';
 import type { SupabaseCredentialRepository } from '../supabase/repositories/supabase-credential.repository';
 import {
@@ -113,8 +115,8 @@ export class GoogleAdsReconcilerAdapter implements PublicationReconcilerPort {
     // 3. Integration status & drift validation against active client integration record
     if (this.clientRepository && input.clientId && input.organizationId) {
       const integrationsRes = await this.clientRepository.listIntegrations(
-        input.clientId as any,
-        input.organizationId as any,
+        input.clientId as unknown as ClientId,
+        input.organizationId as unknown as OrganizationId,
       );
       if (!integrationsRes.success) {
         return ok({
@@ -209,8 +211,9 @@ export class GoogleAdsReconcilerAdapter implements PublicationReconcilerPort {
         });
       }
 
-      if (exactMatches.length === 1) {
-        const campaign = exactMatches[0]!.campaign;
+      const firstMatch = exactMatches[0];
+      if (exactMatches.length === 1 && firstMatch) {
+        const campaign = firstMatch.campaign;
         const campaignId = campaign.id || campaign.resourceName.split('/').pop() || 'unknown';
         const externalId = campaign.resourceName || `customers/${customerId}/campaigns/${campaignId}`;
 

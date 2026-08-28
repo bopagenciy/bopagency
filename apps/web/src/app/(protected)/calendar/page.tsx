@@ -1,6 +1,7 @@
 import React from 'react';
 import { requireOrganization } from '@/lib/auth/server';
 import { ContentCalendarPage } from '@/components/calendar/ContentCalendarPage';
+import type { OrganizationRole } from '@/lib/supabase/types';
 
 interface PageProps {
   searchParams: Promise<{ campaignId?: string }>;
@@ -12,7 +13,7 @@ export default async function GlobalCalendarPage({ searchParams }: PageProps) {
 
   return (
     <ContentCalendarPage
-      userRole={membership.role}
+      userRole={membership.role as OrganizationRole}
       {...(params.campaignId ? { initialCampaignId: params.campaignId } : {})}
     />
   );
