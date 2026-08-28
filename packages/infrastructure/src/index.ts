@@ -148,6 +148,8 @@ export type {
   CheckpointRpcFunction,
   FetchTargetMetadataFunction,
 } from './meta/meta-publisher.adapter';
+export { MetaMonitorAdapter } from './meta/meta-monitor.adapter';
+export type { MetaMonitorAdapterDeps } from './meta/meta-monitor.adapter';
 export { SupabaseCredentialRepository } from './supabase/repositories/supabase-credential.repository';
 export type { ResolvedPageCredential } from './supabase/repositories/supabase-credential.repository';
 export { SupabasePendingConnectionRepository } from './supabase/repositories/supabase-pending-connection.repository';

@@ -285,4 +285,104 @@ export class MetaGraphApiClient {
       httpStatus: res.status,
     };
   }
+
+  /**
+   * Phase 8G.2 — Consulta LECTURA PURA el estado de un post de Facebook via Graph API.
+   */
+  async observeFacebookPost(
+    postId: string,
+    accessToken: string,
+  ): Promise<{
+    result: {
+      id: string;
+      created_time?: string | undefined;
+      permalink_url?: string | undefined;
+      is_published?: boolean | undefined;
+    } | null;
+    requestId: string | null;
+    httpStatus: number;
+    errorSubcode?: number | null;
+    errorCode?: number | null;
+  }> {
+    const url = new URL(`${this.baseUrl}/${postId}`);
+    url.searchParams.set('fields', 'id,created_time,permalink_url,is_published');
+    url.searchParams.set('access_token', accessToken);
+
+    const res = await this.fetchFn(url.toString(), { method: 'GET' });
+    const requestId = res.headers.get('x-fb-trace-id') || res.headers.get('x-app-usage') || null;
+    const data = await res.json();
+
+    if (!res.ok) {
+      const metaErr = data.error;
+      return {
+        result: null,
+        requestId,
+        httpStatus: res.status,
+        errorCode: metaErr?.code ? Number(metaErr.code) : null,
+        errorSubcode: metaErr?.error_subcode ? Number(metaErr.error_subcode) : null,
+      };
+    }
+
+    return {
+      result: {
+        id: String(data.id),
+        created_time: data.created_time ? String(data.created_time) : undefined,
+        permalink_url: data.permalink_url ? String(data.permalink_url) : undefined,
+        is_published: data.is_published !== undefined ? Boolean(data.is_published) : undefined,
+      },
+      requestId,
+      httpStatus: res.status,
+    };
+  }
+
+  /**
+   * Phase 8G.2 — Consulta LECTURA PURA el estado de un media item de Instagram via Graph API.
+   */
+  async observeInstagramMedia(
+    mediaId: string,
+    accessToken: string,
+  ): Promise<{
+    result: {
+      id: string;
+      media_type?: string | undefined;
+      media_product_type?: string | undefined;
+      permalink?: string | undefined;
+      timestamp?: string | undefined;
+    } | null;
+    requestId: string | null;
+    httpStatus: number;
+    errorSubcode?: number | null;
+    errorCode?: number | null;
+  }> {
+    const url = new URL(`${this.baseUrl}/${mediaId}`);
+    url.searchParams.set('fields', 'id,media_type,media_product_type,permalink,timestamp');
+    url.searchParams.set('access_token', accessToken);
+
+    const res = await this.fetchFn(url.toString(), { method: 'GET' });
+    const requestId = res.headers.get('x-fb-trace-id') || res.headers.get('x-app-usage') || null;
+    const data = await res.json();
+
+    if (!res.ok) {
+      const metaErr = data.error;
+      return {
+        result: null,
+        requestId,
+        httpStatus: res.status,
+        errorCode: metaErr?.code ? Number(metaErr.code) : null,
+        errorSubcode: metaErr?.error_subcode ? Number(metaErr.error_subcode) : null,
+      };
+    }
+
+    return {
+      result: {
+        id: String(data.id),
+        media_type: data.media_type ? String(data.media_type) : undefined,
+        media_product_type: data.media_product_type ? String(data.media_product_type) : undefined,
+        permalink: data.permalink ? String(data.permalink) : undefined,
+        timestamp: data.timestamp ? String(data.timestamp) : undefined,
+      },
+      requestId,
+      httpStatus: res.status,
+    };
+  }
 }
