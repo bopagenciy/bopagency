@@ -20,7 +20,7 @@
  * persistencia pura, consumida por 8B.2 (application orchestration).
  */
 
-import type { Result, PaginatedResult, PaginationParams } from '@bop-agency/shared';
+import type { Result, PaginatedResult, PaginationParams, ActivationChannel, ActivationProvider } from '@bop-agency/shared';
 import type { OrganizationId } from '../entities/organization';
 import type { CampaignActivationId } from '../entities/campaign-activation';
 import type { CampaignActivationTargetId } from '../entities/campaign-activation-target';
@@ -42,7 +42,7 @@ import type {
   RecordWebhookReceiptInput,
   RecordWebhookReceiptResult,
 } from '../entities/campaign-publication-webhook-event';
-import type { ActivationProvider, PublicationFailureCategory, PublicationWebhookEventStatus } from '@bop-agency/shared';
+import type { PublicationFailureCategory, PublicationWebhookEventStatus } from '@bop-agency/shared';
 
 // --- Aggregate read type ---
 
@@ -114,9 +114,37 @@ export type PrepareRetryInput = {
   readonly note?: string | null;
 };
 
+// --- Phase 8G.1A Provider Observation Persistence Input ---
+export type RecordProviderObservationInput = {
+  readonly organizationId: OrganizationId;
+  readonly clientId: string;
+  readonly jobId: CampaignPublicationJobId;
+  readonly targetId: string;
+  readonly provider: ActivationProvider;
+  readonly channel: ActivationChannel;
+  readonly externalId: string;
+  readonly availability: 'observed' | 'unavailable' | 'not_found';
+  readonly unavailabilityReason?: string | null;
+  readonly resourceStatus?: string | null;
+  readonly servingStatus?: string | null;
+  readonly primaryStatus?: string | null;
+  readonly primaryStatusReasons?: readonly string[];
+  readonly observedAt?: Date;
+  readonly requestId?: string | null;
+  readonly metadata?: Record<string, unknown>;
+};
+
+export type RecordProviderObservationResult = {
+  readonly inserted: boolean;
+  readonly observationId: string;
+  readonly changeKind: 'first' | 'same' | 'change';
+  readonly observedAt: Date;
+};
+
 // --- Repository interface ---
 
 export interface CampaignPublicationRepository {
+
   // -- Jobs - reads --
 
   findJobById(
@@ -289,4 +317,9 @@ export interface CampaignPublicationRepository {
       readonly attemptId?: CampaignPublicationAttemptId | null;
     },
   ): Promise<Result<void>>;
+
+  /** RPC `record_provider_observation` — Phase 8G.1A atomic change detection & observation insertion */
+  recordProviderObservation(
+    input: RecordProviderObservationInput,
+  ): Promise<Result<RecordProviderObservationResult>>;
 }

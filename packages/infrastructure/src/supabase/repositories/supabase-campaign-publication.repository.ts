@@ -37,6 +37,8 @@ import type {
   RecordPublicationUnknownOutcomeInput,
   ReconcilePublicationJobInput,
   PrepareRetryInput,
+  RecordProviderObservationInput,
+  RecordProviderObservationResult,
 } from '@bop-agency/domain';
 import type { OrganizationId } from '@bop-agency/domain';
 import type { CampaignActivationId } from '@bop-agency/domain';
@@ -641,6 +643,62 @@ export class SupabaseCampaignPublicationRepository implements CampaignPublicatio
 
     return ok(undefined);
   }
+
+  // -- recordProviderObservation - RPC record_provider_observation --
+
+  async recordProviderObservation(
+    input: RecordProviderObservationInput,
+  ): Promise<Result<RecordProviderObservationResult>> {
+    const sortedReasons = input.primaryStatusReasons
+      ? Array.from(new Set(input.primaryStatusReasons)).sort()
+      : [];
+
+    const { data, error } = await (this.supabase as unknown as RpcCapableClient).rpc(
+      'record_provider_observation',
+      {
+        p_organization_id: input.organizationId,
+        p_client_id: input.clientId,
+        p_job_id: input.jobId,
+        p_target_id: input.targetId,
+        p_provider: input.provider,
+        p_channel: input.channel,
+        p_external_id: input.externalId,
+        p_availability: input.availability,
+        p_unavailability_reason: input.unavailabilityReason ?? null,
+        p_resource_status: input.resourceStatus ?? null,
+        p_serving_status: input.servingStatus ?? null,
+        p_primary_status: input.primaryStatus ?? null,
+        p_primary_status_reasons: sortedReasons,
+        p_observed_at: input.observedAt ? input.observedAt.toISOString() : new Date().toISOString(),
+        p_request_id: input.requestId ?? null,
+        p_metadata: input.metadata ?? {},
+      },
+    );
+
+    if (error) {
+      return err(mapPublicationRpcError(error.message, 'Error al registrar la observación del proveedor'));
+    }
+
+    const rows = data as Array<{
+      inserted: boolean;
+      observation_id: string;
+      change_kind: string;
+      observed_at: string;
+    }> | null;
+
+    if (!rows || rows.length === 0) {
+      return err({ code: 'INTERNAL_ERROR', message: 'RPC record_provider_observation no retornó filas' });
+    }
+
+    const first = rows[0]!;
+    return ok({
+      inserted: Boolean(first.inserted),
+      observationId: String(first.observation_id),
+      changeKind: first.change_kind as 'first' | 'same' | 'change',
+      observedAt: new Date(first.observed_at),
+    });
+  }
+
 }
 
 // --- Helpers ---

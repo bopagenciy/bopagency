@@ -355,6 +355,8 @@ export type {
   RecordPublicationUnknownOutcomeInput,
   ReconcilePublicationJobInput,
   PrepareRetryInput,
+  RecordProviderObservationInput,
+  RecordProviderObservationResult,
 } from './repositories/campaign-publication.repository';
 
 // ContentCalendarItem entity & repository — Phase 8C
