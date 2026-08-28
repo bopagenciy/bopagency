@@ -412,6 +412,7 @@ describe('SupabaseCampaignActivationRepository — RPCs de transición de target
     await repo.markTargetPublished(TARGET_ID, ORG_ID, 'user-uuid-1', 'post-123', 'Publicado en historia');
     expect(rpc).toHaveBeenCalledWith('mark_activation_target_published', {
       p_target_id: TARGET_ID,
+      p_organization_id: ORG_ID,
       p_external_reference: 'post-123',
       p_note: 'Publicado en historia',
     });
@@ -422,6 +423,7 @@ describe('SupabaseCampaignActivationRepository — RPCs de transición de target
     await repo.markTargetPublished(TARGET_ID, ORG_ID, 'user-uuid-1');
     expect(rpc).toHaveBeenCalledWith('mark_activation_target_published', {
       p_target_id: TARGET_ID,
+      p_organization_id: ORG_ID,
       p_external_reference: null,
       p_note: null,
     });
@@ -432,6 +434,7 @@ describe('SupabaseCampaignActivationRepository — RPCs de transición de target
     await repo.cancelTarget(TARGET_ID, ORG_ID, 'user-uuid-1', 'Canal descartado');
     expect(rpc).toHaveBeenCalledWith('cancel_activation_target', {
       p_target_id: TARGET_ID,
+      p_organization_id: ORG_ID,
       p_reason: 'Canal descartado',
     });
   });

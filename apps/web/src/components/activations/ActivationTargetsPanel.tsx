@@ -5,6 +5,8 @@ import { useRouter } from 'next/navigation';
 import { ACTIVATION_CHANNEL_LABELS } from '@bop-agency/shared';
 import type { ActivationChannel, ActivationTargetStatus } from '@bop-agency/shared';
 import { ActivationTargetStatusBadge } from './ActivationTargetStatusBadge';
+import { ManualPublishModal } from './ManualPublishModal';
+import { CancelTargetModal } from './CancelTargetModal';
 import {
   addCampaignActivationTargetAction,
   prepareActivationTargetAction,
@@ -79,9 +81,6 @@ export function ActivationTargetsPanel({
   const [rowError, setRowError] = useState<Record<string, string>>({});
   const [publishFormFor, setPublishFormFor] = useState<string | null>(null);
   const [cancelFormFor, setCancelFormFor] = useState<string | null>(null);
-  const [publishRef, setPublishRef] = useState('');
-  const [publishNote, setPublishNote] = useState('');
-  const [cancelReason, setCancelReason] = useState('');
   const [showAddForm, setShowAddForm] = useState(false);
   const [addPlacement, setAddPlacement] = useState('');
   const [addError, setAddError] = useState<string | null>(null);
@@ -118,48 +117,6 @@ export function ActivationTargetsPanel({
         setErrorFor(targetId, result.error);
         return;
       }
-      router.refresh();
-    });
-  }
-
-  function handleMarkPublished(targetId: string) {
-    setErrorFor(targetId, null);
-    startTransition(async () => {
-      const result = await markActivationTargetPublishedAction({
-        campaignId,
-        targetId,
-        externalReference: publishRef.trim().length > 0 ? publishRef.trim() : null,
-        note: publishNote.trim().length > 0 ? publishNote.trim() : null,
-      });
-      if (!result.ok) {
-        setErrorFor(targetId, result.error);
-        return;
-      }
-      setPublishFormFor(null);
-      setPublishRef('');
-      setPublishNote('');
-      router.refresh();
-    });
-  }
-
-  function handleCancelTarget(targetId: string) {
-    setErrorFor(targetId, null);
-    if (cancelReason.trim().length === 0) {
-      setErrorFor(targetId, 'La razón de cancelación es requerida.');
-      return;
-    }
-    startTransition(async () => {
-      const result = await cancelActivationTargetAction({
-        campaignId,
-        targetId,
-        reason: cancelReason.trim(),
-      });
-      if (!result.ok) {
-        setErrorFor(targetId, result.error);
-        return;
-      }
-      setCancelFormFor(null);
-      setCancelReason('');
       router.refresh();
     });
   }
@@ -329,59 +286,54 @@ export function ActivationTargetsPanel({
                     </div>
 
                     {publishFormFor === target.id && (
-                      <div className="rounded border border-gray-100 bg-gray-50 p-2 space-y-1.5 max-w-xs">
-                        <p className="text-xs text-gray-500">
-                          Confirma que el contenido se publicó manualmente fuera de la plataforma.
-                        </p>
-                        <input
-                          type="text"
-                          placeholder="Referencia externa (opcional, ej. ID de post)"
-                          value={publishRef}
-                          onChange={(e) => setPublishRef(e.target.value)}
-                          className="w-full px-2 py-1 border border-border rounded text-xs"
-                        />
-                        <input
-                          type="text"
-                          placeholder="Nota (opcional)"
-                          value={publishNote}
-                          onChange={(e) => setPublishNote(e.target.value)}
-                          className="w-full px-2 py-1 border border-border rounded text-xs"
-                        />
-                        <button
-                          type="button"
-                          onClick={() => handleMarkPublished(target.id)}
-                          disabled={isPending}
-                          className="px-2.5 py-1 text-xs font-medium rounded bg-green-600 text-white hover:bg-green-700 disabled:opacity-50"
-                        >
-                          {isPending ? 'Confirmando…' : 'Confirmar publicación manual'}
-                        </button>
-                      </div>
+                      <ManualPublishModal
+                        isOpen={true}
+                        targetId={target.id}
+                        channelName={target.channel}
+                        onClose={() => setPublishFormFor(null)}
+                        onSubmit={async (data) => {
+                          setErrorFor(target.id, null);
+                          startTransition(async () => {
+                            const result = await markActivationTargetPublishedAction({
+                              campaignId,
+                              targetId: target.id,
+                              externalReference: data.externalReference ?? null,
+                              note: data.note ?? null,
+                            });
+                            if (!result.ok) {
+                              setErrorFor(target.id, result.error);
+                              return;
+                            }
+                            setPublishFormFor(null);
+                            router.refresh();
+                          });
+                        }}
+                      />
                     )}
 
                     {cancelFormFor === target.id && (
-                      <div className="rounded border border-gray-100 bg-gray-50 p-2 space-y-1.5 max-w-xs">
-                        <label
-                          htmlFor={`cancel-reason-${target.id}`}
-                          className="block text-xs font-medium text-gray-600"
-                        >
-                          Razón de cancelación (requerida)
-                        </label>
-                        <textarea
-                          id={`cancel-reason-${target.id}`}
-                          rows={2}
-                          value={cancelReason}
-                          onChange={(e) => setCancelReason(e.target.value)}
-                          className="w-full px-2 py-1 border border-border rounded text-xs resize-y"
-                        />
-                        <button
-                          type="button"
-                          onClick={() => handleCancelTarget(target.id)}
-                          disabled={isPending}
-                          className="px-2.5 py-1 text-xs font-medium rounded bg-red-600 text-white hover:bg-red-700 disabled:opacity-50"
-                        >
-                          {isPending ? 'Cancelando…' : 'Confirmar cancelación'}
-                        </button>
-                      </div>
+                      <CancelTargetModal
+                        isOpen={true}
+                        targetId={target.id}
+                        channelName={target.channel}
+                        onClose={() => setCancelFormFor(null)}
+                        onSubmit={async (reason) => {
+                          setErrorFor(target.id, null);
+                          startTransition(async () => {
+                            const result = await cancelActivationTargetAction({
+                              campaignId,
+                              targetId: target.id,
+                              reason,
+                            });
+                            if (!result.ok) {
+                              setErrorFor(target.id, result.error);
+                              return;
+                            }
+                            setCancelFormFor(null);
+                            router.refresh();
+                          });
+                        }}
+                      />
                     )}
                   </td>
                 </tr>

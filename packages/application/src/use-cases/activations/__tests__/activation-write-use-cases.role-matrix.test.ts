@@ -316,7 +316,7 @@ describe('markActivationTargetPublished — role matrix', () => {
   it.each(['operator', 'strategist', 'admin', 'owner'] as const)('permite a %s marcar published (camino manual)', async (role) => {
     const activationRepository = makeActivationRepo();
     const result = await markActivationTargetPublished(
-      { targetId: TARGET_ID, organizationId: ORG_ID, actorUserId: ACTOR_ID },
+      { targetId: TARGET_ID, organizationId: ORG_ID, actorUserId: ACTOR_ID, note: 'Publicado manualmente' },
       { activationRepository, organizationRepository: makeOrgRepo(role), logger: makeLogger() },
     );
     expect(result.success).toBe(true);
@@ -325,7 +325,7 @@ describe('markActivationTargetPublished — role matrix', () => {
   it('rechaza a viewer con FORBIDDEN', async () => {
     const activationRepository = makeActivationRepo();
     const result = await markActivationTargetPublished(
-      { targetId: TARGET_ID, organizationId: ORG_ID, actorUserId: ACTOR_ID },
+      { targetId: TARGET_ID, organizationId: ORG_ID, actorUserId: ACTOR_ID, note: 'Publicado manualmente' },
       { activationRepository, organizationRepository: makeOrgRepo('viewer'), logger: makeLogger() },
     );
     expect(result.success).toBe(false);

@@ -72,6 +72,15 @@ export async function markActivationTargetPublished(
     return err(insufficientRole('operator', memberResult.value.role));
   }
 
+  const refClean = parsed.data.externalReference?.trim();
+  const noteClean = parsed.data.note?.trim();
+  if (!refClean && !noteClean) {
+    return err({
+      code: 'VALIDATION_ERROR' as const,
+      message: 'Se requiere al menos un campo de evidencia (referencia externa o nota explicativa)',
+    });
+  }
+
   const result = await deps.activationRepository.markTargetPublished(
     parsed.data.targetId as CampaignActivationTargetId,
     input.organizationId,

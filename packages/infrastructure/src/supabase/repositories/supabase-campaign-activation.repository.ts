@@ -477,10 +477,11 @@ export class SupabaseCampaignActivationRepository implements CampaignActivationR
     const existing = await this.findTargetById(id, organizationId);
     if (!existing.success) return existing;
 
-    const { error } = await (this.supabase as unknown as RpcCapableClient).rpc(
+    const { data, error } = await (this.supabase as unknown as RpcCapableClient).rpc(
       'mark_activation_target_published',
       {
         p_target_id: id,
+        p_organization_id: organizationId,
         p_external_reference: externalReference ?? null,
         p_note: note ?? null,
       },
@@ -488,6 +489,11 @@ export class SupabaseCampaignActivationRepository implements CampaignActivationR
 
     if (error) {
       return err(mapActivationRpcError(error.message, 'Error al marcar como publicado el canal de activación'));
+    }
+
+    const rpcRes = data as { success: boolean; error_code?: string; message?: string } | null;
+    if (rpcRes && !rpcRes.success) {
+      return err(mapActivationRpcError(rpcRes.message || 'Error al marcar como publicado el canal de activación', 'Error al marcar como publicado el canal de activación'));
     }
 
     return this.findTargetById(id, organizationId);
@@ -548,13 +554,18 @@ export class SupabaseCampaignActivationRepository implements CampaignActivationR
     const existing = await this.findTargetById(id, organizationId);
     if (!existing.success) return existing;
 
-    const { error } = await (this.supabase as unknown as RpcCapableClient).rpc(
+    const { data, error } = await (this.supabase as unknown as RpcCapableClient).rpc(
       'cancel_activation_target',
-      { p_target_id: id, p_reason: reason },
+      { p_target_id: id, p_organization_id: organizationId, p_reason: reason },
     );
 
     if (error) {
       return err(mapActivationRpcError(error.message, 'Error al cancelar el canal de activación'));
+    }
+
+    const rpcRes = data as { success: boolean; error_code?: string; message?: string } | null;
+    if (rpcRes && !rpcRes.success) {
+      return err(mapActivationRpcError(rpcRes.message || 'Error al cancelar el canal de activación', 'Error al cancelar el canal de activación'));
     }
 
     return this.findTargetById(id, organizationId);

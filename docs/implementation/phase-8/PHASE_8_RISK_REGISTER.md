@@ -375,3 +375,14 @@ Ver `PHASE_8C_CONTENT_CALENDAR_REPORT.md` para el detalle completo. Esta subfase
 | R-CAL-02 (Escritura directa en BD por bypass de RLS) | **Cerrado en DB.** Permisos directos `INSERT`, `UPDATE`, `DELETE` revocados para `authenticated`. Todas las mutaciones se ejecutan mediante RPCs `SECURITY DEFINER` con verificación de roles y membresía. |
 | R-CAL-03 (Fuga cross-tenant en composite FKs) | **Cerrado en DB.** Composite FKs `(campaign_id, organization_id)`, `(activation_id, organization_id)`, y `(target_id, organization_id)` con `ON DELETE RESTRICT` garantizan aislamiento tenant a nivel relacional. |
 | R-CAL-04 (Colapso/duplicación de filas por retries) | **Mitigado en lectura.** La RPC `list_content_calendar_items_by_range` proyecta los jobs usando `LEFT JOIN LATERAL` (`ORDER BY retry_count DESC, created_at DESC, id DESC LIMIT 1`), asegurando exactamente una fila por elemento de calendario. |
+
+## Actualización — Phase 8D (Manual Activation Hardening) — COMPLETE
+
+Ver `PHASE_8D_MANUAL_ACTIVATION_HARDENING_REPORT.md` para el detalle completo. Esta subfase endurece las operaciones de atestación manual humana y la cancelación atómica de targets de activación.
+
+| ID | Estado tras 8D |
+|---|---|
+| R-ACT-01 (Duplicate manual publish) | **Cerrado en DB.** La RPC `mark_activation_target_published` revalida `status IN ('ready', 'scheduled')` y `manual/manual` bajo lock `FOR UPDATE`. Intentos subsecuentes retornan `STATE_CONFLICT`. |
+| R-ACT-10 (Cancellation during execution) | **Cerrado en DB.** La RPC `cancel_activation_target` cancela atómicamente jobs `queued`/`claimed` vía `cancel_publication_job`, y rechaza con `STATE_CONFLICT` targets con jobs `in_progress` o `unknown_outcome`. |
+| R-ACT-11 (Manual/external state divergence) | **Mitigado.** Exige al menos una prueba de evidencia no vacía (`external_reference` o `note`) atestada por `operator+` y auditada mediante eventos append-only `campaign_activation_events`. |
+| R-LOCK-01 (PostgreSQL Deadlock en Concurrencia) | **Cerrado.** Orden de locks global estandarizado a **`JOB -> TARGET`** en todas las RPCs. Auditado y verificado en runtime real con 4 suites de concurrencia de 2 sesiones (0 deadlocks). |
