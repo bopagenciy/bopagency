@@ -19,7 +19,12 @@
 import type { NextRequest } from 'next/server';
 import { createAdminClient } from '@/lib/supabase/server';
 import { createPublicationWorkerComposition } from '@/lib/composition/publication.composition';
-import { N8nPublicationTransportAdapter } from '@bop-agency/infrastructure';
+import {
+  N8nPublicationTransportAdapter,
+  MetaPublisherAdapter,
+  MetaGraphApiClient,
+  SupabaseCredentialRepository,
+} from '@bop-agency/infrastructure';
 import { ChannelPublisherRegistry } from '@bop-agency/application';
 
 function requireCronSecret(): string {
@@ -71,9 +76,39 @@ export async function POST(request: NextRequest): Promise<Response> {
     return Response.json({ error: 'Internal server error' }, { status: 500 });
   }
 
-  // Registrar adapter de n8n para canales soportados
+  // Registrar adapters de publicación: MetaPublisherAdapter para facebook_organic/instagram_organic + meta
+  const credentialRepo = new SupabaseCredentialRepository(adminClient);
+  const metaApiClient = new MetaGraphApiClient();
+
+  const checkpointRpc = async (
+    attemptId: string,
+    organizationId: string,
+    stage: 'container_created' | 'publish_requested',
+    containerCreationId: string,
+  ) => {
+    const rpcClient = adminClient as unknown as {
+      rpc: (
+        fnName: string,
+        args: Record<string, unknown>,
+      ) => Promise<{ data: { success?: boolean } | null }>;
+    };
+    const { data } = await rpcClient.rpc('record_publication_attempt_checkpoint', {
+      p_attempt_id: attemptId,
+      p_organization_id: organizationId,
+      p_stage: stage,
+      p_container_creation_id: containerCreationId,
+    });
+    return Boolean(data?.success);
+  };
+
+  const metaAdapter = new MetaPublisherAdapter(
+    credentialRepo,
+    metaApiClient,
+    undefined,
+    checkpointRpc,
+  );
   const n8nAdapter = new N8nPublicationTransportAdapter();
-  const registry = new ChannelPublisherRegistry([n8nAdapter]);
+  const registry = new ChannelPublisherRegistry([metaAdapter, n8nAdapter]);
 
   const workerComp = createPublicationWorkerComposition(adminClient, {
     registry,

@@ -312,7 +312,10 @@ export type {
   IncidentEventType,
 } from './use-cases/automations/evaluate-automation-incident.use-case';
 
-export { evaluateStuckAutomationExecutions, systemClock } from './use-cases/automations/evaluate-stuck-automation-executions.use-case';
+export {
+  evaluateStuckAutomationExecutions,
+  systemClock,
+} from './use-cases/automations/evaluate-stuck-automation-executions.use-case';
 export type {
   EvaluateStuckAutomationExecutionsInput,
   EvaluateStuckAutomationExecutionsDeps,
@@ -397,22 +400,28 @@ export type {
   ActivationWithTargetsAndEvents,
 } from './use-cases/activations/get-activation-with-targets-and-events.use-case';
 
-export { evalActivationCreatedSignalSilently, activationTargetsSetupSignatureTag } from './use-cases/activations/activation-signals';
+export {
+  evalActivationCreatedSignalSilently,
+  activationTargetsSetupSignatureTag,
+} from './use-cases/activations/activation-signals';
 export type {
   ActivationCreatedSignalInput,
   ActivationSignalDeps,
 } from './use-cases/activations/activation-signals';
 
 // Ports — Publication (Phase 8B.2)
-export {
-  ChannelPublisherRegistry,
-} from './ports/channel-publisher.port';
+export { ChannelPublisherRegistry } from './ports/channel-publisher.port';
 export type {
   ChannelPublisherPort,
   PublishInput,
   PublishReceipt,
   PublishOutcome,
 } from './ports/channel-publisher.port';
+export type {
+  ActivationChannel,
+  ActivationProvider,
+  PublicationFailureCategory,
+} from '@bop-agency/shared';
 export {
   FakeSuccessfulPublisher,
   FakeFailedPublisher,
@@ -528,3 +537,19 @@ export type { ListContentCalendarItemsByRangeDeps } from './use-cases/calendar/l
 
 export { getContentCalendarItemDetail } from './use-cases/calendar/get-content-calendar-item-detail.use-case';
 export type { GetContentCalendarItemDetailDeps } from './use-cases/calendar/get-content-calendar-item-detail.use-case';
+
+// Use cases — Meta Integration (Phase 8E)
+export { connectMetaIntegration } from './use-cases/integrations/connect-meta-integration.use-case';
+export type {
+  ConnectMetaIntegrationInput,
+  ConnectMetaIntegrationResult,
+} from './use-cases/integrations/connect-meta-integration.use-case';
+
+export { disconnectMetaIntegration } from './use-cases/integrations/disconnect-meta-integration.use-case';
+export type { DisconnectMetaIntegrationInput } from './use-cases/integrations/disconnect-meta-integration.use-case';
+
+export { finalizeMetaConnection } from './use-cases/integrations/finalize-meta-connection.use-case';
+export type {
+  FinalizeMetaConnectionInput,
+  FinalizeMetaConnectionResult,
+} from './use-cases/integrations/finalize-meta-connection.use-case';

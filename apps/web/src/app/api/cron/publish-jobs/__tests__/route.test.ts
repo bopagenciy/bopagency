@@ -24,6 +24,7 @@ describe('POST /api/cron/publish-jobs Route (Phase 8B.3)', () => {
   beforeEach(() => {
     process.env = { ...originalEnv };
     process.env['CRON_SECRET'] = cronSecret;
+    process.env['META_GRAPH_API_VERSION'] = 'v22.0';
     vi.clearAllMocks();
   });
 

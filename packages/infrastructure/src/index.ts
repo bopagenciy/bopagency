@@ -112,7 +112,10 @@ export { N8nPublicationTransportAdapter } from './n8n/n8n-publication-transport.
 
 // Phase 7D — AI Campaign Builder
 export { ClaudeAPIProvider, AnthropicAPIProvider } from './ai/claude-api.provider';
-export { buildCampaignGenerationPrompt, CAMPAIGN_BUILDER_PROMPT_VERSION } from './ai/campaign-prompt-builder';
+export {
+  buildCampaignGenerationPrompt,
+  CAMPAIGN_BUILDER_PROMPT_VERSION,
+} from './ai/campaign-prompt-builder';
 export { CampaignGeneratorAdapter } from './ai/campaign-generator.adapter';
 export type { CampaignAIProviderResolver } from './ai/campaign-generator.adapter';
 
@@ -132,3 +135,20 @@ export {
   DEFAULT_CAMPAIGN_AI_TIMEOUT_MS,
 } from './ai/ai-provider-config';
 export type { AIProviderConfig } from './ai/ai-provider-config';
+
+// Phase 8E — Meta Integration Infrastructure
+export { encryptCredential, decryptCredential } from './security/credential-cipher';
+export type { EncryptedPayload } from './security/credential-cipher';
+export { getMetaGraphApiVersion, getMetaAppConfig } from './meta/meta-config';
+export { MetaGraphApiClient } from './meta/meta-graph-api.client';
+export type { DiscoveredMetaPage, MetaPublishResult } from './meta/meta-graph-api.client';
+export { mapMetaErrorToFailureCategory } from './meta/meta-error.mapper';
+export { MetaPublisherAdapter } from './meta/meta-publisher.adapter';
+export type {
+  CheckpointRpcFunction,
+  FetchTargetMetadataFunction,
+} from './meta/meta-publisher.adapter';
+export { SupabaseCredentialRepository } from './supabase/repositories/supabase-credential.repository';
+export type { ResolvedPageCredential } from './supabase/repositories/supabase-credential.repository';
+export { SupabasePendingConnectionRepository } from './supabase/repositories/supabase-pending-connection.repository';
+export type { CreatePendingSessionInput } from './supabase/repositories/supabase-pending-connection.repository';
