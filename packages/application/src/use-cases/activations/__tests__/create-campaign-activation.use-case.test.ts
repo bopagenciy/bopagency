@@ -533,7 +533,7 @@ describe('createCampaignActivation use case', () => {
     expect(activationRepository.create).toHaveBeenCalledOnce();
   });
 
-  describe('Google Ads Activation Config (Phase 8F.0)', () => {
+  describe('Google Ads Activation Config (Phase 8F.0 & Phase 8F.2A)', () => {
     const validGoogleAdsConfig = {
       dailyBudget: { amount: 50, currency: 'USD' },
       biddingStrategy: 'MAXIMIZE_CLICKS',
@@ -542,6 +542,7 @@ describe('createCampaignActivation use case', () => {
       languageCriterionIds: ['1003'],
       keywordMatchPolicy: 'PHRASE',
       negativeKeywordMatchPolicy: 'BROAD',
+      euPoliticalAdvertisingDeclaration: 'DOES_NOT_CONTAIN_EU_POLITICAL_ADVERTISING',
     };
 
     it('rechaza la creación de activación de Google Ads si la campaña aprobada no tiene googleAdsConfig', async () => {
@@ -557,7 +558,33 @@ describe('createCampaignActivation use case', () => {
       }
     });
 
-    it('congela googleAdsConfig válido en el snapshot aprobado de la activación', async () => {
+    it('rechaza la creación de activación de Google Ads si googleAdsConfig carece de declaración de publicidad política de la UE (8F.2A)', async () => {
+      const legacyConfigWithoutEU = {
+        dailyBudget: { amount: 50, currency: 'USD' },
+        biddingStrategy: 'MAXIMIZE_CLICKS',
+        finalUrl: 'https://client.com/promo',
+        geoTargetIds: ['2170'],
+        languageCriterionIds: ['1003'],
+        keywordMatchPolicy: 'PHRASE',
+        negativeKeywordMatchPolicy: 'BROAD',
+      };
+
+      const campaignRepository = makeCampaignRepo({
+        findById: vi.fn().mockResolvedValue(
+          ok(makeCampaign({ platform: 'google_ads', metadata: { googleAdsConfig: legacyConfigWithoutEU } })),
+        ),
+      });
+
+      const result = await createCampaignActivation(makeInput(), makeDeps({ campaignRepository }));
+
+      expect(result.success).toBe(false);
+      if (!result.success) {
+        expect(result.error.code).toBe('VALIDATION_ERROR');
+        expect(result.error.message).toContain('Declaración de publicidad política de la UE requerida');
+      }
+    });
+
+    it('congela googleAdsConfig válido con declaración EU en el snapshot aprobado de la activación', async () => {
       const campaignRepository = makeCampaignRepo({
         findById: vi.fn().mockResolvedValue(
           ok(makeCampaign({ platform: 'google_ads', metadata: { googleAdsConfig: validGoogleAdsConfig } })),
@@ -571,7 +598,9 @@ describe('createCampaignActivation use case', () => {
       expect(activationRepository.create).toHaveBeenCalledOnce();
       const createInput = (activationRepository.create as ReturnType<typeof vi.fn>).mock.calls[0]?.[0] as { approvedSnapshot: Record<string, unknown> };
       expect(createInput.approvedSnapshot.googleAdsConfig).toBeDefined();
-      expect(createInput.approvedSnapshot.googleAdsConfig.biddingStrategy).toBe('MAXIMIZE_CLICKS');
+      const frozenConfig = createInput.approvedSnapshot.googleAdsConfig as Record<string, unknown>;
+      expect(frozenConfig['biddingStrategy']).toBe('MAXIMIZE_CLICKS');
+      expect(frozenConfig['euPoliticalAdvertisingDeclaration']).toBe('DOES_NOT_CONTAIN_EU_POLITICAL_ADVERTISING');
     });
 
     it('las activaciones que no son de Google Ads (Meta) se crean sin requerir googleAdsConfig', async () => {

@@ -179,6 +179,44 @@ function makeActivationRepo(overrides: Partial<CampaignActivationRepository> = {
   };
 }
 
+import type { ClientRepository, ClientIntegration } from '@bop-agency/domain';
+
+function makeClientRepo(overrides: Partial<ClientRepository> = {}): ClientRepository {
+  return {
+    findById: vi.fn(),
+    findAll: vi.fn(),
+    findBySlug: vi.fn(),
+    create: vi.fn(),
+    update: vi.fn(),
+    delete: vi.fn(),
+    softDelete: vi.fn(),
+    findByIdWithDocuments: vi.fn(),
+    listContacts: vi.fn(),
+    listDocuments: vi.fn(),
+    getDocumentByKey: vi.fn(),
+    upsertDocument: vi.fn(),
+    listIntegrations: vi.fn().mockResolvedValue(
+      ok([
+        {
+          id: '88888888-8888-8888-8888-888888888888',
+          clientId: CLIENT_ID,
+          provider: 'google',
+          externalAccountId: '1234567890',
+          status: 'active',
+          configuration: {
+            manager_customer_id: '1111111111',
+            currency_code: 'USD',
+            is_manager: false,
+          },
+          createdAt: new Date(),
+          updatedAt: new Date(),
+        } as unknown as ClientIntegration,
+      ]),
+    ),
+    ...overrides,
+  };
+}
+
 describe('addCampaignActivationTarget — role matrix + transitions', () => {
   const baseInput = {
     activationId: ACTIVATION_ID,
@@ -193,17 +231,20 @@ describe('addCampaignActivationTarget — role matrix + transitions', () => {
     const result = await addCampaignActivationTarget(baseInput, {
       activationRepository,
       organizationRepository: makeOrgRepo(role),
+      clientRepository: makeClientRepo(),
       logger: makeLogger(),
     });
     expect(result.success).toBe(true);
     expect(activationRepository.addTarget).toHaveBeenCalledOnce();
   });
 
+
   it.each(['viewer', 'operator'] as const)('rechaza a %s con FORBIDDEN (no puede crear/agregar targets)', async (role) => {
     const activationRepository = makeActivationRepo();
     const result = await addCampaignActivationTarget(baseInput, {
       activationRepository,
       organizationRepository: makeOrgRepo(role),
+      clientRepository: makeClientRepo(),
       logger: makeLogger(),
     });
     expect(result.success).toBe(false);
@@ -218,6 +259,7 @@ describe('addCampaignActivationTarget — role matrix + transitions', () => {
     const result = await addCampaignActivationTarget(baseInput, {
       activationRepository,
       organizationRepository: makeOrgRepo('strategist'),
+      clientRepository: makeClientRepo(),
       logger: makeLogger(),
     });
     expect(result.success).toBe(false);
@@ -232,6 +274,7 @@ describe('addCampaignActivationTarget — role matrix + transitions', () => {
       {
         activationRepository,
         organizationRepository: makeOrgRepo('strategist'),
+        clientRepository: makeClientRepo(),
         logger: makeLogger(),
       },
     );
@@ -246,12 +289,110 @@ describe('addCampaignActivationTarget — role matrix + transitions', () => {
       {
         activationRepository,
         organizationRepository: makeOrgRepo('strategist'),
+        clientRepository: makeClientRepo(),
         logger: makeLogger(),
       },
     );
     expect(result.success).toBe(false);
     if (!result.success) expect(result.error.code).toBe('VALIDATION_ERROR');
     expect(activationRepository.addTarget).not.toHaveBeenCalled();
+  });
+
+  describe('Google Ads Target Resource Snapshot (Phase 8F.2A)', () => {
+    const googleInput = {
+      activationId: ACTIVATION_ID,
+      channel: 'google_ads',
+      provider: 'google',
+      clientIntegrationId: '88888888-8888-8888-8888-888888888888',
+      organizationId: ORG_ID,
+      actorUserId: ACTOR_ID,
+    };
+
+    it('derives and freezes googleAdsTargetResource server-side upon target addition', async () => {
+      const activationRepository = makeActivationRepo();
+      const result = await addCampaignActivationTarget(googleInput, {
+        activationRepository,
+        organizationRepository: makeOrgRepo('strategist'),
+        clientRepository: makeClientRepo(),
+        logger: makeLogger(),
+      });
+
+      expect(result.success).toBe(true);
+      expect(activationRepository.addTarget).toHaveBeenCalledWith(
+        expect.objectContaining({
+          channel: 'google_ads',
+          provider: 'google',
+          clientIntegrationId: '88888888-8888-8888-8888-888888888888',
+          metadata: expect.objectContaining({
+            googleAdsTargetResource: {
+              clientIntegrationId: '88888888-8888-8888-8888-888888888888',
+              customerId: '1234567890',
+              managerCustomerId: '1111111111',
+              currencyCode: 'USD',
+              isManager: false,
+            },
+          }),
+        }),
+      );
+    });
+
+    it('rejects Google Ads target creation if integration is not active', async () => {
+      const clientRepository = makeClientRepo({
+        listIntegrations: vi.fn().mockResolvedValue(
+          ok([
+            {
+              id: '88888888-8888-8888-8888-888888888888',
+              clientId: CLIENT_ID,
+              provider: 'google',
+              externalAccountId: '1234567890',
+              status: 'revoked',
+              configuration: { currency_code: 'USD' },
+            } as unknown as ClientIntegration,
+          ]),
+        ),
+      });
+
+      const result = await addCampaignActivationTarget(googleInput, {
+        activationRepository: makeActivationRepo(),
+        organizationRepository: makeOrgRepo('strategist'),
+        clientRepository,
+        logger: makeLogger(),
+      });
+
+      expect(result.success).toBe(false);
+      if (!result.success) {
+        expect(result.error.code).toBe('VALIDATION_ERROR');
+      }
+    });
+
+    it('rejects Google Ads target creation if account is an MCC manager (is_manager = true)', async () => {
+      const clientRepository = makeClientRepo({
+        listIntegrations: vi.fn().mockResolvedValue(
+          ok([
+            {
+              id: '88888888-8888-8888-8888-888888888888',
+              clientId: CLIENT_ID,
+              provider: 'google',
+              externalAccountId: '1234567890',
+              status: 'active',
+              configuration: { currency_code: 'USD', is_manager: true },
+            } as unknown as ClientIntegration,
+          ]),
+        ),
+      });
+
+      const result = await addCampaignActivationTarget(googleInput, {
+        activationRepository: makeActivationRepo(),
+        organizationRepository: makeOrgRepo('strategist'),
+        clientRepository,
+        logger: makeLogger(),
+      });
+
+      expect(result.success).toBe(false);
+      if (!result.success) {
+        expect(result.error.code).toBe('VALIDATION_ERROR');
+      }
+    });
   });
 });
 

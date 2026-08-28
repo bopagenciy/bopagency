@@ -55,6 +55,7 @@ import {
   campaignGeneratedContentSchema,
   createCampaignActivationSchema,
   googleAdsActivationConfigSchema,
+  strictGoogleAdsActivationConfigSchema,
 } from '@bop-agency/shared';
 import type {
   CampaignActivation,
@@ -193,7 +194,7 @@ export async function createCampaignActivation(
         message: 'La activación de una campaña de Google Ads requiere una configuración válida en la campaña aprobada',
       });
     }
-    const configCheck = googleAdsActivationConfigSchema.safeParse(rawConfig);
+    const configCheck = strictGoogleAdsActivationConfigSchema.safeParse(rawConfig);
     if (!configCheck.success) {
       return err({
         code: 'VALIDATION_ERROR' as const,

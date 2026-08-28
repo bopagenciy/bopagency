@@ -29,10 +29,12 @@ import type {
   ActivationStatus,
   ActivationTargetStatus,
   GoogleAdsActivationConfigShape as GoogleAdsActivationConfig,
+  PublishableGoogleAdsActivationConfig,
 } from '@bop-agency/shared';
 import { ACTIVATION_TERMINAL_STATUSES } from '@bop-agency/shared';
 
-export type { GoogleAdsActivationConfig };
+export type { GoogleAdsActivationConfig, PublishableGoogleAdsActivationConfig };
+
 
 // ─── Branded ID ───────────────────────────────────────────────────────────────
 

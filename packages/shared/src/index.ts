@@ -93,7 +93,9 @@ export type {
   ComplianceRuleFilterFormValues,
   GenerateCampaignDraftWithAiFormValues,
   RegenerateCampaignContentFormValues,
+  Currency,
 } from './schemas/campaign.schema';
+
 
 // Schemas — Campaign generated content (Phase 7D)
 export {
@@ -166,16 +168,21 @@ export type {
   PublicationWebhookEventStatus,
 } from './constants/publication';
 
-// Schemas — Campaign Activation (Phase 8A.1) & Google Ads Config (Phase 8F.0)
+// Schemas — Campaign Activation (Phase 8A.1) & Google Ads Config (Phase 8F.0 & 8F.2A)
 export {
   googleAdsActivationConfigSchema,
+  strictGoogleAdsActivationConfigSchema,
+  isPublishableGoogleAdsConfig,
   GOOGLE_ADS_BIDDING_STRATEGIES,
   GOOGLE_ADS_KEYWORD_MATCH_POLICIES,
+  GOOGLE_ADS_EU_POLITICAL_ADVERTISING_DECLARATIONS,
 } from './schemas/google-ads-config.schema';
 export type {
   GoogleAdsBiddingStrategy,
   GoogleAdsKeywordMatchPolicy,
+  GoogleAdsEuPoliticalAdvertisingDeclaration,
   GoogleAdsActivationConfigShape,
+  PublishableGoogleAdsActivationConfig,
 } from './schemas/google-ads-config.schema';
 export {
   campaignActivationSnapshotSchema,

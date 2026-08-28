@@ -257,6 +257,7 @@ export type {
   CampaignActivationTarget,
   CampaignActivationTargetFilter,
   CreateActivationTargetInput,
+  GoogleAdsTargetResourceSnapshot,
 } from './entities/campaign-activation-target';
 export {
   campaignActivationTargetId,

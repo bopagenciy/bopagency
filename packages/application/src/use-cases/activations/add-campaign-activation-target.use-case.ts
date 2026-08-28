@@ -1,28 +1,4 @@
-/**
- * addCampaignActivationTarget — Phase 8A.2.
- *
- * Crea un canal de distribución (target) bajo una activation NO-terminal
- * existente. El canal `manual` es de primera clase (audit §8) — ninguna
- * validación de este use case, ni de la migración, distingue "manual" como
- * un caso especial de segunda clase.
- *
- * Defensa en profundidad (matriz de roles §2 del kickoff — "strategist: may
- * add targets"; el operator NO puede agregar targets, solo operarlos una
- * vez creados):
- * 1. Rol mínimo strategist+.
- * 2. Se carga la activation real (aislada por organización) y se verifica
- *    que NO esté en estado terminal — el trigger de BD además reforzará la
- *    invariante `check_activation_target_match` (organization_id/client_id
- *    de la activation, y de `client_integrations` si aplica) dentro de la
- *    misma transacción.
- * 3. `validateCreateActivationTargetInput` (dominio, función pura) verifica
- *    ANTES de llamar al repositorio: el par channel/provider es válido
- *    (nunca un string arbitrario — `ACTIVATION_CHANNEL_PROVIDER` en
- *    `@bop-agency/shared` fija la relación), y que `clientIntegrationId`
- *    esté presente si y solo si el canal no es `manual`.
- */
-
-import { ok, err, isOk } from '@bop-agency/shared';
+import { ok, err, isOk, CAMPAIGN_CURRENCIES, type Currency } from '@bop-agency/shared';
 import type { Result } from '@bop-agency/shared';
 import { addCampaignActivationTargetSchema } from '@bop-agency/shared';
 import type {
@@ -30,6 +6,8 @@ import type {
   CampaignActivationId,
   CampaignActivationRepository,
   ClientIntegrationId,
+  ClientRepository,
+  GoogleAdsTargetResourceSnapshot,
   OrganizationRepository,
   OrganizationId,
 } from '@bop-agency/domain';
@@ -59,6 +37,7 @@ export type AddCampaignActivationTargetInput = {
 export type AddCampaignActivationTargetDeps = {
   activationRepository: CampaignActivationRepository;
   organizationRepository: OrganizationRepository;
+  clientRepository: ClientRepository;
   logger: LoggerPort;
 };
 
@@ -122,6 +101,88 @@ export async function addCampaignActivationTarget(
     return err({ code: 'VALIDATION_ERROR' as const, message: validationError });
   }
 
+  // ── Congelar snapshot inmutable de recurso para Google Ads ────────────────
+  const targetMetadata = { ...(parsed.data.metadata ?? {}) };
+
+  if (parsed.data.channel === 'google_ads' && parsed.data.provider === 'google') {
+    if (!clientIntegrationId) {
+      return err({
+        code: 'VALIDATION_ERROR' as const,
+        message: 'Google Ads target requires clientIntegrationId',
+      });
+    }
+
+    const integrationsResult = await deps.clientRepository.listIntegrations(
+      activation.clientId,
+      input.organizationId,
+    );
+    if (!isOk(integrationsResult)) {
+      return err({
+        code: 'VALIDATION_ERROR' as const,
+        message: 'Failed to resolve client integrations for Google Ads target',
+      });
+    }
+
+    const integration = integrationsResult.value.find((i) => String(i.id) === String(clientIntegrationId));
+    if (!integration) {
+      return err({
+        code: 'VALIDATION_ERROR' as const,
+        message: 'Client integration specified for Google Ads target not found',
+      });
+    }
+
+    if (integration.provider !== 'google' || integration.status !== 'active') {
+      return err({
+        code: 'VALIDATION_ERROR' as const,
+        message: 'Client integration specified for Google Ads target is not active for provider google',
+      });
+    }
+
+    const customerId = integration.externalAccountId;
+    if (!customerId || !/^\d{10}$/.test(customerId)) {
+      return err({
+        code: 'VALIDATION_ERROR' as const,
+        message: 'Google Ads integration externalAccountId must be a 10-digit numeric customer ID',
+      });
+    }
+
+    const config = integration.configuration as Record<string, unknown> | null;
+    const managerCustomerIdRaw = config?.['manager_customer_id'];
+    const managerCustomerId =
+      typeof managerCustomerIdRaw === 'string' && /^\d{10}$/.test(managerCustomerIdRaw.trim())
+        ? managerCustomerIdRaw.trim()
+        : null;
+
+    const currencyCodeRaw = config?.['currency_code'];
+    if (
+      typeof currencyCodeRaw !== 'string' ||
+      !(CAMPAIGN_CURRENCIES as readonly string[]).includes(currencyCodeRaw)
+    ) {
+      return err({
+        code: 'VALIDATION_ERROR' as const,
+        message: 'Google Ads integration configuration missing valid currency code',
+      });
+    }
+    const currencyCode = currencyCodeRaw as Currency;
+
+    if (config?.['is_manager'] === true) {
+      return err({
+        code: 'VALIDATION_ERROR' as const,
+        message: 'Google Ads target cannot be created directly for a manager (MCC) account',
+      });
+    }
+
+    const googleResourceSnapshot: GoogleAdsTargetResourceSnapshot = {
+      clientIntegrationId: String(clientIntegrationId),
+      customerId,
+      managerCustomerId,
+      currencyCode,
+      isManager: false,
+    };
+
+    targetMetadata['googleAdsTargetResource'] = googleResourceSnapshot;
+  }
+
   const result = await deps.activationRepository.addTarget({
     activationId: activation.id,
     organizationId: input.organizationId,
@@ -130,7 +191,7 @@ export async function addCampaignActivationTarget(
     provider: parsed.data.provider,
     placement: parsed.data.placement ?? null,
     clientIntegrationId,
-    metadata: parsed.data.metadata ?? {},
+    metadata: targetMetadata,
   });
   if (!isOk(result)) {
     deps.logger.error('addCampaignActivationTarget: repository error', { error: result });

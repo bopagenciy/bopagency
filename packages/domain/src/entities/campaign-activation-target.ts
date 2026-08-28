@@ -17,13 +17,26 @@ import type {
   ActivationChannel,
   ActivationProvider,
   ActivationTargetStatus,
+  Currency,
 } from '@bop-agency/shared';
 import {
   ACTIVATION_TARGET_TERMINAL_STATUSES,
   isValidChannelProviderPair,
 } from '@bop-agency/shared';
 
+/**
+ * Snapshot inmutable congelado en target.metadata.googleAdsTargetResource al agregar un canal Google Ads.
+ */
+export type GoogleAdsTargetResourceSnapshot = {
+  readonly clientIntegrationId: string;
+  readonly customerId: string;
+  readonly managerCustomerId: string | null;
+  readonly currencyCode: Currency;
+  readonly isManager: false;
+};
+
 // ─── Branded ID ───────────────────────────────────────────────────────────────
+
 
 export type CampaignActivationTargetId = string & { readonly _brand: 'CampaignActivationTargetId' };
 

@@ -7,6 +7,13 @@ export type GoogleAdsBiddingStrategy = (typeof GOOGLE_ADS_BIDDING_STRATEGIES)[nu
 export const GOOGLE_ADS_KEYWORD_MATCH_POLICIES = ['BROAD', 'PHRASE', 'EXACT'] as const;
 export type GoogleAdsKeywordMatchPolicy = (typeof GOOGLE_ADS_KEYWORD_MATCH_POLICIES)[number];
 
+export const GOOGLE_ADS_EU_POLITICAL_ADVERTISING_DECLARATIONS = [
+  'CONTAINS_EU_POLITICAL_ADVERTISING',
+  'DOES_NOT_CONTAIN_EU_POLITICAL_ADVERTISING',
+] as const;
+export type GoogleAdsEuPoliticalAdvertisingDeclaration =
+  (typeof GOOGLE_ADS_EU_POLITICAL_ADVERTISING_DECLARATIONS)[number];
+
 const dailyBudgetAmountSchema = z
   .union([z.number(), z.string()], {
     errorMap: () => ({ message: 'El presupuesto diario es requerido y debe ser un número válido' }),
@@ -48,7 +55,7 @@ const providerIdsSchema = (fieldName: string) =>
         if (!/^\d+$/.test(trimmed)) {
           ctx.addIssue({
             code: z.ZodIssueCode.custom,
-            message: `Todos los IDs de ${fieldName} deben ser estrictamente numéricos`,
+            message: `Todos los IDs de ${fieldName} deben ser strictly numéricos`,
           });
           return;
         }
@@ -56,6 +63,10 @@ const providerIdsSchema = (fieldName: string) =>
     })
     .transform((items) => Array.from(new Set(items.map((i) => i.trim()))));
 
+/**
+ * Schema de lectura / histórico — permite `euPoliticalAdvertisingDeclaration` opcional
+ * para asegurar compatibilidad de lectura con snapshots creados antes de 8F.2A.
+ */
 export const googleAdsActivationConfigSchema = z.object({
   dailyBudget: z.object({
     amount: dailyBudgetAmountSchema,
@@ -81,6 +92,33 @@ export const googleAdsActivationConfigSchema = z.object({
   negativeKeywordMatchPolicy: z.enum(GOOGLE_ADS_KEYWORD_MATCH_POLICIES, {
     errorMap: () => ({ message: 'Política de coincidencia de palabras clave negativas requerida' }),
   }),
+  euPoliticalAdvertisingDeclaration: z
+    .enum(GOOGLE_ADS_EU_POLITICAL_ADVERTISING_DECLARATIONS, {
+      errorMap: () => ({ message: 'Declaración de publicidad política de la UE requerida' }),
+    })
+    .optional()
+    .nullable(),
 });
 
 export type GoogleAdsActivationConfigShape = z.infer<typeof googleAdsActivationConfigSchema>;
+
+/**
+ * Schema estricto para nuevas aprobaciones, creación de activaciones y publicación (8F.2A+).
+ * EXIGE que la declaración de publicidad política de la UE esté presente explícitamente.
+ */
+export const strictGoogleAdsActivationConfigSchema = googleAdsActivationConfigSchema.extend({
+  euPoliticalAdvertisingDeclaration: z.enum(GOOGLE_ADS_EU_POLITICAL_ADVERTISING_DECLARATIONS, {
+    errorMap: () => ({ message: 'Declaración de publicidad política de la UE requerida' }),
+  }),
+});
+
+export type PublishableGoogleAdsActivationConfig = z.infer<typeof strictGoogleAdsActivationConfigSchema>;
+
+/**
+ * Helper de reducción de tipos seguro para verificar si una configuración de Google Ads es elegible para publicación.
+ */
+export function isPublishableGoogleAdsConfig(
+  config: unknown,
+): config is PublishableGoogleAdsActivationConfig {
+  return strictGoogleAdsActivationConfigSchema.safeParse(config).success;
+}

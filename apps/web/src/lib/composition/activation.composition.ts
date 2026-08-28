@@ -39,6 +39,7 @@ import {
   SupabaseCampaignRepository,
   SupabaseCampaignApprovalRepository,
   SupabaseOrganizationRepository,
+  SupabaseClientRepository,
   consoleLogger,
 } from '@bop-agency/infrastructure';
 import {
@@ -76,6 +77,7 @@ export function createActivationComposition(supabase: SupabaseClient) {
   const campaignRepository = new SupabaseCampaignRepository(supabase);
   const campaignApprovalRepository = new SupabaseCampaignApprovalRepository(supabase);
   const organizationRepository = new SupabaseOrganizationRepository(supabase);
+  const clientRepository = new SupabaseClientRepository(supabase);
 
   const logger = consoleLogger;
 
@@ -93,8 +95,9 @@ export function createActivationComposition(supabase: SupabaseClient) {
     // draftDeps/complianceDeps en campaign.composition.ts, se puede ampliar
     // sin romper la firma si una fase futura los requiere aquí también.
   };
-  const targetDeps = { activationRepository, organizationRepository, logger };
+  const targetDeps = { activationRepository, organizationRepository, clientRepository, logger };
   const readDeps = { activationRepository, organizationRepository, logger };
+
 
   // ── Use cases ────────────────────────────────────────────────────────────
   const useCases = {

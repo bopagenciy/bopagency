@@ -38,6 +38,8 @@ export const CAMPAIGN_OBJECTIVES = [
 ] as const;
 
 export const CAMPAIGN_CURRENCIES = ['USD', 'COP', 'MXN', 'EUR'] as const;
+export type Currency = (typeof CAMPAIGN_CURRENCIES)[number];
+
 
 /**
  * Status alcanzables vía un update genérico de campaña en Phase 7B/7C.

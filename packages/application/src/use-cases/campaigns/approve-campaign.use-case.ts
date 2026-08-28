@@ -49,7 +49,8 @@ import {
   insufficientRole,
   notOrganizationMember,
 } from '@bop-agency/domain';
-import { approveCampaignSchema, googleAdsActivationConfigSchema } from '@bop-agency/shared';
+import { approveCampaignSchema, strictGoogleAdsActivationConfigSchema } from '@bop-agency/shared';
+
 import type { LoggerPort } from '../../ports/logger.port';
 import { evalCampaignAutomationSilently } from './campaign-automation-dispatch';
 
@@ -123,7 +124,7 @@ export async function approveCampaign(
         message: 'La campaña de Google Ads requiere una configuración de activación (googleAdsConfig) válida antes de ser aprobada',
       });
     }
-    const configCheck = googleAdsActivationConfigSchema.safeParse(rawConfig);
+    const configCheck = strictGoogleAdsActivationConfigSchema.safeParse(rawConfig);
     if (!configCheck.success) {
       return err({
         code: 'VALIDATION_ERROR' as const,

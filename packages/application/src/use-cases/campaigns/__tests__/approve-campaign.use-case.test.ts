@@ -16,6 +16,7 @@ import type {
   Campaign,
   CampaignId,
   CampaignRepository,
+  ClientRepository,
   OrganizationId,
   OrganizationMember,
   OrganizationRepository,
@@ -383,7 +384,7 @@ describe('Phase 7F — campaign automation hook (best-effort, post-commit)', () 
     expect(result.success).toBe(true);
   });
 
-  describe('Google Ads Activation Config (Phase 8F.0)', () => {
+  describe('Google Ads Activation Config (Phase 8F.0 & Phase 8F.2A)', () => {
     const validGoogleAdsConfig = {
       dailyBudget: { amount: 50, currency: 'USD' },
       biddingStrategy: 'MAXIMIZE_CLICKS',
@@ -392,6 +393,7 @@ describe('Phase 7F — campaign automation hook (best-effort, post-commit)', () 
       languageCriterionIds: ['1003'],
       keywordMatchPolicy: 'PHRASE',
       negativeKeywordMatchPolicy: 'BROAD',
+      euPoliticalAdvertisingDeclaration: 'DOES_NOT_CONTAIN_EU_POLITICAL_ADVERTISING',
     };
 
     const makeMockClientRepo = (website: string | null = 'https://client.com') => ({
@@ -415,6 +417,36 @@ describe('Phase 7F — campaign automation hook (best-effort, post-commit)', () 
       if (!result.success) {
         expect(result.error.code).toBe('VALIDATION_ERROR');
         expect(result.error.message).toContain('googleAdsConfig');
+      }
+    });
+
+    it('rechaza aprobación de campaña de Google Ads si googleAdsConfig no tiene la declaración de publicidad política de la UE (8F.2A)', async () => {
+      const legacyConfigWithoutEU = {
+        dailyBudget: { amount: 50, currency: 'USD' },
+        biddingStrategy: 'MAXIMIZE_CLICKS',
+        finalUrl: 'https://app.client.com/landing',
+        geoTargetIds: ['2170'],
+        languageCriterionIds: ['1003'],
+        keywordMatchPolicy: 'PHRASE',
+        negativeKeywordMatchPolicy: 'BROAD',
+      };
+
+      const campaignRepository = makeCampaignRepo({
+        findById: vi.fn().mockResolvedValue(
+          ok(makeCampaign({ platform: 'google_ads', metadata: { googleAdsConfig: legacyConfigWithoutEU } })),
+        ),
+      });
+
+      const result = await approveCampaign(makeInput(), {
+        campaignRepository,
+        organizationRepository: makeOrgRepo(),
+        logger: makeLogger(),
+      });
+
+      expect(result.success).toBe(false);
+      if (!result.success) {
+        expect(result.error.code).toBe('VALIDATION_ERROR');
+        expect(result.error.message).toContain('Declaración de publicidad política de la UE requerida');
       }
     });
 

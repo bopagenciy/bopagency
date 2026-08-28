@@ -1,7 +1,11 @@
 import { describe, it, expect } from 'vitest';
-import { googleAdsActivationConfigSchema } from '../google-ads-config.schema';
+import {
+  googleAdsActivationConfigSchema,
+  strictGoogleAdsActivationConfigSchema,
+  isPublishableGoogleAdsConfig,
+} from '../google-ads-config.schema';
 
-describe('googleAdsActivationConfigSchema', () => {
+describe('googleAdsActivationConfigSchema (8F.0 Baseline & Legacy Compatibility)', () => {
   const validConfig = {
     dailyBudget: {
       amount: 50.25,
@@ -148,5 +152,90 @@ describe('googleAdsActivationConfigSchema', () => {
       finalUrl: 'not-a-url',
     });
     expect(result.success).toBe(false);
+  });
+});
+
+describe('googleAdsActivationConfigSchema & strictGoogleAdsActivationConfigSchema (Phase 8F.2A EU Declaration)', () => {
+  const baseValidConfig = {
+    dailyBudget: { amount: 50, currency: 'USD' },
+    biddingStrategy: 'MAXIMIZE_CLICKS',
+    finalUrl: 'https://example.com/promo',
+    geoTargetIds: ['2840'],
+    languageCriterionIds: ['1000'],
+    keywordMatchPolicy: 'PHRASE',
+    negativeKeywordMatchPolicy: 'EXACT',
+  };
+
+  it('legacy schema parsea configuración sin declaración de publicidad política de la UE (opcional/nullable)', () => {
+    const result = googleAdsActivationConfigSchema.safeParse(baseValidConfig);
+    expect(result.success).toBe(true);
+    if (result.success) {
+      expect(result.data.euPoliticalAdvertisingDeclaration).toBeUndefined();
+    }
+  });
+
+  it('legacy schema parsea configuración con CONTAINS_EU_POLITICAL_ADVERTISING', () => {
+    const config = {
+      ...baseValidConfig,
+      euPoliticalAdvertisingDeclaration: 'CONTAINS_EU_POLITICAL_ADVERTISING',
+    };
+    const result = googleAdsActivationConfigSchema.safeParse(config);
+    expect(result.success).toBe(true);
+    if (result.success) {
+      expect(result.data.euPoliticalAdvertisingDeclaration).toBe('CONTAINS_EU_POLITICAL_ADVERTISING');
+    }
+  });
+
+  it('legacy schema parsea configuración con DOES_NOT_CONTAIN_EU_POLITICAL_ADVERTISING', () => {
+    const config = {
+      ...baseValidConfig,
+      euPoliticalAdvertisingDeclaration: 'DOES_NOT_CONTAIN_EU_POLITICAL_ADVERTISING',
+    };
+    const result = googleAdsActivationConfigSchema.safeParse(config);
+    expect(result.success).toBe(true);
+    if (result.success) {
+      expect(result.data.euPoliticalAdvertisingDeclaration).toBe('DOES_NOT_CONTAIN_EU_POLITICAL_ADVERTISING');
+    }
+  });
+
+  it('legacy schema rechaza valores de enum inválidos para la declaración de la UE', () => {
+    const config = {
+      ...baseValidConfig,
+      euPoliticalAdvertisingDeclaration: 'INVALID_DECLARATION',
+    };
+    const result = googleAdsActivationConfigSchema.safeParse(config);
+    expect(result.success).toBe(false);
+  });
+
+  it('strict schema rechaza configuración sin declaración de publicidad política de la UE', () => {
+    const result = strictGoogleAdsActivationConfigSchema.safeParse(baseValidConfig);
+    expect(result.success).toBe(false);
+  });
+
+  it('strict schema acepta configuración con DOES_NOT_CONTAIN_EU_POLITICAL_ADVERTISING explícito', () => {
+    const config = {
+      ...baseValidConfig,
+      euPoliticalAdvertisingDeclaration: 'DOES_NOT_CONTAIN_EU_POLITICAL_ADVERTISING',
+    };
+    const result = strictGoogleAdsActivationConfigSchema.safeParse(config);
+    expect(result.success).toBe(true);
+  });
+
+  it('strict schema acepta configuración con CONTAINS_EU_POLITICAL_ADVERTISING explícito', () => {
+    const config = {
+      ...baseValidConfig,
+      euPoliticalAdvertisingDeclaration: 'CONTAINS_EU_POLITICAL_ADVERTISING',
+    };
+    const result = strictGoogleAdsActivationConfigSchema.safeParse(config);
+    expect(result.success).toBe(true);
+  });
+
+  it('isPublishableGoogleAdsConfig retorna false para config legacy sin declaración y true para config estricta válida', () => {
+    expect(isPublishableGoogleAdsConfig(baseValidConfig)).toBe(false);
+    const validStrict = {
+      ...baseValidConfig,
+      euPoliticalAdvertisingDeclaration: 'DOES_NOT_CONTAIN_EU_POLITICAL_ADVERTISING',
+    };
+    expect(isPublishableGoogleAdsConfig(validStrict)).toBe(true);
   });
 });
