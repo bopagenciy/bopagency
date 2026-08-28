@@ -506,6 +506,21 @@ export type {
   ReconcilePublicationWithProviderOutput,
 } from './use-cases/publications/reconcile-publication-with-provider.use-case';
 
+// Phase 8G.1 — Google Provider Monitoring Foundation Ports & Use Cases
+export { PublicationProviderMonitorRegistry } from './ports/publication-provider-monitor.port';
+export type {
+  PublicationProviderMonitorPort,
+  ProviderResourceObservation,
+  ObserveInput,
+} from './ports/publication-provider-monitor.port';
+export { observePublishedResourceStatus } from './use-cases/publications/observe-published-resource-status.use-case';
+export type {
+  ObservePublishedResourceStatusInput,
+  ObservePublishedResourceStatusDeps,
+  ObservePublishedResourceStatusOutput,
+} from './use-cases/publications/observe-published-resource-status.use-case';
+
+
 // Use cases — Publications (Phase 8B.3 — Runtime Worker & Evidence)
 export {
   listDispatchablePublicationJobs,

@@ -163,3 +163,5 @@ export { GoogleAdsPublisherAdapter, toGoogleBudgetMicros } from './google/google
 export type { GoogleAdsPublisherAdapterDeps } from './google/google-ads-publisher.adapter';
 export { GoogleAdsReconcilerAdapter } from './google/google-ads-reconciler.adapter';
 export type { GoogleAdsReconcilerAdapterDeps } from './google/google-ads-reconciler.adapter';
+export { GoogleAdsMonitorAdapter } from './google/google-ads-monitor.adapter';
+export type { GoogleAdsMonitorAdapterDeps } from './google/google-ads-monitor.adapter';

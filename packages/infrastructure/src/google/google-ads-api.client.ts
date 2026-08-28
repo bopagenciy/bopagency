@@ -295,4 +295,109 @@ export class GoogleAdsApiClient {
 
     return { results: allResults, requestId: lastRequestId };
   }
+
+  /**
+   * GAQL read-only campaign status observation by exact resource name.
+   * REST endpoint: POST https://googleads.googleapis.com/{version}/customers/{customerId}/googleAds:search
+   * Query: SELECT campaign.id, campaign.resource_name, campaign.name, campaign.status, campaign.serving_status, campaign.primary_status, campaign.primary_status_reasons FROM campaign WHERE campaign.resource_name = '{sanitizedResourceName}'
+   */
+  async observeCampaignByResourceName(params: {
+    readonly customerId: string;
+    readonly managerCustomerId?: string | null;
+    readonly accessToken: string;
+    readonly resourceName: string;
+  }): Promise<{
+    readonly result: {
+      readonly campaign: {
+        readonly id: string;
+        readonly resourceName: string;
+        readonly name: string;
+        readonly status: string;
+        readonly servingStatus?: string | null;
+        readonly primaryStatus?: string | null;
+        readonly primaryStatusReasons?: readonly string[];
+      };
+    } | null;
+    readonly requestId: string | null;
+  }> {
+    requireGoogleAdsApiVersion();
+    requireGoogleAdsDeveloperToken();
+
+    const cleanCustomerId = params.customerId.replace(/-/g, '').trim();
+    const sanitizedResourceName = params.resourceName.replace(/\\/g, '\\\\').replace(/'/g, "\\'");
+    const query = `SELECT campaign.id, campaign.resource_name, campaign.name, campaign.status, campaign.serving_status, campaign.primary_status, campaign.primary_status_reasons FROM campaign WHERE campaign.resource_name = '${sanitizedResourceName}'`;
+
+    const endpoint = `https://googleads.googleapis.com/${this.apiVersion}/customers/${cleanCustomerId}/googleAds:search`;
+
+    const headers: Record<string, string> = {
+      'Authorization': `Bearer ${params.accessToken}`,
+      'developer-token': this.developerToken,
+      'Content-Type': 'application/json',
+    };
+
+    if (params.managerCustomerId && params.managerCustomerId.trim().length > 0) {
+      const cleanManagerId = params.managerCustomerId.replace(/-/g, '').trim();
+      if (/^\d{10}$/.test(cleanManagerId)) {
+        headers['login-customer-id'] = cleanManagerId;
+      }
+    }
+
+    let response: Response;
+    try {
+      response = await fetch(endpoint, {
+        method: 'POST',
+        headers,
+        body: JSON.stringify({ query }),
+      });
+    } catch (netErr) {
+      this.logger.error('GoogleAdsApiClient: GAQL status observation network failure', { error: netErr });
+      throw new GoogleAdsApiError('Network failure executing Google Ads GAQL status observation', 503, netErr);
+    }
+
+    const requestId = response.headers.get('request-id');
+    const responseData = (await response.json().catch(() => ({}))) as Record<string, unknown>;
+
+    if (!response.ok) {
+      const message =
+        typeof responseData['message'] === 'string'
+          ? responseData['message']
+          : `Google Ads API search failed with status ${response.status}`;
+
+      this.logger.warn('GoogleAdsApiClient: observation call rejected by provider', {
+        status: response.status,
+        requestId,
+      });
+
+      throw new GoogleAdsApiError(message, response.status, responseData, requestId);
+    }
+
+    const rawResults = Array.isArray(responseData['results']) ? responseData['results'] : [];
+    if (rawResults.length === 0) {
+      return { result: null, requestId };
+    }
+
+    const first = (rawResults[0] as Record<string, unknown>) || {};
+    const camp = (first['campaign'] as Record<string, unknown>) || {};
+
+    const rawReasons = Array.isArray(camp['primaryStatusReasons'])
+      ? camp['primaryStatusReasons']
+      : Array.isArray(camp['primary_status_reasons'])
+      ? camp['primary_status_reasons']
+      : [];
+
+    return {
+      result: {
+        campaign: {
+          id: String(camp['id'] || ''),
+          resourceName: String(camp['resourceName'] || camp['resource_name'] || ''),
+          name: String(camp['name'] || ''),
+          status: String(camp['status'] || 'UNKNOWN'),
+          servingStatus: typeof camp['servingStatus'] === 'string' ? camp['servingStatus'] : typeof camp['serving_status'] === 'string' ? camp['serving_status'] : null,
+          primaryStatus: typeof camp['primaryStatus'] === 'string' ? camp['primaryStatus'] : typeof camp['primary_status'] === 'string' ? camp['primary_status'] : null,
+          primaryStatusReasons: rawReasons.map((r) => String(r)),
+        },
+      },
+      requestId,
+    };
+  }
 }

@@ -277,4 +277,48 @@ describe('GoogleAdsApiClient Unit Tests & Safety Matrix (Phase 8F.2)', () => {
     // Should stop fetching after page 2 because 2 exact matches were observed
     expect(mockFetch).toHaveBeenCalledTimes(2);
   });
+
+  it('executes read-only observeCampaignByResourceName with escaping and returns parsed status fields', async () => {
+    const mockFetch = vi.fn().mockResolvedValue({
+      ok: true,
+      headers: { get: () => 'req-observe-1' },
+      json: vi.fn().mockResolvedValue({
+        results: [
+          {
+            campaign: {
+              id: '9876543210',
+              resource_name: 'customers/1234567890/campaigns/9876543210',
+              name: "Campaign's\\Name",
+              status: 'PAUSED',
+              serving_status: 'SERVING',
+              primary_status: 'PAUSED',
+              primary_status_reasons: ['CAMPAIGN_PAUSED'],
+            },
+          },
+        ],
+      }),
+    });
+    vi.stubGlobal('fetch', mockFetch);
+
+    const client = new GoogleAdsApiClient({ developerToken: 'dev-123' }, makeLogger());
+    const obs = await client.observeCampaignByResourceName({
+      customerId: '1234567890',
+      managerCustomerId: '1111111111',
+      accessToken: 'access-123',
+      resourceName: "customers/1234567890/campaigns/9876543210's",
+    });
+
+    expect(obs.result).not.toBeNull();
+    if (obs.result) {
+      expect(obs.result.campaign.id).toBe('9876543210');
+      expect(obs.result.campaign.status).toBe('PAUSED');
+      expect(obs.result.campaign.servingStatus).toBe('SERVING');
+      expect(obs.result.campaign.primaryStatus).toBe('PAUSED');
+      expect(obs.result.campaign.primaryStatusReasons).toEqual(['CAMPAIGN_PAUSED']);
+    }
+
+    const callBodyStr = mockFetch.mock.calls[0]?.[1]?.body as string;
+    const bodyObj = JSON.parse(callBodyStr);
+    expect(bodyObj.query).toContain("WHERE campaign.resource_name = 'customers/1234567890/campaigns/9876543210\\'s'");
+  });
 });
