@@ -48,8 +48,8 @@ export default async function EditClientPage({ params }: Props) {
       />
       <div className="p-6 max-w-3xl mx-auto">
         <div className="mb-6">
-          <h1 className="text-xl font-semibold text-gray-900">Editar cliente</h1>
-          <p className="text-sm text-gray-500 mt-1">{typedClient.name}</p>
+          <h1 className="text-xl font-semibold text-foreground">Editar cliente</h1>
+          <p className="text-sm text-muted-foreground mt-1">{typedClient.name}</p>
         </div>
         <ClientForm
           action={boundUpdateAction}

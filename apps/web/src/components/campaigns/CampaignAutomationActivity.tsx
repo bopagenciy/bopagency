@@ -39,23 +39,23 @@ export function CampaignAutomationActivity({ task }: CampaignAutomationActivityP
   if (!task) return null;
 
   return (
-    <div className="bg-white rounded-xl border border-border p-6 space-y-3">
-      <h2 className="font-semibold text-gray-900">Actividad / Automatización</h2>
-      <div className="flex items-center justify-between gap-4 rounded-lg border border-gray-100 bg-gray-50 px-4 py-3">
+    <div className="bg-card text-card-foreground rounded-lg border border-border p-6 space-y-3">
+      <h2 className="font-semibold text-foreground">Actividad / Automatización</h2>
+      <div className="flex items-center justify-between gap-4 rounded-md border border-border bg-muted/50 px-4 py-3">
         <div>
-          <p className="text-sm font-medium text-gray-800">{task.title}</p>
-          <p className="text-xs text-gray-500 mt-0.5">
+          <p className="text-sm font-medium text-foreground">{task.title}</p>
+          <p className="text-xs text-muted-foreground mt-0.5">
             Prioridad: {PRIORITY_LABELS[task.priority] ?? task.priority}
           </p>
         </div>
         <Link
           href="/tasks"
-          className="text-sm font-medium text-indigo-600 hover:text-indigo-700 shrink-0"
+          className="text-sm font-medium text-foreground hover:underline shrink-0"
         >
           Ver tarea →
         </Link>
       </div>
-      <p className="text-xs text-gray-400">
+      <p className="text-xs text-muted-foreground">
         Generada automáticamente por Campaign Studio. No implica ninguna publicación en un
         proveedor externo (Meta Ads, Google Ads, YouTube, email o redes sociales).
       </p>

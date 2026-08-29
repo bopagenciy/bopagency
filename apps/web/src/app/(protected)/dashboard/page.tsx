@@ -104,31 +104,31 @@ export default async function DashboardPage() {
           <ActiveAlertsSidebar alerts={recentAlerts} />
 
           {/* Tareas recientes */}
-          <div className="bg-white rounded-lg border border-gray-200">
-            <div className="px-5 py-4 border-b border-gray-100 flex items-center justify-between">
-              <h2 className="font-semibold text-gray-900">Tareas recientes</h2>
+          <div className="bg-card text-card-foreground rounded-lg border border-border">
+            <div className="px-5 py-4 border-b border-border flex items-center justify-between">
+              <h2 className="font-semibold text-foreground">Tareas recientes</h2>
               <Link
                 href="/tasks"
-                className="text-xs text-primary hover:text-primary-hover transition-colors"
+                className="text-xs text-muted-foreground hover:text-foreground transition-colors font-medium"
               >
                 Ver todas →
               </Link>
             </div>
             {recentTasks.length === 0 ? (
-              <div className="px-5 py-10 text-center text-gray-400">
+              <div className="px-5 py-10 text-center text-muted-foreground">
                 <div className="text-3xl mb-2" aria-hidden="true">
                   📋
                 </div>
-                <p className="text-sm font-medium text-gray-600">Sin tareas recientes</p>
+                <p className="text-sm font-medium text-foreground">Sin tareas recientes</p>
               </div>
             ) : (
-              <ul className="divide-y divide-gray-100" aria-label="Tareas recientes">
+              <ul className="divide-y divide-border" aria-label="Tareas recientes">
                 {recentTasks.map((task: (typeof recentTasks)[number]) => (
                   <li key={task.id} className="px-5 py-3 flex items-center justify-between gap-3">
                     <div className="min-w-0">
-                      <p className="text-sm font-medium text-gray-900 truncate">{task.title}</p>
+                      <p className="text-sm font-medium text-foreground truncate">{task.title}</p>
                       {task.dueDate && (
-                        <p className="text-xs text-gray-400 mt-0.5">
+                        <p className="text-xs text-muted-foreground mt-0.5">
                           Vence:{' '}
                           {new Date(task.dueDate).toLocaleDateString('es-CO', {
                             day: '2-digit',
@@ -138,11 +138,11 @@ export default async function DashboardPage() {
                       )}
                     </div>
                     <div className="flex items-center gap-2 flex-shrink-0">
-                      <span className="text-xs text-gray-400">
+                      <span className="text-xs text-muted-foreground">
                         {PRIORITY_LABELS[task.priority] ?? task.priority}
                       </span>
                       <span
-                        className={`px-2 py-0.5 rounded text-xs font-medium ${TASK_STATUS_COLORS[task.status] ?? 'bg-gray-100 text-gray-700'}`}
+                        className={`px-2 py-0.5 rounded text-xs font-medium ${TASK_STATUS_COLORS[task.status] ?? 'bg-muted text-muted-foreground'}`}
                       >
                         {TASK_STATUS_LABELS[task.status] ?? task.status}
                       </span>
@@ -167,12 +167,12 @@ export default async function DashboardPage() {
               <Link
                 key={href}
                 href={href}
-                className="bg-white rounded-lg border border-gray-200 p-4 flex flex-col items-center gap-2 hover:border-red-300 hover:shadow-sm transition-all"
+                className="bg-card text-card-foreground rounded-lg border border-border p-4 flex flex-col items-center gap-2 hover:border-foreground/30 hover:shadow-sm transition-all"
               >
                 <span className="text-2xl" aria-hidden="true">
                   {icon}
                 </span>
-                <span className="text-sm font-medium text-gray-700">{label}</span>
+                <span className="text-sm font-medium text-foreground">{label}</span>
               </Link>
             ))}
           </div>

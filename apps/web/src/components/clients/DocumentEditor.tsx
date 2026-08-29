@@ -59,7 +59,7 @@ export function DocumentEditor({
       {error && (
         <div
           role="alert"
-          className="bg-red-50 text-red-700 px-4 py-3 rounded-lg text-sm border border-red-200"
+          className="bg-red-50/80 text-red-900 px-4 py-3 rounded-md text-sm border border-red-200"
         >
           {error}
         </div>
@@ -67,7 +67,7 @@ export function DocumentEditor({
       {saved && (
         <div
           role="status"
-          className="bg-green-50 text-green-700 px-4 py-3 rounded-lg text-sm border border-green-200"
+          className="bg-emerald-50/80 text-emerald-900 px-4 py-3 rounded-md text-sm border border-emerald-200"
         >
           ✓ Guardado correctamente — versión {version + 1}
         </div>
@@ -75,7 +75,7 @@ export function DocumentEditor({
 
       <div className="flex flex-col sm:flex-row gap-3">
         <div className="flex-1">
-          <label htmlFor="title" className="block text-sm font-medium text-gray-700 mb-1">
+          <label htmlFor="title" className="block text-sm font-medium text-foreground mb-1">
             Título del documento
           </label>
           <input
@@ -84,19 +84,19 @@ export function DocumentEditor({
             type="text"
             required
             defaultValue={defaultTitle}
-            className="w-full px-3 py-2 border border-gray-200 rounded-lg text-sm focus:outline-none focus:ring-2 focus:ring-primary"
+            className="w-full px-3 py-2 border border-border rounded-md bg-card text-foreground placeholder:text-muted-foreground text-sm focus:outline-none focus:ring-2 focus:ring-ring"
           />
         </div>
 
         <div>
-          <label htmlFor="status" className="block text-sm font-medium text-gray-700 mb-1">
+          <label htmlFor="status" className="block text-sm font-medium text-foreground mb-1">
             Estado
           </label>
           <select
             id="status"
             name="status"
             defaultValue={defaultStatus}
-            className="px-3 py-2 border border-gray-200 rounded-lg text-sm focus:outline-none focus:ring-2 focus:ring-primary"
+            className="px-3 py-2 border border-border rounded-md bg-card text-foreground text-sm focus:outline-none focus:ring-2 focus:ring-ring"
           >
             {(['draft', 'published', 'archived'] as DocumentStatus[]).map((s) => (
               <option key={s} value={s}>
@@ -107,7 +107,7 @@ export function DocumentEditor({
         </div>
 
         <div>
-          <label htmlFor="category" className="block text-sm font-medium text-gray-700 mb-1">
+          <label htmlFor="category" className="block text-sm font-medium text-foreground mb-1">
             Categoría
           </label>
           <input
@@ -115,15 +115,15 @@ export function DocumentEditor({
             name="category"
             type="text"
             defaultValue={defaultCategory}
-            className="px-3 py-2 border border-gray-200 rounded-lg text-sm focus:outline-none focus:ring-2 focus:ring-primary"
+            className="px-3 py-2 border border-border rounded-md bg-card text-foreground placeholder:text-muted-foreground text-sm focus:outline-none focus:ring-2 focus:ring-ring"
           />
         </div>
       </div>
 
       <div>
-        <label htmlFor="content" className="block text-sm font-medium text-gray-700 mb-1">
+        <label htmlFor="content" className="block text-sm font-medium text-foreground mb-1">
           Contenido
-          <span className="text-xs text-gray-400 ml-2 font-normal">Versión actual: {version}</span>
+          <span className="text-xs text-muted-foreground ml-2 font-normal">Versión actual: {version}</span>
         </label>
         <textarea
           id="content"
@@ -131,7 +131,7 @@ export function DocumentEditor({
           onChange={(e) => setContent(e.target.value)}
           rows={20}
           placeholder="Escribe el contenido del documento aquí..."
-          className="w-full px-3 py-2 border border-gray-200 rounded-lg text-sm font-mono focus:outline-none focus:ring-2 focus:ring-primary resize-y"
+          className="w-full px-3 py-2 border border-border rounded-md bg-card text-foreground font-mono focus:outline-none focus:ring-2 focus:ring-ring resize-y text-sm"
         />
       </div>
 
@@ -139,11 +139,11 @@ export function DocumentEditor({
         <button
           type="submit"
           disabled={isPending}
-          className="px-6 py-2.5 bg-primary text-primary-foreground rounded-lg text-sm font-medium hover:bg-primary-hover disabled:opacity-50 transition-colors"
+          className="px-6 py-2.5 bg-primary text-primary-foreground rounded-md text-sm font-medium hover:bg-primary-hover disabled:opacity-50 transition-colors focus:outline-none focus:ring-2 focus:ring-ring focus:ring-offset-2"
         >
           {isPending ? 'Guardando...' : 'Guardar documento'}
         </button>
-        <span className="text-xs text-gray-400">Los cambios se guardan como nueva versión</span>
+        <span className="text-xs text-muted-foreground">Los cambios se guardan como nueva versión</span>
       </div>
     </form>
   );

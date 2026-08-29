@@ -22,14 +22,14 @@ type ButtonProps = ButtonHTMLAttributes<HTMLButtonElement> & {
  */
 const variantClasses: Record<ButtonVariant, string> = {
   primary:
-    'bg-primary text-primary-foreground hover:bg-primary-hover focus:ring-primary disabled:bg-primary/40',
+    'bg-primary text-primary-foreground hover:bg-primary-hover focus:ring-ring focus:ring-offset-2 disabled:bg-primary/50',
   secondary:
-    'bg-secondary text-secondary-foreground hover:bg-muted focus:ring-primary disabled:opacity-50 border border-border',
-  ghost: 'bg-transparent text-foreground hover:bg-muted focus:ring-primary',
+    'bg-secondary text-secondary-foreground hover:bg-muted focus:ring-ring focus:ring-offset-2 disabled:opacity-50 border border-border',
+  ghost: 'bg-transparent text-foreground hover:bg-muted focus:ring-ring focus:ring-offset-2',
   danger:
-    'bg-destructive/10 text-destructive border border-destructive/30 hover:bg-destructive/20 focus:ring-destructive',
+    'bg-destructive text-destructive-foreground hover:bg-destructive/90 focus:ring-destructive focus:ring-offset-2',
   outline:
-    'bg-background text-foreground border border-border hover:bg-muted focus:ring-primary',
+    'bg-background text-foreground border border-border hover:bg-muted focus:ring-ring focus:ring-offset-2',
 };
 
 const sizeClasses: Record<ButtonSize, string> = {

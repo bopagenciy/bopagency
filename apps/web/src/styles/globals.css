@@ -22,55 +22,40 @@
  */
 @layer base {
   :root {
-    /* Superficie base */
-    --background: 255 255 255; /* #FFFFFF — canvas principal, blanco */
-    --foreground: 31 31 31; /* #1F1F1F — texto primario */
+    /* Superficie base — canvas neutro suave y texto oscuro sofisticado */
+    --background: 249 250 251; /* #F9FAFB — canvas de la app */
+    --foreground: 17 24 39; /* #111827 — texto principal slate oscuro */
 
-    --card: 255 255 255; /* #FFFFFF */
-    --card-foreground: 31 31 31; /* #1F1F1F */
+    --card: 255 255 255; /* #FFFFFF — tarjetas blanco puro */
+    --card-foreground: 17 24 39; /* #111827 */
 
-    /* Superficie muted / secundaria (fondo cálido suave) */
-    --muted: 255 247 242; /* #FFF7F2 */
-    --muted-foreground: 107 114 128; /* #6B7280 — texto secundario */
+    /* Superficie muted / secundaria */
+    --muted: 243 244 246; /* #F3F4F6 — fondo neutro suave */
+    --muted-foreground: 107 114 128; /* #6B7280 — texto secundario slate */
 
-    --border: 233 226 220; /* #E9E2DC — borde neutro cálido */
-    --input: 233 226 220; /* #E9E2DC */
+    --border: 229 231 235; /* #E5E7EB — borde neutro limpio */
+    --input: 229 231 235; /* #E5E7EB */
 
-    /*
-     * Primary — naranja corporativo.
-     * AJUSTE DE CONTRASTE: el naranja "puro" del logo (#F35A13) da un
-     * contraste de solo 3.34:1 con texto blanco (falla AA de texto normal,
-     * que exige 4.5:1). Se usa #D9480F (el "hover/deep orange" propuesto
-     * originalmente) como el `--primary` real para botones/texto, que da
-     * 4.30:1 — sustancialmente más accesible y visualmente casi idéntico.
-     * #F35A13 se conserva como `--primary-accent` para usos de superficie
-     * grande / decorativos / focus rings, donde el umbral no-textual de
-     * WCAG (3:1) es el aplicable.
-     */
-    --primary: 217 72 15; /* #D9480F */
-    --primary-hover: 194 67 16; /* #C24310 — hover, 5.12:1 con blanco */
+    /* Primary — Slate Charcoal profesional (B2B SaaS) */
+    --primary: 17 24 39; /* #111827 — slate charcoal */
+    --primary-hover: 31 41 55; /* #1F2937 — hover slate charcoal */
     --primary-foreground: 255 255 255;
-    --primary-accent: 243 90 19; /* #F35A13 — naranja "puro" del logo, uso decorativo/grande */
+    --primary-accent: 217 119 6; /* #D97706 — acento dorado de marca */
 
-    --secondary: 255 247 242; /* #FFF7F2 */
-    --secondary-foreground: 31 31 31; /* #1F1F1F */
+    --secondary: 243 244 246; /* #F3F4F6 */
+    --secondary-foreground: 17 24 39; /* #111827 */
 
-    /*
-     * Accent — dorado corporativo. Uso deliberadamente escaso ("subtle gold
-     * detail only where tasteful"). SIEMPRE con texto oscuro encima — texto
-     * blanco sobre dorado da 1.37:1 (ilegible), texto #1F1F1F da 9.95:1.
-     */
-    --accent: 245 194 66; /* #F5C242 */
-    --accent-foreground: 31 31 31; /* #1F1F1F */
+    /* Accent — Dorado/Amber de marca (derivado del logo) */
+    --accent: 217 119 6; /* #D97706 — dorado de marca */
+    --accent-foreground: 255 255 255;
 
-    --warm-yellow: 255 217 90; /* #FFD95A — variante más clara del dorado, mismo criterio: solo con texto oscuro */
+    --brand-accent: 217 119 6; /* #D97706 */
+    --brand-accent-hover: 245 158 11; /* #F59E0B */
+    --brand-accent-foreground: 255 255 255;
 
-    --ring: 243 90 19; /* #F35A13 — focus ring, usa el naranja "puro" (umbral no-textual 3:1, cumple) */
+    --ring: 17 24 39; /* #111827 — focus ring slate */
 
-    /*
-     * Colores semánticos — DISTINTOS de la marca por diseño (principio F del
-     * mandato de 8A.0). No se tocan aunque coincidan en tono con brand-red.
-     */
+    /* Colores semánticos — independientes de la paleta de marca */
     --success: 22 163 74; /* green-600 */
     --success-foreground: 255 255 255;
     --warning: 217 119 6; /* amber-600 */
@@ -80,24 +65,17 @@
     --info: 37 99 235; /* blue-600 */
     --info-foreground: 255 255 255;
 
-    /*
-     * Sidebar — el elemento principal de branding (principio B). Fondo vino
-     * profundo inspirado en los tonos oscuros reales del logo (~#500010–
-     * #A01010), ajustado a #7A1E1E para dar mejor legibilidad de texto en
-     * bloques largos de navegación mientras se mantiene en la misma familia
-     * de tono. Contraste texto blanco sobre #7A1E1E: 10.33:1 (AAA).
-     */
-    --sidebar-background: 122 30 30; /* #7A1E1E */
-    --sidebar-foreground: 255 255 255;
-    --sidebar-muted: 227 199 199; /* #E3C7C7 — texto secundario sobre sidebar, 6.53:1 */
-    --sidebar-hover: 140 42 23; /* #8C2A17 — hover de item de navegación, 8.54:1 con blanco */
-    --sidebar-active: 166 54 15; /* #A6360F — blend vino/naranja para el item activo, 6.65:1 con blanco */
+    /* Sidebar — Slate Charcoal elegante */
+    --sidebar-background: 15 23 42; /* #0F172A — slate oscuro */
+    --sidebar-foreground: 249 250 251;
+    --sidebar-muted: 156 163 175; /* #9CA3AF */
+    --sidebar-hover: 30 41 59; /* #1E293B */
+    --sidebar-active: 30 41 59; /* #1E293B */
     --sidebar-active-foreground: 255 255 255;
-    --sidebar-border: 96 24 24; /* #601818 — separadores internos del sidebar */
-    --sidebar-accent: 243 90 19; /* #F35A13 — barra/indicador naranja del item activo (accent, no fondo completo) */
+    --sidebar-border: 30 41 59; /* #1E293B */
+    --sidebar-accent: 245 158 11; /* #F59E0B — indicador ambar activo */
 
-    /* Marca (auxiliar, para header/logo container, no para grandes superficies) */
-    --brand-red: 179 32 46; /* #B3202E */
+    --brand-red: 17 24 39; /* Obsoleto — redirigido a primary slate */
   }
 
   html {

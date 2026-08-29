@@ -49,7 +49,7 @@ export function CampaignsFilters({ status, platform }: CampaignsFiltersProps) {
       <select
         value={status}
         onChange={(e) => updateFilter('status', e.target.value)}
-        className="px-3 py-2 border border-gray-200 rounded-lg text-sm focus:outline-none focus:ring-2 focus:ring-primary bg-white"
+        className="px-3 py-2 border border-border rounded-md text-sm focus:outline-none focus:ring-2 focus:ring-ring bg-card text-foreground"
         aria-label="Filtrar por estado"
       >
         <option value="">Todos los estados</option>
@@ -63,7 +63,7 @@ export function CampaignsFilters({ status, platform }: CampaignsFiltersProps) {
       <select
         value={platform}
         onChange={(e) => updateFilter('platform', e.target.value)}
-        className="px-3 py-2 border border-gray-200 rounded-lg text-sm focus:outline-none focus:ring-2 focus:ring-primary bg-white"
+        className="px-3 py-2 border border-border rounded-md text-sm focus:outline-none focus:ring-2 focus:ring-ring bg-card text-foreground"
         aria-label="Filtrar por plataforma"
       >
         <option value="">Todas las plataformas</option>

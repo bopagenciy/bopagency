@@ -12,7 +12,7 @@ interface CalendarAgendaViewProps {
 export const CalendarAgendaView: React.FC<CalendarAgendaViewProps> = ({ items, onSelectItem }) => {
   if (items.length === 0) {
     return (
-      <div className="bg-white border border-slate-200 rounded-xl p-12 text-center text-slate-500">
+      <div className="bg-card border border-border rounded-lg p-12 text-center text-muted-foreground">
         <p className="text-sm font-medium">No hay elementos de calendario programados en este rango.</p>
       </div>
     );
@@ -44,10 +44,10 @@ export const CalendarAgendaView: React.FC<CalendarAgendaViewProps> = ({ items, o
         const dayItems = grouped[dateStr] || [];
 
         return (
-          <div key={dateStr} className="bg-white border border-slate-200 rounded-xl shadow-sm overflow-hidden">
-            <div className="bg-slate-50 px-4 py-2.5 border-b border-slate-200 flex items-center justify-between">
-              <h3 className="text-sm font-bold text-slate-800 capitalize">{formattedDate}</h3>
-              <span className="text-xs font-semibold text-slate-500">
+          <div key={dateStr} className="bg-card border border-border rounded-lg shadow-sm overflow-hidden">
+            <div className="bg-muted/50 px-4 py-2.5 border-b border-border flex items-center justify-between">
+              <h3 className="text-sm font-semibold text-foreground capitalize">{formattedDate}</h3>
+              <span className="text-xs font-medium text-muted-foreground">
                 {dayItems.length} {dayItems.length === 1 ? 'publicación' : 'publicaciones'}
               </span>
             </div>

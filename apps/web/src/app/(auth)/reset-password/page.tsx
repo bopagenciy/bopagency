@@ -14,17 +14,17 @@ export default async function ResetPasswordPage({ searchParams }: ResetPasswordP
 
   return (
     <>
-      <h1 className="text-xl font-bold text-foreground mb-1">Nueva contraseña</h1>
+      <h1 className="text-xl font-bold tracking-tight text-foreground mb-1">Nueva contraseña</h1>
       <p className="text-sm text-muted-foreground mb-6">Elige una nueva contraseña para tu cuenta.</p>
 
       {params.error && (
-        <div className="mb-4 p-3 rounded-lg bg-red-50 border border-red-200 text-red-700 text-sm">
+        <div className="mb-4 p-3 rounded-md bg-red-50/80 border border-red-200 text-red-900 text-sm">
           {params.error}
         </div>
       )}
 
       {params.message && (
-        <div className="mb-4 p-3 rounded-lg bg-green-50 border border-green-200 text-green-700 text-sm">
+        <div className="mb-4 p-3 rounded-md bg-emerald-50/80 border border-emerald-200 text-emerald-900 text-sm">
           {params.message}
         </div>
       )}
@@ -42,7 +42,7 @@ export default async function ResetPasswordPage({ searchParams }: ResetPasswordP
             autoComplete="new-password"
             placeholder="Mínimo 8 caracteres"
             minLength={8}
-            className="w-full px-3 py-2 rounded-lg bg-background border border-border text-foreground placeholder-muted-foreground text-sm focus:outline-none focus:ring-2 focus:ring-primary focus:border-transparent"
+            className="w-full px-3 py-2 rounded-md bg-card border border-border text-foreground placeholder:text-muted-foreground text-sm focus:outline-none focus:ring-2 focus:ring-ring focus:border-ring"
           />
         </div>
 
@@ -61,13 +61,13 @@ export default async function ResetPasswordPage({ searchParams }: ResetPasswordP
             autoComplete="new-password"
             placeholder="Repite la contraseña"
             minLength={8}
-            className="w-full px-3 py-2 rounded-lg bg-background border border-border text-foreground placeholder-muted-foreground text-sm focus:outline-none focus:ring-2 focus:ring-primary focus:border-transparent"
+            className="w-full px-3 py-2 rounded-md bg-card border border-border text-foreground placeholder:text-muted-foreground text-sm focus:outline-none focus:ring-2 focus:ring-ring focus:border-ring"
           />
         </div>
 
         <button
           type="submit"
-          className="w-full py-2.5 px-4 rounded-lg bg-primary hover:bg-primary-hover text-primary-foreground text-sm font-medium transition-colors focus:outline-none focus:ring-2 focus:ring-primary focus:ring-offset-2"
+          className="w-full py-2.5 px-4 rounded-md bg-primary hover:bg-primary-hover text-primary-foreground text-sm font-medium transition-colors focus:outline-none focus:ring-2 focus:ring-ring focus:ring-offset-2"
         >
           Actualizar contraseña
         </button>

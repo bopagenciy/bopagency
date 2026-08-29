@@ -53,7 +53,7 @@ export function UserMenu({ user }: UserMenuProps) {
         aria-haspopup="menu"
         aria-label={`Menú de ${displayName}`}
         disabled={isPending}
-        className="w-8 h-8 rounded-full bg-primary-accent flex items-center justify-center text-white text-sm font-medium cursor-pointer hover:bg-primary transition-colors overflow-hidden focus:outline-none focus:ring-2 focus:ring-primary focus:ring-offset-2 disabled:opacity-50"
+        className="w-8 h-8 rounded-full bg-primary flex items-center justify-center text-primary-foreground text-xs font-semibold cursor-pointer hover:bg-primary-hover transition-colors overflow-hidden focus:outline-none focus:ring-2 focus:ring-ring focus:ring-offset-2 disabled:opacity-50"
       >
         {user?.avatarUrl ? (
           <Image
@@ -72,15 +72,15 @@ export function UserMenu({ user }: UserMenuProps) {
         <div
           role="menu"
           aria-label="Menú de usuario"
-          className="absolute right-0 mt-2 w-52 bg-card border border-border rounded-lg shadow-lg z-50 overflow-hidden"
+          className="absolute right-0 mt-2 w-56 bg-card border border-border rounded-lg shadow-lg z-50 overflow-hidden"
         >
-          {/* Información del usuario */}
+          {/* User Info */}
           <div className="px-4 py-3 border-b border-border">
-            <p className="text-sm font-medium text-gray-900 truncate">{displayName}</p>
-            {user?.email && <p className="text-xs text-gray-500 truncate">{user.email}</p>}
+            <p className="text-sm font-semibold text-foreground truncate">{displayName}</p>
+            {user?.email && <p className="text-xs text-muted-foreground truncate mt-0.5">{user.email}</p>}
           </div>
 
-          {/* Acciones */}
+          {/* Actions */}
           <div className="py-1">
             <Link
               href="/settings"
@@ -88,7 +88,7 @@ export function UserMenu({ user }: UserMenuProps) {
               onClick={() => setOpen(false)}
               className="flex items-center gap-2 px-4 py-2 text-sm text-foreground hover:bg-muted transition-colors focus:outline-none focus:bg-muted"
             >
-              <span aria-hidden="true">⚙️</span>
+              <span aria-hidden="true" className="text-xs">⚙️</span>
               <span>Configuración</span>
             </Link>
           </div>
@@ -99,10 +99,10 @@ export function UserMenu({ user }: UserMenuProps) {
               role="menuitem"
               onClick={handleSignOut}
               disabled={isPending}
-              className="w-full flex items-center gap-2 px-4 py-2 text-sm text-red-600 hover:bg-red-50 transition-colors disabled:opacity-50 focus:outline-none focus:bg-red-50"
+              className="w-full flex items-center gap-2 px-4 py-2 text-sm text-destructive hover:bg-destructive/10 transition-colors focus:outline-none focus:bg-destructive/10 text-left"
             >
-              <span aria-hidden="true">{isPending ? '…' : '⎋'}</span>
-              <span>{isPending ? 'Cerrando sesión...' : 'Cerrar sesión'}</span>
+              <span aria-hidden="true" className="text-xs">⎋</span>
+              <span>Cerrar sesión</span>
             </button>
           </div>
         </div>

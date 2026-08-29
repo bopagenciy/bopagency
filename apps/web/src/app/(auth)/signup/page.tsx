@@ -15,17 +15,17 @@ export default async function SignUpPage({ searchParams }: SignUpPageProps) {
 
   return (
     <>
-      <h1 className="text-xl font-bold text-foreground mb-1">Crear cuenta</h1>
-      <p className="text-sm text-muted-foreground mb-6">Únete a BopIAgency</p>
+      <h1 className="text-xl font-bold tracking-tight text-foreground mb-1">Crear cuenta</h1>
+      <p className="text-sm text-muted-foreground mb-6">Únete a BopAgency</p>
 
       {params.error && (
-        <div className="mb-4 p-3 rounded-lg bg-red-50 border border-red-200 text-red-700 text-sm">
+        <div className="mb-4 p-3 rounded-md bg-red-50/80 border border-red-200 text-red-900 text-sm">
           {params.error}
         </div>
       )}
 
       {params.message && (
-        <div className="mb-4 p-3 rounded-lg bg-blue-50 border border-blue-200 text-blue-700 text-sm">
+        <div className="mb-4 p-3 rounded-md bg-blue-50/80 border border-blue-200 text-blue-900 text-sm">
           {params.message}
         </div>
       )}
@@ -42,7 +42,7 @@ export default async function SignUpPage({ searchParams }: SignUpPageProps) {
             required
             autoComplete="name"
             placeholder="Francisco López"
-            className="w-full px-3 py-2 rounded-lg bg-background border border-border text-foreground placeholder-muted-foreground text-sm focus:outline-none focus:ring-2 focus:ring-primary focus:border-transparent"
+            className="w-full px-3 py-2 rounded-md bg-card border border-border text-foreground placeholder:text-muted-foreground text-sm focus:outline-none focus:ring-2 focus:ring-ring focus:border-ring"
           />
         </div>
 
@@ -57,7 +57,7 @@ export default async function SignUpPage({ searchParams }: SignUpPageProps) {
             required
             autoComplete="email"
             placeholder="francisco@bopagency.co"
-            className="w-full px-3 py-2 rounded-lg bg-background border border-border text-foreground placeholder-muted-foreground text-sm focus:outline-none focus:ring-2 focus:ring-primary focus:border-transparent"
+            className="w-full px-3 py-2 rounded-md bg-card border border-border text-foreground placeholder:text-muted-foreground text-sm focus:outline-none focus:ring-2 focus:ring-ring focus:border-ring"
           />
         </div>
 
@@ -73,13 +73,13 @@ export default async function SignUpPage({ searchParams }: SignUpPageProps) {
             autoComplete="new-password"
             placeholder="Mínimo 8 caracteres"
             minLength={8}
-            className="w-full px-3 py-2 rounded-lg bg-background border border-border text-foreground placeholder-muted-foreground text-sm focus:outline-none focus:ring-2 focus:ring-primary focus:border-transparent"
+            className="w-full px-3 py-2 rounded-md bg-card border border-border text-foreground placeholder:text-muted-foreground text-sm focus:outline-none focus:ring-2 focus:ring-ring focus:border-ring"
           />
         </div>
 
         <button
           type="submit"
-          className="w-full py-2.5 px-4 rounded-lg bg-primary hover:bg-primary-hover text-primary-foreground text-sm font-medium transition-colors focus:outline-none focus:ring-2 focus:ring-primary focus:ring-offset-2"
+          className="w-full py-2.5 px-4 rounded-md bg-primary hover:bg-primary-hover text-primary-foreground text-sm font-medium transition-colors focus:outline-none focus:ring-2 focus:ring-ring focus:ring-offset-2"
         >
           Crear cuenta
         </button>
@@ -89,7 +89,7 @@ export default async function SignUpPage({ searchParams }: SignUpPageProps) {
         ¿Ya tienes cuenta?{' '}
         <Link
           href="/login"
-          className="text-primary hover:text-primary-hover transition-colors font-medium"
+          className="text-foreground font-semibold hover:underline transition-colors"
         >
           Inicia sesión
         </Link>

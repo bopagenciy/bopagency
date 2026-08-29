@@ -51,10 +51,10 @@ export const CalendarItemCard: React.FC<CalendarItemCardProps> = ({ item, onSele
       role="button"
       tabIndex={0}
       onKeyDown={(e) => e.key === 'Enter' && onSelect(item)}
-      className="group p-2 rounded-lg border bg-white hover:shadow-md transition-all cursor-pointer space-y-1 text-left"
+      className="group p-2.5 rounded-md border border-border bg-card hover:border-foreground/30 transition-all cursor-pointer space-y-1.5 text-left"
     >
       <div className="flex items-center justify-between gap-1">
-        <span className="text-xs font-semibold text-slate-600 truncate">{formattedTime}</span>
+        <span className="text-xs font-semibold text-muted-foreground truncate">{formattedTime}</span>
         <span
           className={`inline-flex items-center px-1.5 py-0.5 text-[10px] font-medium rounded-full border ${getBadgeStyle()}`}
         >
@@ -62,13 +62,13 @@ export const CalendarItemCard: React.FC<CalendarItemCardProps> = ({ item, onSele
         </span>
       </div>
 
-      <p className="text-xs font-medium text-slate-900 line-clamp-1 group-hover:text-indigo-600">
+      <p className="text-xs font-medium text-foreground line-clamp-1 group-hover:underline">
         {item.title}
       </p>
 
-      <div className="flex items-center justify-between text-[11px] text-slate-500 truncate pt-0.5 border-t border-slate-100">
+      <div className="flex items-center justify-between text-[11px] text-muted-foreground truncate pt-1 border-t border-border">
         <span className="truncate max-w-[120px]">{item.campaignName}</span>
-        <span className="uppercase text-[9px] font-bold px-1 bg-slate-100 text-slate-600 rounded">
+        <span className="uppercase text-[9px] font-semibold px-1 py-0.5 bg-muted text-muted-foreground rounded-sm">
           {item.provider}
         </span>
       </div>

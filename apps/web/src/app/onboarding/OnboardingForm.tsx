@@ -69,7 +69,7 @@ export function OnboardingForm({ userId: _userId }: OnboardingFormProps) {
   return (
     <form onSubmit={handleSubmit} className="space-y-4">
       {error && (
-        <div className="p-3 rounded-lg bg-red-50 border border-red-200 text-red-700 text-sm">
+        <div className="p-3 rounded-md bg-red-50/80 border border-red-200 text-red-900 text-sm">
           {error}
         </div>
       )}
@@ -85,7 +85,7 @@ export function OnboardingForm({ userId: _userId }: OnboardingFormProps) {
           value={name}
           onChange={(e) => handleNameChange(e.target.value)}
           placeholder="Bop Agency"
-          className="w-full px-3 py-2 rounded-lg bg-background border border-border text-foreground placeholder-muted-foreground text-sm focus:outline-none focus:ring-2 focus:ring-primary focus:border-transparent"
+          className="w-full px-3 py-2 rounded-md bg-card border border-border text-foreground placeholder:text-muted-foreground text-sm focus:outline-none focus:ring-2 focus:ring-ring focus:border-ring"
         />
       </div>
 
@@ -104,7 +104,7 @@ export function OnboardingForm({ userId: _userId }: OnboardingFormProps) {
             placeholder="bop-agency"
             pattern="[a-z0-9-]+"
             title="Solo letras minúsculas, números y guiones"
-            className="flex-1 px-3 py-2 rounded-lg bg-background border border-border text-foreground placeholder-muted-foreground text-sm focus:outline-none focus:ring-2 focus:ring-primary focus:border-transparent"
+            className="flex-1 px-3 py-2 rounded-md bg-card border border-border text-foreground placeholder:text-muted-foreground text-sm focus:outline-none focus:ring-2 focus:ring-ring focus:border-ring"
           />
         </div>
         <p className="mt-1 text-xs text-muted-foreground">Solo letras minúsculas, números y guiones.</p>
@@ -113,7 +113,7 @@ export function OnboardingForm({ userId: _userId }: OnboardingFormProps) {
       <button
         type="submit"
         disabled={isPending || !name.trim() || !slug.trim()}
-        className="w-full py-2.5 px-4 rounded-lg bg-primary hover:bg-primary-hover disabled:bg-muted disabled:cursor-not-allowed text-primary-foreground text-sm font-medium transition-colors"
+        className="w-full py-2.5 px-4 rounded-md bg-primary hover:bg-primary-hover disabled:bg-muted disabled:text-muted-foreground text-primary-foreground text-sm font-medium transition-colors focus:outline-none focus:ring-2 focus:ring-ring focus:ring-offset-2"
       >
         {isPending ? 'Creando organización…' : 'Crear organización y continuar →'}
       </button>
