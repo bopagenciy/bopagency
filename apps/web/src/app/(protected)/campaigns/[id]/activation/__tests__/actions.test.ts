@@ -380,7 +380,7 @@ describe('lecturas — S9: viewer+ (cualquier miembro activo), sin efectos secun
 
 describe('S10: ningún Server Action de este archivo llama a un proveedor externo', () => {
   it('el código fuente no importa adapters de Meta/Google/LinkedIn/email ni hace fetch directo', () => {
-    const here = fileURLToPath(import.meta.url);
+    const here = fileURLToPath(import.meta.url).replace(/\\/g, '/');
     const actionsPath = here.replace(/__tests__\/actions\.test\.ts$/, 'actions.ts');
     const source = readFileSync(actionsPath, 'utf-8');
 
