@@ -39,9 +39,9 @@ export function CreateActivationPanel({
   if (!canCreate) {
     if (campaignStatus !== 'approved' || hasNonTerminalActivation) return null;
     return (
-      <div className="bg-white rounded-xl border border-border p-6 space-y-2" data-testid="activation-permission-disabled">
-        <h2 className="font-semibold text-gray-900">Activación</h2>
-        <p className="text-sm text-gray-500">
+      <div className="bg-card text-card-foreground rounded-lg border border-border p-6 space-y-2" data-testid="activation-permission-disabled">
+        <h2 className="font-semibold text-foreground">Activación</h2>
+        <p className="text-sm text-muted-foreground">
           Esta campaña está aprobada y lista para activarse. Solo un estratega o administrador
           puede iniciar la activación.
         </p>
@@ -51,9 +51,9 @@ export function CreateActivationPanel({
 
   if (campaignStatus !== 'approved') {
     return (
-      <div className="bg-white rounded-xl border border-border p-6 space-y-2">
-        <h2 className="font-semibold text-gray-900">Activación</h2>
-        <p className="text-sm text-gray-500">
+      <div className="bg-card text-card-foreground rounded-lg border border-border p-6 space-y-2">
+        <h2 className="font-semibold text-foreground">Activación</h2>
+        <p className="text-sm text-muted-foreground">
           Solo se puede crear una activación para una campaña en estado &ldquo;Aprobada&rdquo;.
         </p>
       </div>
@@ -78,21 +78,21 @@ export function CreateActivationPanel({
   }
 
   return (
-    <div className="bg-white rounded-xl border border-border p-6 space-y-3">
-      <h2 className="font-semibold text-gray-900">Preparar activación</h2>
-      <p className="text-sm text-gray-500">
+    <div className="bg-card text-card-foreground rounded-lg border border-border p-6 space-y-3">
+      <h2 className="font-semibold text-foreground">Preparar activación</h2>
+      <p className="text-sm text-muted-foreground">
         Crea la activación de esta campaña aprobada. Esto NO publica nada — solo abre el flujo
         operativo para agregar canales y confirmar publicaciones manuales.
       </p>
 
       {error && (
-        <div role="alert" className="bg-red-50 text-red-700 px-3 py-2 rounded-lg text-sm border border-red-200">
+        <div role="alert" className="bg-red-50/80 text-red-900 px-3 py-2 rounded-md text-sm border border-red-200">
           {error}
         </div>
       )}
 
       <div className="space-y-2">
-        <label htmlFor="activation-notes" className="block text-sm font-medium text-gray-700">
+        <label htmlFor="activation-notes" className="block text-sm font-medium text-foreground">
           Notas (opcional)
         </label>
         <textarea
@@ -101,14 +101,14 @@ export function CreateActivationPanel({
           value={notes}
           onChange={(e) => setNotes(e.target.value)}
           placeholder="Contexto operativo para esta activación..."
-          className="w-full px-3 py-2 border border-border rounded-lg text-sm focus:outline-none focus:ring-2 focus:ring-primary resize-y"
+          className="w-full px-3 py-2 border border-border rounded-md bg-card text-foreground text-sm focus:outline-none focus:ring-2 focus:ring-ring resize-y"
         />
       </div>
 
       <button
         onClick={handleCreate}
         disabled={isPending}
-        className="px-4 py-2 bg-indigo-600 text-white text-sm font-medium rounded-lg hover:bg-indigo-700 disabled:opacity-50 transition-colors"
+        className="px-4 py-2 bg-primary text-primary-foreground text-sm font-medium rounded-md hover:bg-primary-hover disabled:opacity-50 transition-colors focus:outline-none focus:ring-2 focus:ring-ring"
         aria-busy={isPending}
       >
         {isPending ? 'Creando…' : 'Crear activación'}

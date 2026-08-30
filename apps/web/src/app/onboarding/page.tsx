@@ -33,29 +33,25 @@ export default async function OnboardingPage() {
   }
 
   return (
-    <div className="min-h-screen bg-muted flex items-center justify-center p-4">
+    <div className="min-h-screen bg-background flex flex-col items-center justify-center p-4 sm:p-6 lg:p-8">
       <div className="w-full max-w-md">
-        {/* Brand — mismo tratamiento que (auth)/layout.tsx (Phase 8A.0 polish),
-            asset recortado + contenedor no-cuadrado (149x80) en el micro-polish */}
-        <div className="flex flex-col items-center gap-3 mb-10">
-          <div className="shrink-0 w-[149px] h-20 rounded-2xl bg-white flex items-center justify-center overflow-hidden p-2 shadow-sm border border-border">
-            <Image
-              src="/brand/bopagency-logo-trimmed.png"
-              alt="Bop Agency"
-              width={149}
-              height={80}
-              priority
-              className="w-full h-full object-contain"
-            />
-          </div>
-          <div className="text-center">
-            <p className="font-bold text-foreground text-lg leading-tight">BopIAgency</p>
-            <p className="text-xs text-muted-foreground leading-tight">Sistema Operativo Digital</p>
-          </div>
+        {/* Brand Header */}
+        <div className="flex flex-col items-center gap-2 mb-8 text-center">
+          <Image
+            src="/brand/bopagency-logo.png"
+            alt="BopAgency"
+            width={160}
+            height={42}
+            priority
+            className="h-10 w-auto object-contain"
+          />
+          <p className="text-xs font-semibold uppercase tracking-wider text-muted-foreground mt-1">
+            Configuración Inicial de Cuenta
+          </p>
         </div>
 
-        <div className="bg-card rounded-2xl border border-border p-8 shadow-sm">
-          <h1 className="text-xl font-bold text-foreground mb-1">Crea tu organización</h1>
+        <div className="bg-card text-card-foreground rounded-lg border border-border p-6 sm:p-8 shadow-sm">
+          <h1 className="text-xl font-bold tracking-tight text-foreground mb-1">Crea tu organización</h1>
           <p className="text-sm text-muted-foreground mb-6">
             Bienvenido{profile?.full_name ? `, ${profile.full_name}` : ''}. Configura tu
             organización para empezar.

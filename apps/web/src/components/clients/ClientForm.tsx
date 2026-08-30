@@ -92,12 +92,12 @@ export function ClientForm({ action, defaultValues, mode }: ClientFormProps) {
       )}
 
       {/* Basic info */}
-      <div className="bg-white rounded-xl border border-gray-200 p-6 space-y-4">
-        <h2 className="font-semibold text-gray-900">Información básica</h2>
+      <div className="bg-card text-card-foreground rounded-lg border border-border p-6 space-y-4">
+        <h2 className="font-semibold text-foreground">Información básica</h2>
 
         <div className="grid grid-cols-1 sm:grid-cols-2 gap-4">
           <div>
-            <label htmlFor="name" className="block text-sm font-medium text-gray-700 mb-1">
+            <label htmlFor="name" className="block text-sm font-medium text-foreground mb-1">
               Nombre <span className="text-red-500">*</span>
             </label>
             <input
@@ -107,12 +107,12 @@ export function ClientForm({ action, defaultValues, mode }: ClientFormProps) {
               required
               defaultValue={defaultValues?.name ?? ''}
               placeholder="Ej: Restaurante Don Julio"
-              className="w-full px-3 py-2 border border-gray-200 rounded-lg text-sm focus:outline-none focus:ring-2 focus:ring-primary"
+              className="w-full px-3 py-2 border border-border rounded-md bg-card text-foreground placeholder:text-muted-foreground text-sm focus:outline-none focus:ring-2 focus:ring-ring"
             />
           </div>
 
           <div>
-            <label htmlFor="legalName" className="block text-sm font-medium text-gray-700 mb-1">
+            <label htmlFor="legalName" className="block text-sm font-medium text-foreground mb-1">
               Razón social
             </label>
             <input
@@ -121,15 +121,15 @@ export function ClientForm({ action, defaultValues, mode }: ClientFormProps) {
               type="text"
               defaultValue={defaultValues?.legalName ?? ''}
               placeholder="Nombre legal de la empresa"
-              className="w-full px-3 py-2 border border-gray-200 rounded-lg text-sm focus:outline-none focus:ring-2 focus:ring-primary"
+              className="w-full px-3 py-2 border border-border rounded-md bg-card text-foreground placeholder:text-muted-foreground text-sm focus:outline-none focus:ring-2 focus:ring-ring"
             />
           </div>
 
           {mode === 'create' && (
             <div>
-              <label htmlFor="slug" className="block text-sm font-medium text-gray-700 mb-1">
+              <label htmlFor="slug" className="block text-sm font-medium text-foreground mb-1">
                 Slug{' '}
-                <span className="text-gray-400 text-xs">(opcional, se genera automáticamente)</span>
+                <span className="text-muted-foreground text-xs">(opcional, se genera automáticamente)</span>
               </label>
               <input
                 id="slug"
@@ -138,20 +138,20 @@ export function ClientForm({ action, defaultValues, mode }: ClientFormProps) {
                 defaultValue={defaultValues?.slug ?? ''}
                 placeholder="mi-cliente"
                 pattern="[a-z0-9-]+"
-                className="w-full px-3 py-2 border border-gray-200 rounded-lg text-sm focus:outline-none focus:ring-2 focus:ring-primary"
+                className="w-full px-3 py-2 border border-border rounded-md bg-card text-foreground placeholder:text-muted-foreground text-sm focus:outline-none focus:ring-2 focus:ring-ring"
               />
             </div>
           )}
 
           <div>
-            <label htmlFor="status" className="block text-sm font-medium text-gray-700 mb-1">
+            <label htmlFor="status" className="block text-sm font-medium text-foreground mb-1">
               Estado
             </label>
             <select
               id="status"
               name="status"
               defaultValue={defaultValues?.status ?? 'active'}
-              className="w-full px-3 py-2 border border-gray-200 rounded-lg text-sm focus:outline-none focus:ring-2 focus:ring-primary"
+              className="w-full px-3 py-2 border border-border rounded-md bg-card text-foreground text-sm focus:outline-none focus:ring-2 focus:ring-ring"
             >
               {CLIENT_STATUSES.map((s) => (
                 <option key={s} value={s}>
@@ -162,14 +162,14 @@ export function ClientForm({ action, defaultValues, mode }: ClientFormProps) {
           </div>
 
           <div>
-            <label htmlFor="industry" className="block text-sm font-medium text-gray-700 mb-1">
+            <label htmlFor="industry" className="block text-sm font-medium text-foreground mb-1">
               Industria
             </label>
             <select
               id="industry"
               name="industry"
               defaultValue={defaultValues?.industry ?? ''}
-              className="w-full px-3 py-2 border border-gray-200 rounded-lg text-sm focus:outline-none focus:ring-2 focus:ring-primary"
+              className="w-full px-3 py-2 border border-border rounded-md bg-card text-foreground text-sm focus:outline-none focus:ring-2 focus:ring-ring"
             >
               <option value="">Sin especificar</option>
               {CLIENT_INDUSTRIES.map((i) => (
@@ -183,12 +183,12 @@ export function ClientForm({ action, defaultValues, mode }: ClientFormProps) {
       </div>
 
       {/* Contact info */}
-      <div className="bg-white rounded-xl border border-gray-200 p-6 space-y-4">
-        <h2 className="font-semibold text-gray-900">Información de contacto</h2>
+      <div className="bg-card text-card-foreground rounded-lg border border-border p-6 space-y-4">
+        <h2 className="font-semibold text-foreground">Información de contacto</h2>
 
         <div className="grid grid-cols-1 sm:grid-cols-2 gap-4">
           <div>
-            <label htmlFor="email" className="block text-sm font-medium text-gray-700 mb-1">
+            <label htmlFor="email" className="block text-sm font-medium text-foreground mb-1">
               Email
             </label>
             <input
@@ -197,12 +197,12 @@ export function ClientForm({ action, defaultValues, mode }: ClientFormProps) {
               type="email"
               defaultValue={defaultValues?.email ?? ''}
               placeholder="cliente@empresa.com"
-              className="w-full px-3 py-2 border border-gray-200 rounded-lg text-sm focus:outline-none focus:ring-2 focus:ring-primary"
+              className="w-full px-3 py-2 border border-border rounded-md bg-card text-foreground placeholder:text-muted-foreground text-sm focus:outline-none focus:ring-2 focus:ring-ring"
             />
           </div>
 
           <div>
-            <label htmlFor="phone" className="block text-sm font-medium text-gray-700 mb-1">
+            <label htmlFor="phone" className="block text-sm font-medium text-foreground mb-1">
               Teléfono
             </label>
             <input
@@ -211,12 +211,12 @@ export function ClientForm({ action, defaultValues, mode }: ClientFormProps) {
               type="tel"
               defaultValue={defaultValues?.phone ?? ''}
               placeholder="+57 300 000 0000"
-              className="w-full px-3 py-2 border border-gray-200 rounded-lg text-sm focus:outline-none focus:ring-2 focus:ring-primary"
+              className="w-full px-3 py-2 border border-border rounded-md bg-card text-foreground placeholder:text-muted-foreground text-sm focus:outline-none focus:ring-2 focus:ring-ring"
             />
           </div>
 
           <div className="sm:col-span-2">
-            <label htmlFor="website" className="block text-sm font-medium text-gray-700 mb-1">
+            <label htmlFor="website" className="block text-sm font-medium text-foreground mb-1">
               Sitio web
             </label>
             <input
@@ -225,26 +225,26 @@ export function ClientForm({ action, defaultValues, mode }: ClientFormProps) {
               type="url"
               defaultValue={defaultValues?.website ?? ''}
               placeholder="https://www.empresa.com"
-              className="w-full px-3 py-2 border border-gray-200 rounded-lg text-sm focus:outline-none focus:ring-2 focus:ring-primary"
+              className="w-full px-3 py-2 border border-border rounded-md bg-card text-foreground placeholder:text-muted-foreground text-sm focus:outline-none focus:ring-2 focus:ring-ring"
             />
           </div>
         </div>
       </div>
 
       {/* Preferences */}
-      <div className="bg-white rounded-xl border border-gray-200 p-6 space-y-4">
-        <h2 className="font-semibold text-gray-900">Preferencias</h2>
+      <div className="bg-card text-card-foreground rounded-lg border border-border p-6 space-y-4">
+        <h2 className="font-semibold text-foreground">Preferencias</h2>
 
         <div className="grid grid-cols-1 sm:grid-cols-2 gap-4">
           <div>
-            <label htmlFor="timezone" className="block text-sm font-medium text-gray-700 mb-1">
+            <label htmlFor="timezone" className="block text-sm font-medium text-foreground mb-1">
               Zona horaria
             </label>
             <select
               id="timezone"
               name="timezone"
               defaultValue={defaultValues?.timezone ?? 'America/Bogota'}
-              className="w-full px-3 py-2 border border-gray-200 rounded-lg text-sm focus:outline-none focus:ring-2 focus:ring-primary"
+              className="w-full px-3 py-2 border border-border rounded-md bg-card text-foreground text-sm focus:outline-none focus:ring-2 focus:ring-ring"
             >
               {TIMEZONE_OPTIONS.map((tz) => (
                 <option key={tz} value={tz}>
@@ -255,14 +255,14 @@ export function ClientForm({ action, defaultValues, mode }: ClientFormProps) {
           </div>
 
           <div>
-            <label htmlFor="currency" className="block text-sm font-medium text-gray-700 mb-1">
+            <label htmlFor="currency" className="block text-sm font-medium text-foreground mb-1">
               Moneda
             </label>
             <select
               id="currency"
               name="currency"
               defaultValue={defaultValues?.currency ?? 'COP'}
-              className="w-full px-3 py-2 border border-gray-200 rounded-lg text-sm focus:outline-none focus:ring-2 focus:ring-primary"
+              className="w-full px-3 py-2 border border-border rounded-md bg-card text-foreground text-sm focus:outline-none focus:ring-2 focus:ring-ring"
             >
               {CLIENT_CURRENCIES.map((c) => (
                 <option key={c} value={c}>
@@ -275,15 +275,15 @@ export function ClientForm({ action, defaultValues, mode }: ClientFormProps) {
       </div>
 
       {/* Notes */}
-      <div className="bg-white rounded-xl border border-gray-200 p-6 space-y-4">
-        <h2 className="font-semibold text-gray-900">Notas internas</h2>
+      <div className="bg-card text-card-foreground rounded-lg border border-border p-6 space-y-4">
+        <h2 className="font-semibold text-foreground">Notas internas</h2>
         <textarea
           id="notes"
           name="notes"
           rows={4}
           defaultValue={defaultValues?.notes ?? ''}
           placeholder="Notas internas sobre el cliente..."
-          className="w-full px-3 py-2 border border-gray-200 rounded-lg text-sm focus:outline-none focus:ring-2 focus:ring-primary resize-y"
+          className="w-full px-3 py-2 border border-border rounded-md bg-card text-foreground placeholder:text-muted-foreground text-sm focus:outline-none focus:ring-2 focus:ring-ring resize-y"
         />
       </div>
 
@@ -292,7 +292,7 @@ export function ClientForm({ action, defaultValues, mode }: ClientFormProps) {
         <button
           type="submit"
           disabled={isPending}
-          className="px-6 py-2.5 bg-primary text-primary-foreground rounded-lg text-sm font-medium hover:bg-primary-hover disabled:opacity-50 transition-colors"
+          className="px-6 py-2.5 bg-primary text-primary-foreground rounded-md text-sm font-medium hover:bg-primary-hover disabled:opacity-50 transition-colors focus:outline-none focus:ring-2 focus:ring-ring focus:ring-offset-2"
         >
           {isPending
             ? mode === 'create'
@@ -306,7 +306,7 @@ export function ClientForm({ action, defaultValues, mode }: ClientFormProps) {
           type="button"
           onClick={() => router.back()}
           disabled={isPending}
-          className="px-4 py-2.5 text-sm text-gray-600 hover:text-gray-900 disabled:opacity-50 transition-colors"
+          className="px-4 py-2.5 text-sm text-muted-foreground hover:text-foreground disabled:opacity-50 transition-colors"
         >
           Cancelar
         </button>

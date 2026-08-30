@@ -20,7 +20,7 @@ type AppTopBarProps = {
 
 export function AppTopBar({ organizations, activeOrganizationId, user }: AppTopBarProps) {
   return (
-    <div className="hidden lg:flex items-center justify-end bg-background border-b border-border px-6 py-2.5 gap-3 shrink-0">
+    <div className="hidden lg:flex items-center justify-end bg-card border-b border-border px-6 py-2.5 gap-3 shrink-0">
       <OrganizationSwitcher
         organizations={organizations}
         activeOrganizationId={activeOrganizationId}

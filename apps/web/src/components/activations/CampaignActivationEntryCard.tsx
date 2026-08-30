@@ -37,21 +37,21 @@ export function CampaignActivationEntryCard({
   if (campaignStatus !== 'approved' && !hasAnyActivation) return null;
 
   return (
-    <div className="bg-white rounded-xl border border-border p-6 space-y-3">
+    <div className="bg-card text-card-foreground rounded-lg border border-border p-6 space-y-3">
       <div className="flex items-center justify-between">
-        <h2 className="font-semibold text-gray-900">Activación</h2>
+        <h2 className="font-semibold text-foreground">Activación</h2>
         {activeActivation && <ActivationStatusBadge status={activeActivation.status} />}
       </div>
 
       {activeActivation ? (
         <div className="flex items-center justify-between gap-4">
-          <p className="text-sm text-gray-500">
+          <p className="text-sm text-muted-foreground">
             Esta campaña tiene una activación en curso. Gestiona sus canales de distribución y
             publicaciones manuales desde la vista de activación.
           </p>
           <Link
             href={`/campaigns/${campaignId}/activation`}
-            className="shrink-0 px-4 py-2 bg-indigo-600 text-white text-sm font-medium rounded-lg hover:bg-indigo-700 transition-colors"
+            className="shrink-0 px-4 py-2 bg-primary text-primary-foreground text-sm font-medium rounded-md hover:bg-primary-hover transition-colors focus:outline-none focus:ring-2 focus:ring-ring"
           >
             Ver activación →
           </Link>
@@ -67,7 +67,7 @@ export function CampaignActivationEntryCard({
           {hasAnyActivation && (
             <Link
               href={`/campaigns/${campaignId}/activation`}
-              className="inline-block text-sm font-medium text-indigo-600 hover:text-indigo-700"
+              className="inline-block text-sm font-medium text-foreground hover:underline"
             >
               Ver historial de activaciones →
             </Link>

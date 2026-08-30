@@ -35,65 +35,58 @@ export function MobileNav({
 
   return (
     <>
-      {/* Barra superior móvil */}
-      <div className="lg:hidden flex items-center justify-between px-4 py-3 bg-sidebar text-sidebar-foreground">
-        <div className="flex items-center gap-2">
-          {/* Micro-polish: mismo asset recortado + contenedor no-cuadrado
-              (60x32) que Sidebar.tsx, ver comentario ahí. */}
-          <div className="shrink-0 w-[60px] h-8 rounded bg-white/95 flex items-center justify-center overflow-hidden p-0.5">
-            <Image
-              src="/brand/bopagency-logo-trimmed.png"
-              alt="Bop Agency"
-              width={60}
-              height={32}
-              className="w-full h-full object-contain"
-            />
-          </div>
-          <span className="font-semibold text-sm">Bop Agency</span>
-        </div>
+      {/* Integrated Light Mobile Top Header Bar */}
+      <div className="lg:hidden flex items-center justify-between px-4 py-2.5 bg-white text-foreground border-b border-border">
+        <Link href="/dashboard" className="flex items-center gap-2 focus:outline-none rounded">
+          <Image
+            src="/brand/bopagency-logo.png"
+            alt="BopAgency"
+            width={110}
+            height={28}
+            className="h-7 w-auto object-contain"
+          />
+        </Link>
 
         <div className="flex items-center gap-2">
-          {/* Selector de org en móvil */}
-          <div className="[&_button]:border-sidebar-border [&_button]:text-sidebar-muted [&_button]:hover:bg-sidebar-hover [&>div>div]:bg-sidebar-hover [&>div>div]:border-sidebar-border [&>div>div_button]:text-sidebar-muted">
-            <OrganizationSwitcher
-              organizations={organizations}
-              activeOrganizationId={activeOrganizationId}
-            />
-          </div>
+          {/* Org Selector */}
+          <OrganizationSwitcher
+            organizations={organizations}
+            activeOrganizationId={activeOrganizationId}
+          />
 
-          {/* Menú de usuario en móvil */}
+          {/* User Menu */}
           <UserMenu user={user} />
 
-          {/* Botón hamburguesa */}
+          {/* Hamburger Toggle */}
           <button
             onClick={() => setOpen(!open)}
-            className="p-2 rounded-md hover:bg-sidebar-hover transition-colors focus:outline-none focus:ring-2 focus:ring-primary-accent"
+            className="p-1.5 rounded-md hover:bg-muted transition-colors focus:outline-none focus:ring-2 focus:ring-ring text-foreground"
             aria-label="Toggle navigation"
             aria-expanded={open}
           >
-            <span className="text-xl">{open ? '✕' : '☰'}</span>
+            <span className="text-xl leading-none">{open ? '✕' : '☰'}</span>
           </button>
         </div>
       </div>
 
-      {/* Drawer de navegación móvil */}
+      {/* Mobile Navigation Drawer */}
       {open && (
-        <div className="lg:hidden bg-sidebar text-sidebar-foreground border-t border-sidebar-border">
+        <div className="lg:hidden bg-sidebar text-sidebar-foreground border-b border-sidebar-border shadow-xl">
           <nav className="px-3 py-3 space-y-1">
             {navItems.map((item) => {
-              const isActive = pathname === item.href;
+              const isActive = pathname === item.href || pathname.startsWith(item.href + '/');
               return (
                 <Link
                   key={item.href}
                   href={item.href}
                   onClick={() => setOpen(false)}
-                  className={`flex items-center gap-3 px-3 py-2.5 rounded-r-md text-sm transition-colors border-l-[3px] outline-none focus-visible:ring-2 focus-visible:ring-primary-accent focus-visible:ring-offset-2 focus-visible:ring-offset-sidebar ${
+                  className={`flex items-center gap-3 px-3 py-2.5 rounded-r-md text-sm transition-colors border-l-2 outline-none focus-visible:ring-2 focus-visible:ring-sidebar-accent ${
                     isActive
-                      ? 'bg-primary-accent/15 border-primary-accent text-sidebar-foreground font-medium'
+                      ? 'bg-sidebar-hover border-sidebar-accent text-sidebar-foreground font-medium'
                       : 'border-transparent text-sidebar-muted hover:bg-sidebar-hover hover:text-sidebar-foreground'
                   }`}
                 >
-                  <span>{item.icon}</span>
+                  <span className="text-base leading-none">{item.icon}</span>
                   <span>{item.label}</span>
                 </Link>
               );

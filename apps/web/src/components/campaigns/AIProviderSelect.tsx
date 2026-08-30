@@ -40,7 +40,7 @@ export function AIProviderSelect({
 }: AIProviderSelectProps) {
   return (
     <div>
-      <label htmlFor={id} className="block text-sm font-medium text-gray-700 mb-1">
+      <label htmlFor={id} className="block text-sm font-medium text-foreground mb-1">
         Proveedor de IA
       </label>
       <select
@@ -48,7 +48,7 @@ export function AIProviderSelect({
         value={value}
         onChange={(e) => onChange(e.target.value)}
         disabled={disabled}
-        className="w-full px-3 py-2 border border-border rounded-lg text-sm focus:outline-none focus:ring-2 focus:ring-primary disabled:opacity-50"
+        className="w-full px-3 py-2 border border-border rounded-md bg-card text-foreground text-sm focus:outline-none focus:ring-2 focus:ring-ring disabled:opacity-50"
       >
         <option value={AI_PROVIDER_DEFAULT_OPTION}>{defaultOptionLabel}</option>
         {AI_PROVIDER_IDS.map((providerId) => (
@@ -57,7 +57,7 @@ export function AIProviderSelect({
           </option>
         ))}
       </select>
-      <p className="text-xs text-gray-400 mt-1">
+      <p className="text-xs text-muted-foreground mt-1">
         {helpText ??
           'El modelo concreto lo decide el servidor según el proveedor. Si el proveedor elegido no está configurado, se mostrará un error explícito (no se cambia de proveedor automáticamente).'}
       </p>

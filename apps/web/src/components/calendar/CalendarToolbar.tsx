@@ -27,33 +27,33 @@ export const CalendarToolbar: React.FC<CalendarToolbarProps> = ({
   const isOperatorOrHigher = userRole !== 'viewer';
 
   return (
-    <div className="flex flex-col md:flex-row md:items-center justify-between gap-3 p-4 bg-white border border-slate-200 rounded-xl shadow-sm">
+    <div className="flex flex-col md:flex-row md:items-center justify-between gap-3 p-4 bg-card border border-border rounded-lg shadow-sm">
       <div className="flex items-center gap-2">
         <button
           onClick={() => onNavigateDate('today')}
-          className="px-3 py-1.5 text-xs font-semibold text-slate-700 bg-slate-100 hover:bg-slate-200 rounded-lg transition"
+          className="px-3 py-1.5 text-xs font-semibold text-foreground bg-muted hover:bg-muted/80 rounded-md transition"
         >
           Hoy
         </button>
 
-        <div className="flex items-center rounded-lg border border-slate-200 bg-white">
+        <div className="flex items-center rounded-md border border-border bg-card">
           <button
             onClick={() => onNavigateDate('prev')}
             aria-label="Mes anterior"
-            className="p-1.5 text-slate-600 hover:bg-slate-50 border-r border-slate-200 rounded-l-lg"
+            className="p-1.5 text-muted-foreground hover:bg-muted border-r border-border rounded-l-md"
           >
             ←
           </button>
           <button
             onClick={() => onNavigateDate('next')}
             aria-label="Mes siguiente"
-            className="p-1.5 text-slate-600 hover:bg-slate-50 rounded-r-lg"
+            className="p-1.5 text-muted-foreground hover:bg-muted rounded-r-md"
           >
             →
           </button>
         </div>
 
-        <h2 className="text-lg font-bold text-slate-900 capitalize pl-2">{monthYearLabel}</h2>
+        <h2 className="text-lg font-bold text-foreground capitalize pl-2">{monthYearLabel}</h2>
       </div>
 
       <div className="flex flex-wrap items-center gap-2">
@@ -61,7 +61,7 @@ export const CalendarToolbar: React.FC<CalendarToolbarProps> = ({
         <select
           value={selectedChannel}
           onChange={(e) => onChannelChange(e.target.value)}
-          className="px-3 py-1.5 text-xs font-medium text-slate-700 bg-slate-50 border border-slate-200 rounded-lg focus:outline-none focus:ring-2 focus:ring-indigo-500"
+          className="px-3 py-1.5 text-xs font-medium text-foreground bg-card border border-border rounded-md focus:outline-none focus:ring-2 focus:ring-ring"
         >
           <option value="">Todos los canales</option>
           <option value="meta_ads">Meta Ads</option>
@@ -74,11 +74,11 @@ export const CalendarToolbar: React.FC<CalendarToolbarProps> = ({
         </select>
 
         {/* View Mode Toggle */}
-        <div className="inline-flex p-0.5 border border-slate-200 bg-slate-100 rounded-lg">
+        <div className="inline-flex p-0.5 border border-border bg-muted rounded-md">
           <button
             onClick={() => onViewModeChange('month')}
             className={`px-3 py-1 text-xs font-semibold rounded-md transition ${
-              viewMode === 'month' ? 'bg-white text-indigo-600 shadow-sm' : 'text-slate-600 hover:text-slate-900'
+              viewMode === 'month' ? 'bg-card text-foreground shadow-sm font-bold' : 'text-muted-foreground hover:text-foreground'
             }`}
           >
             Mes
@@ -86,7 +86,7 @@ export const CalendarToolbar: React.FC<CalendarToolbarProps> = ({
           <button
             onClick={() => onViewModeChange('agenda')}
             className={`px-3 py-1 text-xs font-semibold rounded-md transition ${
-              viewMode === 'agenda' ? 'bg-white text-indigo-600 shadow-sm' : 'text-slate-600 hover:text-slate-900'
+              viewMode === 'agenda' ? 'bg-card text-foreground shadow-sm font-bold' : 'text-muted-foreground hover:text-foreground'
             }`}
           >
             Agenda
@@ -97,7 +97,7 @@ export const CalendarToolbar: React.FC<CalendarToolbarProps> = ({
         {isOperatorOrHigher && (
           <button
             onClick={onCreateClick}
-            className="px-3.5 py-1.5 text-xs font-semibold text-white bg-indigo-600 hover:bg-indigo-700 rounded-lg shadow-sm transition"
+            className="px-3.5 py-1.5 text-xs font-medium text-primary-foreground bg-primary hover:bg-primary-hover rounded-md shadow-sm transition"
           >
             + Programar Contenido
           </button>

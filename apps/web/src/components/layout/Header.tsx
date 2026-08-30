@@ -12,7 +12,7 @@ type HeaderProps = {
 
 export function Header({ breadcrumbs = [], title, actions }: HeaderProps) {
   return (
-    <header className="bg-background border-b border-border px-6 py-4">
+    <header className="bg-card border-b border-border px-6 py-3.5">
       <div className="flex items-center justify-between">
         {/* Migas de pan */}
         <div className="flex items-center gap-1 text-sm text-muted-foreground">

@@ -23,34 +23,27 @@ type AuthLayoutProps = {
  */
 export default function AuthLayout({ children }: AuthLayoutProps) {
   return (
-    <div className="min-h-screen bg-muted flex items-center justify-center p-4">
+    <div className="min-h-screen bg-background flex flex-col items-center justify-center p-4 sm:p-6 lg:p-8">
       <div className="w-full max-w-md">
-        {/* Brand — Phase 8A.0 polish: logo más prominente (~80px), stack
-            vertical centrado, más aire respecto a la tarjeta (mb-10 en vez
-            de mb-8) sin convertirse en una landing page. */}
-        <div className="flex flex-col items-center gap-3 mb-10">
-          {/* Micro-polish: asset recortado (bopagency-logo-trimmed.png) +
-              contenedor no-cuadrado (149x80) que respeta el aspect ratio
-              real del artwork (~1.86:1) en vez de forzar un cuadrado que
-              dejaba franjas vacías. */}
-          <div className="shrink-0 w-[149px] h-20 rounded-2xl bg-white flex items-center justify-center overflow-hidden p-2 shadow-sm border border-border">
-            <Image
-              src="/brand/bopagency-logo-trimmed.png"
-              alt="Bop Agency"
-              width={149}
-              height={80}
-              priority
-              className="w-full h-full object-contain"
-            />
-          </div>
-          <div className="text-center">
-            <p className="font-bold text-foreground text-lg leading-tight">BopIAgency</p>
-            <p className="text-xs text-muted-foreground leading-tight">Sistema Operativo Digital</p>
-          </div>
+        {/* Brand Header */}
+        <div className="flex flex-col items-center gap-2 mb-8 text-center">
+          <Image
+            src="/brand/bopagency-logo.png"
+            alt="BopAgency"
+            width={160}
+            height={42}
+            priority
+            className="h-10 w-auto object-contain"
+          />
+          <p className="text-xs font-semibold uppercase tracking-wider text-muted-foreground mt-1">
+            Sistema Operativo de Marketing
+          </p>
         </div>
 
-        {/* Content */}
-        <div className="bg-card rounded-2xl border border-border p-8 shadow-sm">{children}</div>
+        {/* Auth Content Card */}
+        <div className="bg-card text-card-foreground rounded-lg border border-border p-6 sm:p-8 shadow-sm">
+          {children}
+        </div>
       </div>
     </div>
   );

@@ -83,24 +83,24 @@ export function CampaignApprovalPanel({ campaign, userRole }: CampaignApprovalPa
   }
 
   return (
-    <div className="bg-white rounded-xl border border-border p-6 space-y-4">
-      <h2 className="font-semibold text-gray-900">Flujo de aprobación</h2>
+    <div className="bg-card text-card-foreground rounded-lg border border-border p-6 space-y-4">
+      <h2 className="font-semibold text-foreground">Flujo de aprobación</h2>
 
       {error && (
-        <div role="alert" className="bg-red-50 text-red-700 px-3 py-2 rounded-lg text-sm border border-red-200">
+        <div role="alert" className="bg-red-50/80 text-red-900 px-3 py-2 rounded-md text-sm border border-red-200">
           {error}
         </div>
       )}
 
       {canSubmit && (
         <div className="space-y-2">
-          <p className="text-sm text-gray-500">
+          <p className="text-sm text-muted-foreground">
             Esta campaña está en borrador. Envíala a revisión cuando el contenido esté listo.
           </p>
           <button
             onClick={handleSubmitForReview}
             disabled={isPending}
-            className="px-4 py-2 bg-amber-600 text-white text-sm font-medium rounded-lg hover:bg-amber-700 disabled:opacity-50 transition-colors"
+            className="px-4 py-2 bg-primary text-primary-foreground text-sm font-medium rounded-md hover:bg-primary-hover disabled:opacity-50 transition-colors focus:outline-none focus:ring-2 focus:ring-ring"
           >
             {isPending ? 'Enviando…' : 'Enviar a revisión'}
           </button>
@@ -109,26 +109,26 @@ export function CampaignApprovalPanel({ campaign, userRole }: CampaignApprovalPa
 
       {canDecide && !showRejectForm && (
         <div className="space-y-2">
-          <p className="text-sm text-gray-500">
+          <p className="text-sm text-muted-foreground">
             Esta campaña está en revisión. Apruébala o recházala con una nota explicando el motivo.
           </p>
           <div className="flex items-center gap-2">
             <button
               onClick={handleApprove}
               disabled={isPending}
-              className="px-4 py-2 bg-green-600 text-white text-sm font-medium rounded-lg hover:bg-green-700 disabled:opacity-50 transition-colors"
+              className="px-4 py-2 bg-emerald-600 text-white text-sm font-medium rounded-md hover:bg-emerald-700 disabled:opacity-50 transition-colors focus:outline-none focus:ring-2 focus:ring-ring"
             >
               {isPending ? 'Procesando…' : 'Aprobar'}
             </button>
             <button
               onClick={() => setShowRejectForm(true)}
               disabled={isPending}
-              className="px-4 py-2 border border-red-300 text-red-700 text-sm font-medium rounded-lg hover:bg-red-50 disabled:opacity-50 transition-colors"
+              className="px-4 py-2 border border-red-200 text-red-700 bg-red-50/50 text-sm font-medium rounded-md hover:bg-red-50 disabled:opacity-50 transition-colors focus:outline-none focus:ring-2 focus:ring-ring"
             >
               Rechazar
             </button>
           </div>
-          <p className="text-xs text-gray-400">
+          <p className="text-xs text-muted-foreground">
             &ldquo;Aprobada&rdquo; significa lista para publicación humana en una fase posterior — esta
             acción no publica nada en Meta/Google/YouTube.
           </p>
@@ -137,7 +137,7 @@ export function CampaignApprovalPanel({ campaign, userRole }: CampaignApprovalPa
 
       {canDecide && showRejectForm && (
         <form onSubmit={handleReject} className="space-y-2">
-          <label htmlFor="reject-note" className="block text-sm font-medium text-gray-700">
+          <label htmlFor="reject-note" className="block text-sm font-medium text-foreground">
             Nota de rechazo <span className="text-red-500">*</span>
           </label>
           <textarea
@@ -147,13 +147,13 @@ export function CampaignApprovalPanel({ campaign, userRole }: CampaignApprovalPa
             onChange={(e) => setNote(e.target.value)}
             required
             placeholder="Explica por qué se rechaza esta campaña..."
-            className="w-full px-3 py-2 border border-border rounded-lg text-sm focus:outline-none focus:ring-2 focus:ring-primary resize-y"
+            className="w-full px-3 py-2 border border-border rounded-md bg-card text-foreground text-sm focus:outline-none focus:ring-2 focus:ring-ring resize-y"
           />
           <div className="flex items-center gap-2">
             <button
               type="submit"
               disabled={isPending}
-              className="px-4 py-2 bg-red-600 text-white text-sm font-medium rounded-lg hover:bg-red-700 disabled:opacity-50 transition-colors"
+              className="px-4 py-2 bg-red-600 text-white text-sm font-medium rounded-md hover:bg-red-700 disabled:opacity-50 transition-colors focus:outline-none focus:ring-2 focus:ring-ring"
             >
               {isPending ? 'Rechazando…' : 'Confirmar rechazo'}
             </button>
@@ -165,7 +165,7 @@ export function CampaignApprovalPanel({ campaign, userRole }: CampaignApprovalPa
                 setError(null);
               }}
               disabled={isPending}
-              className="px-4 py-2 text-sm text-gray-600 hover:text-gray-900 disabled:opacity-50 transition-colors"
+              className="px-4 py-2 text-sm text-muted-foreground hover:text-foreground disabled:opacity-50 transition-colors"
             >
               Cancelar
             </button>

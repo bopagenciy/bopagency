@@ -53,25 +53,25 @@ export const CalendarMonthView: React.FC<CalendarMonthViewProps> = ({
   };
 
   return (
-    <div className="bg-white border border-slate-200 rounded-xl shadow-sm overflow-hidden">
+    <div className="bg-card border border-border rounded-lg shadow-sm overflow-hidden">
       {/* Days of week header */}
-      <div className="grid grid-cols-7 border-b border-slate-200 bg-slate-50 text-center">
+      <div className="grid grid-cols-7 border-b border-border bg-muted/50 text-center">
         {daysOfWeek.map((day) => (
-          <div key={day} className="py-2 text-xs font-bold text-slate-600">
+          <div key={day} className="py-2 text-xs font-semibold text-muted-foreground">
             {day}
           </div>
         ))}
       </div>
 
       {/* Grid cells */}
-      <div className="grid grid-cols-7 auto-rows-fr bg-slate-200 gap-[1px]">
+      <div className="grid grid-cols-7 auto-rows-fr bg-border gap-[1px]">
         {days.map((date, idx) => {
           if (!date) {
-            return <div key={`empty-${idx}`} className="bg-slate-50 min-h-[110px]" />;
+            return <div key={`empty-${idx}`} className="bg-muted/20 min-h-[110px]" />;
           }
 
           const dayItems = getItemsForDay(date);
-          const todayStyle = isToday(date) ? 'bg-indigo-50/50' : 'bg-white';
+          const todayStyle = isToday(date) ? 'bg-amber-50/20' : 'bg-card';
 
           return (
             <div
@@ -81,13 +81,13 @@ export const CalendarMonthView: React.FC<CalendarMonthViewProps> = ({
               <div className="flex items-center justify-between">
                 <span
                   className={`text-xs font-bold w-5 h-5 flex items-center justify-center rounded-full ${
-                    isToday(date) ? 'bg-indigo-600 text-white' : 'text-slate-700'
+                    isToday(date) ? 'bg-primary text-primary-foreground' : 'text-foreground'
                   }`}
                 >
                   {date.getDate()}
                 </span>
                 {dayItems.length > 0 && (
-                  <span className="text-[10px] font-semibold text-slate-500">
+                  <span className="text-[10px] font-semibold text-muted-foreground">
                     {dayItems.length} {dayItems.length === 1 ? 'ítem' : 'ítems'}
                   </span>
                 )}

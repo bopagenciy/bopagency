@@ -109,21 +109,21 @@ export function SettingsClient({
     <div className="space-y-8">
       {/* ── Profile ───────────────────────────────────────────────────── */}
       <section>
-        <h2 className="text-base font-semibold text-gray-900 mb-4">Perfil</h2>
-        <div className="bg-white rounded-xl border border-gray-200 p-6">
+        <h2 className="text-base font-semibold text-foreground mb-4">Perfil</h2>
+        <div className="bg-card text-card-foreground rounded-lg border border-border p-6">
           <form onSubmit={handleSaveProfile} className="space-y-4">
             {profileError && (
-              <p className="text-sm text-red-600 bg-red-50 rounded-lg px-3 py-2">{profileError}</p>
+              <p className="text-sm text-red-900 bg-red-50/80 border border-red-200 rounded-md px-3 py-2">{profileError}</p>
             )}
             {profileSaved && (
-              <p className="text-sm text-green-700 bg-green-50 rounded-lg px-3 py-2">
+              <p className="text-sm text-emerald-900 bg-emerald-50/80 border border-emerald-200 rounded-md px-3 py-2">
                 Perfil guardado.
               </p>
             )}
 
             <div className="grid grid-cols-1 gap-4 sm:grid-cols-2">
               <div>
-                <label htmlFor="fullName" className="block text-sm font-medium text-gray-700 mb-1">
+                <label htmlFor="fullName" className="block text-sm font-medium text-foreground mb-1">
                   Nombre completo
                 </label>
                 <input
@@ -132,21 +132,21 @@ export function SettingsClient({
                   value={fullName}
                   onChange={(e) => setFullName(e.target.value)}
                   placeholder="Tu nombre"
-                  className="w-full px-3 py-2 rounded-lg border border-gray-300 text-sm focus:outline-none focus:ring-2 focus:ring-primary focus:border-transparent"
+                  className="w-full px-3 py-2 rounded-md border border-border bg-card text-foreground text-sm focus:outline-none focus:ring-2 focus:ring-ring"
                 />
               </div>
 
               <div>
-                <label className="block text-sm font-medium text-gray-700 mb-1">
+                <label className="block text-sm font-medium text-foreground mb-1">
                   Correo electrónico
                 </label>
                 <input
                   type="email"
                   value={userEmail}
                   disabled
-                  className="w-full px-3 py-2 rounded-lg border border-gray-200 bg-gray-50 text-sm text-gray-500 cursor-not-allowed"
+                  className="w-full px-3 py-2 rounded-md border border-border bg-muted/50 text-sm text-muted-foreground cursor-not-allowed"
                 />
-                <p className="mt-1 text-xs text-gray-400">El correo no se puede cambiar aquí.</p>
+                <p className="mt-1 text-xs text-muted-foreground">El correo no se puede cambiar aquí.</p>
               </div>
             </div>
 
@@ -154,7 +154,7 @@ export function SettingsClient({
               <button
                 type="submit"
                 disabled={isPending}
-                className="px-4 py-2 rounded-lg bg-primary hover:bg-primary-hover disabled:bg-gray-300 text-primary-foreground text-sm font-medium transition-colors"
+                className="px-4 py-2 rounded-md bg-primary hover:bg-primary-hover disabled:bg-muted disabled:text-muted-foreground text-primary-foreground text-sm font-medium transition-colors focus:outline-none focus:ring-2 focus:ring-ring focus:ring-offset-2"
               >
                 {isPending ? 'Guardando…' : 'Guardar perfil'}
               </button>
@@ -165,12 +165,12 @@ export function SettingsClient({
 
       {/* ── Organizations ─────────────────────────────────────────────── */}
       <section>
-        <h2 className="text-base font-semibold text-gray-900 mb-4">Organizaciones</h2>
-        <div className="bg-white rounded-xl border border-gray-200 divide-y divide-gray-100">
+        <h2 className="text-base font-semibold text-foreground mb-4">Organizaciones</h2>
+        <div className="bg-card text-card-foreground rounded-lg border border-border divide-y divide-border">
           {organizations.length === 0 ? (
-            <div className="px-6 py-8 text-center text-sm text-gray-400">
+            <div className="px-6 py-8 text-center text-sm text-muted-foreground">
               No perteneces a ninguna organización.{' '}
-              <a href="/onboarding" className="text-red-600 hover:underline">
+              <a href="/onboarding" className="text-foreground font-semibold hover:underline">
                 Crear una →
               </a>
             </div>
@@ -178,16 +178,16 @@ export function SettingsClient({
             organizations.map((org) => (
               <div key={org.id} className="flex items-center justify-between px-6 py-4">
                 <div>
-                  <p className="text-sm font-medium text-gray-900">{org.name}</p>
-                  <p className="text-xs text-gray-400 mt-0.5">
+                  <p className="text-sm font-medium text-foreground">{org.name}</p>
+                  <p className="text-xs text-muted-foreground mt-0.5">
                     {org.slug} · {PLAN_LABELS[org.plan] ?? org.plan}
                   </p>
                 </div>
                 <span
                   className={`inline-flex items-center px-2.5 py-0.5 rounded-full text-xs font-medium ${
                     org.id === profile.activeOrganizationId
-                      ? 'bg-red-50 text-red-700'
-                      : 'bg-gray-100 text-gray-600'
+                      ? 'bg-amber-100/80 text-amber-900 border border-amber-200'
+                      : 'bg-muted text-muted-foreground'
                   }`}
                 >
                   {ROLE_LABELS[org.role] ?? org.role}
@@ -198,7 +198,7 @@ export function SettingsClient({
           )}
         </div>
         <div className="mt-3">
-          <a href="/onboarding" className="text-sm text-primary hover:text-primary-hover font-medium">
+          <a href="/onboarding" className="text-sm text-foreground font-semibold hover:underline">
             + Crear nueva organización
           </a>
         </div>
@@ -206,28 +206,28 @@ export function SettingsClient({
 
       {/* ── Preferences ───────────────────────────────────────────────── */}
       <section>
-        <h2 className="text-base font-semibold text-gray-900 mb-4">Preferencias</h2>
-        <div className="bg-white rounded-xl border border-gray-200 p-6">
+        <h2 className="text-base font-semibold text-foreground mb-4">Preferencias</h2>
+        <div className="bg-card text-card-foreground rounded-lg border border-border p-6">
           <form onSubmit={handleSavePreferences} className="space-y-4">
             {prefError && (
-              <p className="text-sm text-red-600 bg-red-50 rounded-lg px-3 py-2">{prefError}</p>
+              <p className="text-sm text-red-900 bg-red-50/80 border border-red-200 rounded-md px-3 py-2">{prefError}</p>
             )}
             {prefSaved && (
-              <p className="text-sm text-green-700 bg-green-50 rounded-lg px-3 py-2">
+              <p className="text-sm text-emerald-900 bg-emerald-50/80 border border-emerald-200 rounded-md px-3 py-2">
                 Preferencias guardadas.
               </p>
             )}
 
             <div className="grid grid-cols-1 gap-4 sm:grid-cols-2">
               <div>
-                <label htmlFor="language" className="block text-sm font-medium text-gray-700 mb-1">
+                <label htmlFor="language" className="block text-sm font-medium text-foreground mb-1">
                   Idioma
                 </label>
                 <select
                   id="language"
                   value={language}
                   onChange={(e) => setLanguage(e.target.value)}
-                  className="w-full px-3 py-2 rounded-lg border border-gray-300 text-sm focus:outline-none focus:ring-2 focus:ring-primary bg-white"
+                  className="w-full px-3 py-2 rounded-md border border-border bg-card text-foreground text-sm focus:outline-none focus:ring-2 focus:ring-ring"
                 >
                   <option value="es">Español</option>
                   <option value="en">English</option>
@@ -235,14 +235,14 @@ export function SettingsClient({
               </div>
 
               <div>
-                <label htmlFor="timezone" className="block text-sm font-medium text-gray-700 mb-1">
+                <label htmlFor="timezone" className="block text-sm font-medium text-foreground mb-1">
                   Zona horaria
                 </label>
                 <select
                   id="timezone"
                   value={timezone}
                   onChange={(e) => setTimezone(e.target.value)}
-                  className="w-full px-3 py-2 rounded-lg border border-gray-300 text-sm focus:outline-none focus:ring-2 focus:ring-primary bg-white"
+                  className="w-full px-3 py-2 rounded-md border border-border bg-card text-foreground text-sm focus:outline-none focus:ring-2 focus:ring-ring"
                 >
                   <option value="America/Bogota">América/Bogotá (UTC-5)</option>
                   <option value="America/New_York">América/Nueva York (UTC-5/-4)</option>
@@ -262,8 +262,8 @@ export function SettingsClient({
                 role="switch"
                 aria-checked={emailNotifications}
                 onClick={() => setEmailNotifications((v) => !v)}
-                className={`relative inline-flex h-5 w-9 items-center rounded-full transition-colors focus:outline-none focus:ring-2 focus:ring-primary focus:ring-offset-1 ${
-                  emailNotifications ? 'bg-primary' : 'bg-gray-300'
+                className={`relative inline-flex h-5 w-9 items-center rounded-full transition-colors focus:outline-none focus:ring-2 focus:ring-ring focus:ring-offset-1 ${
+                  emailNotifications ? 'bg-primary' : 'bg-muted'
                 }`}
               >
                 <span
@@ -272,14 +272,14 @@ export function SettingsClient({
                   }`}
                 />
               </button>
-              <span className="text-sm text-gray-700">Notificaciones por correo</span>
+              <span className="text-sm text-foreground">Notificaciones por correo</span>
             </div>
 
             <div className="flex justify-end">
               <button
                 type="submit"
                 disabled={isPending}
-                className="px-4 py-2 rounded-lg bg-primary hover:bg-primary-hover disabled:bg-gray-300 text-primary-foreground text-sm font-medium transition-colors"
+                className="px-4 py-2 rounded-md bg-primary hover:bg-primary-hover disabled:bg-muted disabled:text-muted-foreground text-primary-foreground text-sm font-medium transition-colors focus:outline-none focus:ring-2 focus:ring-ring focus:ring-offset-2"
               >
                 {isPending ? 'Guardando…' : 'Guardar preferencias'}
               </button>

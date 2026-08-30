@@ -1,6 +1,8 @@
+
 'use client';
 
 import { useEffect, useRef, useState, useTransition } from 'react';
+import Link from 'next/link';
 import { useRouter } from 'next/navigation';
 import { switchActiveOrganizationAction } from '@/app/(protected)/settings/actions';
 import type { SidebarOrganization } from './Sidebar';
@@ -65,15 +67,15 @@ export function OrganizationSwitcher({
         aria-haspopup="listbox"
         aria-label="Seleccionar organización"
         disabled={isPending}
-        className="flex items-center gap-2 px-3 py-1.5 text-sm border border-border rounded-md hover:bg-muted transition-colors text-foreground max-w-[220px] disabled:opacity-50 focus:outline-none focus:ring-2 focus:ring-primary focus:ring-offset-1"
+        className="flex items-center gap-2 px-3 py-1.5 text-sm font-medium border border-border rounded-md bg-card hover:bg-muted/80 transition-colors text-foreground max-w-[220px] disabled:opacity-50 focus:outline-none focus:ring-2 focus:ring-ring focus:ring-offset-1"
       >
         <span className="truncate">{activeOrg?.name ?? 'Seleccionar organización'}</span>
         {isPending ? (
-          <span className="shrink-0 text-gray-400 text-xs" aria-hidden="true">
+          <span className="shrink-0 text-muted-foreground text-xs" aria-hidden="true">
             ⟳
           </span>
         ) : (
-          <span className="shrink-0 text-gray-400 text-xs" aria-hidden="true">
+          <span className="shrink-0 text-muted-foreground text-xs" aria-hidden="true">
             ▾
           </span>
         )}
@@ -83,10 +85,10 @@ export function OrganizationSwitcher({
         <div
           role="listbox"
           aria-label="Lista de organizaciones"
-          className="absolute right-0 mt-1 min-w-[220px] bg-card border border-border rounded-lg shadow-lg z-50 overflow-hidden"
+          className="absolute right-0 mt-1 min-w-[220px] bg-card border border-border rounded-lg shadow-md z-50 overflow-hidden"
         >
           {organizations.length === 0 ? (
-            <p className="px-4 py-3 text-sm text-gray-500">Sin organizaciones activas</p>
+            <p className="px-4 py-3 text-xs text-muted-foreground">Sin organizaciones activas</p>
           ) : (
             organizations.map((org) => {
               const isActive = org.id === activeOrg?.id;
@@ -98,16 +100,25 @@ export function OrganizationSwitcher({
                   aria-selected={isActive}
                   onClick={() => handleSwitchOrg(org.id)}
                   disabled={isPending}
-                  className={`w-full text-left px-4 py-2.5 text-sm flex items-center gap-2 hover:bg-muted transition-colors disabled:opacity-50 focus:outline-none focus:bg-muted ${
-                    isActive ? 'text-primary font-medium' : 'text-foreground'
+                  className={`w-full text-left px-3 py-2 text-sm hover:bg-muted transition-colors flex items-center gap-2 ${
+                    isActive ? 'text-foreground font-medium bg-muted/60' : 'text-muted-foreground'
                   }`}
                 >
-                  <span className="w-3 shrink-0 text-xs">{isActive ? '✓' : ''}</span>
+                  {isActive && <span className="text-xs text-amber-600 font-medium">✓</span>}
                   <span className="truncate">{org.name}</span>
                 </button>
               );
             })
           )}
+          <div className="border-t border-border">
+            <Link
+              href="/onboarding"
+              className="block px-3 py-2 text-xs font-medium text-muted-foreground hover:text-foreground hover:bg-muted transition-colors"
+              onClick={() => setOpen(false)}
+            >
+              + Nueva organización
+            </Link>
+          </div>
         </div>
       )}
     </div>

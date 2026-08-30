@@ -84,13 +84,13 @@ export function ClientList({
           placeholder="Buscar clientes..."
           defaultValue={search}
           onChange={(e) => updateSearch('search', e.target.value)}
-          className="flex-1 px-4 py-2 border border-gray-200 rounded-lg text-sm focus:outline-none focus:ring-2 focus:ring-primary"
+          className="flex-1 px-3.5 py-2 border border-border rounded-md bg-card text-foreground placeholder:text-muted-foreground text-sm focus:outline-none focus:ring-2 focus:ring-ring"
           aria-label="Buscar clientes"
         />
         <select
           defaultValue={status}
           onChange={(e) => updateSearch('status', e.target.value)}
-          className="px-3 py-2 border border-gray-200 rounded-lg text-sm focus:outline-none focus:ring-2 focus:ring-primary"
+          className="px-3 py-2 border border-border rounded-md bg-card text-foreground text-sm focus:outline-none focus:ring-2 focus:ring-ring"
           aria-label="Filtrar por estado"
         >
           <option value="">Todos los estados</option>
@@ -102,7 +102,7 @@ export function ClientList({
       </div>
 
       {/* Count */}
-      <p className="text-sm text-gray-500 mb-4">
+      <p className="text-sm text-muted-foreground mb-4">
         {total === 0
           ? 'Sin clientes'
           : `${total} cliente${total !== 1 ? 's' : ''}${page > 1 || totalPages > 1 ? ` — página ${page} de ${totalPages}` : ''}`}
@@ -110,9 +110,9 @@ export function ClientList({
 
       {/* Empty state */}
       {clients.length === 0 && (
-        <div className="text-center py-16 text-gray-400">
+        <div className="text-center py-16 text-muted-foreground">
           <div className="text-4xl mb-3">👥</div>
-          <p className="font-medium text-gray-600 mb-1">
+          <p className="font-medium text-foreground mb-1">
             {search || status ? 'Sin resultados' : 'Sin clientes aún'}
           </p>
           <p className="text-sm">
@@ -123,35 +123,35 @@ export function ClientList({
 
       {/* Table */}
       {clients.length > 0 && (
-        <div className="overflow-x-auto rounded-xl border border-gray-200 bg-white">
+        <div className="overflow-x-auto rounded-lg border border-border bg-card">
           <table className="w-full text-sm">
             <thead>
-              <tr className="border-b border-gray-100 bg-gray-50">
-                <th className="px-4 py-3 text-left font-medium text-gray-600">Cliente</th>
-                <th className="px-4 py-3 text-left font-medium text-gray-600 hidden sm:table-cell">
+              <tr className="border-b border-border bg-muted/50">
+                <th className="px-4 py-3 text-left font-medium text-muted-foreground">Cliente</th>
+                <th className="px-4 py-3 text-left font-medium text-muted-foreground hidden sm:table-cell">
                   Industria
                 </th>
-                <th className="px-4 py-3 text-left font-medium text-gray-600">Estado</th>
-                <th className="px-4 py-3 text-right font-medium text-gray-600">Acciones</th>
+                <th className="px-4 py-3 text-left font-medium text-muted-foreground">Estado</th>
+                <th className="px-4 py-3 text-right font-medium text-muted-foreground">Acciones</th>
               </tr>
             </thead>
-            <tbody className="divide-y divide-gray-50">
+            <tbody className="divide-y divide-border">
               {clients.map((client) => (
-                <tr key={client.id} className="hover:bg-gray-50 transition-colors">
+                <tr key={client.id} className="hover:bg-muted/40 transition-colors">
                   <td className="px-4 py-3">
                     <div>
                       <Link
                         href={`/clients/${client.id}`}
-                        className="font-medium text-gray-900 hover:text-primary transition-colors"
+                        className="font-medium text-foreground hover:underline transition-colors"
                       >
                         {client.name}
                       </Link>
                       {client.email && (
-                        <p className="text-xs text-gray-400 mt-0.5">{client.email}</p>
+                        <p className="text-xs text-muted-foreground mt-0.5">{client.email}</p>
                       )}
                     </div>
                   </td>
-                  <td className="px-4 py-3 text-gray-500 hidden sm:table-cell">
+                  <td className="px-4 py-3 text-muted-foreground hidden sm:table-cell">
                     {client.industry ? (INDUSTRY_LABELS[client.industry] ?? client.industry) : '—'}
                   </td>
                   <td className="px-4 py-3">
@@ -160,7 +160,7 @@ export function ClientList({
                   <td className="px-4 py-3 text-right">
                     <Link
                       href={`/clients/${client.id}`}
-                      className="text-xs text-primary hover:underline"
+                      className="text-xs font-medium text-foreground hover:underline"
                     >
                       Ver →
                     </Link>
@@ -178,17 +178,17 @@ export function ClientList({
           <button
             onClick={() => goToPage(page - 1)}
             disabled={page <= 1 || isPending}
-            className="px-3 py-1.5 text-sm border border-gray-200 rounded-lg disabled:opacity-40 hover:bg-gray-50 transition-colors"
+            className="px-3 py-1.5 text-sm border border-border bg-card rounded-md disabled:opacity-40 hover:bg-muted transition-colors text-foreground"
           >
             ← Anterior
           </button>
-          <span className="text-sm text-gray-500">
+          <span className="text-sm text-muted-foreground">
             {page} / {totalPages}
           </span>
           <button
             onClick={() => goToPage(page + 1)}
             disabled={page >= totalPages || isPending}
-            className="px-3 py-1.5 text-sm border border-gray-200 rounded-lg disabled:opacity-40 hover:bg-gray-50 transition-colors"
+            className="px-3 py-1.5 text-sm border border-border bg-card rounded-md disabled:opacity-40 hover:bg-muted transition-colors text-foreground"
           >
             Siguiente →
           </button>

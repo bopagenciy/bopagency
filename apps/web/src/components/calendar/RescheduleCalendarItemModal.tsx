@@ -58,86 +58,86 @@ export const RescheduleCalendarItemModal: React.FC<RescheduleCalendarItemModalPr
   };
 
   return (
-    <div className="fixed inset-0 z-50 overflow-y-auto bg-slate-900/50 backdrop-blur-sm flex items-center justify-center p-4">
-      <div className="bg-white rounded-2xl max-w-md w-full p-6 shadow-2xl border border-slate-200 animate-in fade-in zoom-in duration-150">
-        <div className="flex items-center justify-between pb-3 border-b border-slate-200">
-          <h3 className="text-sm font-bold text-slate-900">Reprogramar Contenido</h3>
-          <button onClick={onClose} className="text-slate-400 hover:text-slate-600">
+    <div className="fixed inset-0 z-50 overflow-y-auto bg-slate-950/60 backdrop-blur-sm flex items-center justify-center p-4">
+      <div className="bg-card text-card-foreground rounded-lg max-w-md w-full p-6 shadow-2xl border border-border animate-in fade-in zoom-in duration-150">
+        <div className="flex items-center justify-between pb-3 border-b border-border">
+          <h3 className="text-sm font-semibold text-foreground">Reprogramar Contenido</h3>
+          <button onClick={onClose} className="text-muted-foreground hover:text-foreground">
             ✕
           </button>
         </div>
 
         <form noValidate onSubmit={handleSubmit} className="py-4 space-y-4 text-xs">
           {errorMessage && (
-            <div className="p-3 bg-rose-50 border border-rose-200 text-rose-800 rounded-lg">
+            <div className="p-3 bg-red-50/80 border border-red-200 text-red-900 rounded-md">
               {errorMessage}
             </div>
           )}
 
-          <div className="p-3 rounded-lg bg-slate-50 border border-slate-200">
-            <p className="font-bold text-slate-900">{item.title}</p>
-            <p className="text-[11px] text-slate-500">{item.campaignName}</p>
+          <div className="p-3 rounded-md bg-muted/50 border border-border">
+            <p className="font-semibold text-foreground">{item.title}</p>
+            <p className="text-[11px] text-muted-foreground">{item.campaignName}</p>
           </div>
 
           <div className="grid grid-cols-2 gap-3">
             <div>
-              <label htmlFor="reschedule-date" className="block font-semibold text-slate-700 mb-1">Nueva Fecha *</label>
+              <label htmlFor="reschedule-date" className="block font-medium text-foreground mb-1">Nueva Fecha *</label>
               <input
                 id="reschedule-date"
                 type="date"
                 required
                 value={scheduledForDate}
                 onChange={(e) => setScheduledForDate(e.target.value)}
-                className="w-full px-3 py-2 border border-slate-300 rounded-lg"
+                className="w-full px-3 py-2 border border-border bg-card text-foreground rounded-md focus:outline-none focus:ring-2 focus:ring-ring"
               />
             </div>
             <div>
-              <label className="block font-semibold text-slate-700 mb-1">Nueva Hora (UTC) *</label>
+              <label className="block font-medium text-foreground mb-1">Nueva Hora (UTC) *</label>
               <input
                 type="time"
                 required
                 value={scheduledForTime}
                 onChange={(e) => setScheduledForTime(e.target.value)}
-                className="w-full px-3 py-2 border border-slate-300 rounded-lg"
+                className="w-full px-3 py-2 border border-border bg-card text-foreground rounded-md focus:outline-none focus:ring-2 focus:ring-ring"
               />
             </div>
           </div>
 
           <div>
-            <label className="block font-semibold text-slate-700 mb-1">Zona Horaria (IANA)</label>
+            <label className="block font-medium text-foreground mb-1">Zona Horaria (IANA)</label>
             <input
               type="text"
               value={timezone}
               onChange={(e) => setTimezone(e.target.value)}
               placeholder="America/Bogota"
-              className="w-full px-3 py-2 border border-slate-300 rounded-lg"
+              className="w-full px-3 py-2 border border-border bg-card text-foreground rounded-md focus:outline-none focus:ring-2 focus:ring-ring"
             />
           </div>
 
           <div>
-            <label className="block font-semibold text-slate-700 mb-1">Motivo de Reprogramación *</label>
+            <label className="block font-medium text-foreground mb-1">Motivo de Reprogramación *</label>
             <textarea
               rows={3}
               required
               value={rescheduleReason}
               onChange={(e) => setRescheduleReason(e.target.value)}
               placeholder="Explica por qué se reprograma la fecha..."
-              className="w-full px-3 py-2 border border-slate-300 rounded-lg"
+              className="w-full px-3 py-2 border border-border bg-card text-foreground rounded-md focus:outline-none focus:ring-2 focus:ring-ring"
             />
           </div>
 
-          <div className="pt-3 border-t border-slate-200 flex justify-end gap-2">
+          <div className="pt-3 border-t border-border flex justify-end gap-2">
             <button
               type="button"
               onClick={onClose}
-              className="px-4 py-2 font-semibold text-slate-700 bg-slate-100 hover:bg-slate-200 rounded-lg"
+              className="px-4 py-2 font-medium text-foreground bg-muted hover:bg-muted/80 rounded-md"
             >
               Cancelar
             </button>
             <button
               type="submit"
               disabled={isSubmitting}
-              className="px-4 py-2 font-semibold text-white bg-indigo-600 hover:bg-indigo-700 rounded-lg disabled:opacity-50"
+              className="px-4 py-2 font-medium text-primary-foreground bg-primary hover:bg-primary-hover rounded-md disabled:opacity-50 transition-colors focus:outline-none focus:ring-2 focus:ring-ring"
             >
               {isSubmitting ? 'Guardando...' : 'Confirmar Reprogramación'}
             </button>

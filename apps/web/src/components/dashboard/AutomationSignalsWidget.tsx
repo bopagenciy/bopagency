@@ -34,15 +34,15 @@ export function AutomationSignalsWidget({ data }: AutomationSignalsWidgetProps) 
     data.pendingAutomationTasks > 0;
 
   return (
-    <div className="bg-white rounded-lg border border-gray-200">
-      <div className="px-5 py-4 border-b border-gray-100 flex items-center justify-between">
-        <h2 className="font-semibold text-gray-900 flex items-center gap-2">
+    <div className="bg-card text-card-foreground rounded-lg border border-border">
+      <div className="px-5 py-4 border-b border-border flex items-center justify-between">
+        <h2 className="font-semibold text-foreground flex items-center gap-2">
           <span aria-hidden="true">⚙️</span>
           Automatizaciones
         </h2>
         <Link
           href="/automations"
-          className="text-xs text-primary hover:text-primary-hover transition-colors"
+          className="text-xs text-muted-foreground hover:text-foreground transition-colors font-medium"
           aria-label="Ver todas las automatizaciones"
         >
           Ver todas →
@@ -81,10 +81,10 @@ export function AutomationSignalsWidget({ data }: AutomationSignalsWidgetProps) 
 
         {/* Tareas pendientes de automatización */}
         {data.pendingAutomationTasks > 0 && (
-          <div className="pt-2 border-t border-gray-100">
+          <div className="pt-2 border-t border-border">
             <Link
               href="/tasks"
-              className="flex items-center justify-between text-sm text-amber-700 bg-amber-50 rounded px-3 py-2 hover:bg-amber-100 transition-colors"
+              className="flex items-center justify-between text-sm text-amber-800 bg-amber-50 rounded px-3 py-2 hover:bg-amber-100 transition-colors"
               aria-label={`${data.pendingAutomationTasks} tareas operativas de automatización pendientes`}
             >
               <span className="flex items-center gap-1.5">
@@ -98,13 +98,13 @@ export function AutomationSignalsWidget({ data }: AutomationSignalsWidgetProps) 
 
         {/* Estado sin incidentes */}
         {!hasIssues && data.activeAutomations === 0 && (
-          <div className="text-center py-4 text-gray-400 text-sm">
+          <div className="text-center py-4 text-muted-foreground text-sm">
             <div className="text-2xl mb-1" aria-hidden="true">⚙️</div>
             <p>Sin automatizaciones configuradas</p>
           </div>
         )}
         {!hasIssues && data.activeAutomations > 0 && (
-          <div className="text-center py-2 text-green-600 text-xs">
+          <div className="text-center py-2 text-emerald-600 text-xs font-medium">
             <span aria-hidden="true">✓ </span>Sin incidentes activos
           </div>
         )}

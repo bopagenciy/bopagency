@@ -177,11 +177,11 @@ export default async function CampaignDetailPage({ params }: Props) {
 
       <div className="p-6 max-w-5xl mx-auto space-y-6">
         {/* Info card */}
-        <div className="bg-white rounded-xl border border-gray-200 p-6 space-y-4">
+        <div className="bg-card text-card-foreground rounded-lg border border-border p-6 space-y-4">
           <div className="flex items-start justify-between gap-4">
             <div>
-              <h1 className="text-lg font-semibold text-gray-900">{campaign.name}</h1>
-              <p className="text-sm text-gray-500 mt-1">Cliente: {clientName}</p>
+              <h1 className="text-xl font-bold text-foreground tracking-tight">{campaign.name}</h1>
+              <p className="text-sm text-muted-foreground mt-1">Cliente: {clientName}</p>
             </div>
             <div className="flex items-center gap-2 shrink-0">
               <EditCampaignModal campaign={campaign} userRole={membership.role} />
@@ -191,26 +191,26 @@ export default async function CampaignDetailPage({ params }: Props) {
 
           <dl className="grid grid-cols-2 sm:grid-cols-4 gap-4 text-sm">
             <div>
-              <dt className="text-gray-400 text-xs uppercase tracking-wide">Plataforma</dt>
-              <dd className="mt-1 font-medium text-gray-800">
+              <dt className="text-muted-foreground text-xs uppercase tracking-wide font-medium">Plataforma</dt>
+              <dd className="mt-1 font-medium text-foreground">
                 {PLATFORM_LABELS[campaign.platform as AdPlatform] ?? campaign.platform}
               </dd>
             </div>
             <div>
-              <dt className="text-gray-400 text-xs uppercase tracking-wide">Objetivo</dt>
-              <dd className="mt-1 font-medium text-gray-800">
+              <dt className="text-muted-foreground text-xs uppercase tracking-wide font-medium">Objetivo</dt>
+              <dd className="mt-1 font-medium text-foreground">
                 {OBJECTIVE_LABELS[campaign.objective] ?? campaign.objective}
               </dd>
             </div>
             <div>
-              <dt className="text-gray-400 text-xs uppercase tracking-wide">Presupuesto</dt>
-              <dd className="mt-1 font-medium text-gray-800">
+              <dt className="text-muted-foreground text-xs uppercase tracking-wide font-medium">Presupuesto</dt>
+              <dd className="mt-1 font-medium text-foreground">
                 {formatBudget(campaign.budget, campaign.currency)}
               </dd>
             </div>
             <div>
-              <dt className="text-gray-400 text-xs uppercase tracking-wide">Vigencia</dt>
-              <dd className="mt-1 font-medium text-gray-800">
+              <dt className="text-muted-foreground text-xs uppercase tracking-wide font-medium">Vigencia</dt>
+              <dd className="mt-1 font-medium text-foreground">
                 {formatDate(campaign.startDate)} – {formatDate(campaign.endDate)}
               </dd>
             </div>
@@ -218,8 +218,8 @@ export default async function CampaignDetailPage({ params }: Props) {
 
           {campaign.brief && (
             <div>
-              <h3 className="text-xs font-semibold text-gray-500 uppercase tracking-wide mb-1">Brief</h3>
-              <p className="text-sm text-gray-700 whitespace-pre-wrap">{campaign.brief}</p>
+              <h3 className="text-xs font-semibold text-muted-foreground uppercase tracking-wide mb-1">Brief</h3>
+              <p className="text-sm text-foreground/90 whitespace-pre-wrap">{campaign.brief}</p>
             </div>
           )}
         </div>
@@ -240,9 +240,9 @@ export default async function CampaignDetailPage({ params }: Props) {
         <CampaignAutomationActivity task={automationTask} />
 
         {/* Generated content */}
-        <div className="bg-white rounded-xl border border-gray-200 p-6 space-y-4">
+        <div className="bg-card text-card-foreground rounded-lg border border-border p-6 space-y-4">
           <div className="flex items-center justify-between">
-            <h2 className="font-semibold text-gray-900">Contenido generado</h2>
+            <h2 className="font-semibold text-foreground">Contenido generado</h2>
             <RegenerateContentButton
               campaignId={campaign.id}
               status={campaign.status}
@@ -254,25 +254,25 @@ export default async function CampaignDetailPage({ params }: Props) {
         </div>
 
         {/* Compliance */}
-        <div className="bg-white rounded-xl border border-gray-200 p-6 space-y-3">
-          <h2 className="font-semibold text-gray-900">Revisión de compliance</h2>
+        <div className="bg-card text-card-foreground rounded-lg border border-border p-6 space-y-3">
+          <h2 className="font-semibold text-foreground">Revisión de compliance</h2>
           <ComplianceReview evaluation={compliance} />
         </div>
 
         {/* Audit trail */}
         {approvals.length > 0 && (
-          <div className="bg-white rounded-xl border border-gray-200 p-6 space-y-3">
-            <h2 className="font-semibold text-gray-900">Historial de decisiones</h2>
+          <div className="bg-card text-card-foreground rounded-lg border border-border p-6 space-y-3">
+            <h2 className="font-semibold text-foreground">Historial de decisiones</h2>
             <ul className="space-y-3">
               {approvals.map((approval) => (
-                <li key={approval.id} className="text-sm border-l-2 border-gray-200 pl-3">
+                <li key={approval.id} className="text-sm border-l-2 border-border pl-3">
                   <div className="flex items-center gap-2">
-                    <span className="font-medium text-gray-800">
+                    <span className="font-medium text-foreground">
                       {APPROVAL_ACTION_LABELS[approval.action] ?? approval.action}
                     </span>
-                    <span className="text-gray-400 text-xs">{formatDate(approval.createdAt)}</span>
+                    <span className="text-muted-foreground text-xs">{formatDate(approval.createdAt)}</span>
                   </div>
-                  {approval.note && <p className="text-gray-600 mt-0.5">{approval.note}</p>}
+                  {approval.note && <p className="text-muted-foreground mt-0.5">{approval.note}</p>}
                 </li>
               ))}
             </ul>

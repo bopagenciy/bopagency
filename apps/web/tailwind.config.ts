@@ -62,6 +62,12 @@ const config: Config = {
           foreground: withOpacity('--accent-foreground'),
         },
 
+        'brand-accent': {
+          DEFAULT: withOpacity('--brand-accent'),
+          hover: withOpacity('--brand-accent-hover'),
+          foreground: withOpacity('--brand-accent-foreground'),
+        },
+
         'warm-yellow': withOpacity('--warm-yellow'),
 
         success: {

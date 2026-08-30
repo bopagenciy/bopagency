@@ -92,7 +92,7 @@ export default async function ClientDetailPage({ params }: Props) {
           canManage ? (
             <Link
               href={`/clients/${clientId}/edit`}
-              className="px-3 py-1.5 border border-gray-200 rounded-lg text-sm hover:bg-gray-50 transition-colors"
+              className="px-3.5 py-1.5 border border-border bg-card rounded-md text-sm font-medium hover:bg-muted transition-colors text-foreground"
             >
               Editar
             </Link>
@@ -102,15 +102,15 @@ export default async function ClientDetailPage({ params }: Props) {
 
       <div className="p-6 max-w-5xl mx-auto space-y-6">
         {/* Client header card */}
-        <div className="bg-white rounded-xl border border-gray-200 p-6">
+        <div className="bg-card text-card-foreground rounded-lg border border-border p-6">
           <div className="flex items-start justify-between gap-4">
             <div>
               <div className="flex items-center gap-3 mb-1">
-                <h1 className="text-2xl font-bold text-gray-900">{typedClient.name}</h1>
+                <h1 className="text-2xl font-bold text-foreground tracking-tight">{typedClient.name}</h1>
                 <ClientStatusBadge status={typedClient.status} />
               </div>
               {typedClient.legal_name && (
-                <p className="text-sm text-gray-500">{typedClient.legal_name}</p>
+                <p className="text-sm text-muted-foreground">{typedClient.legal_name}</p>
               )}
             </div>
           </div>
@@ -118,18 +118,18 @@ export default async function ClientDetailPage({ params }: Props) {
           <div className="mt-4 grid grid-cols-2 sm:grid-cols-4 gap-4 text-sm">
             {typedClient.industry && (
               <div>
-                <p className="text-gray-400 text-xs uppercase tracking-wide mb-0.5">Industria</p>
-                <p className="text-gray-700">
+                <p className="text-muted-foreground text-xs uppercase tracking-wide mb-0.5 font-medium">Industria</p>
+                <p className="text-foreground">
                   {INDUSTRY_LABELS[typedClient.industry] ?? typedClient.industry}
                 </p>
               </div>
             )}
             {typedClient.email && (
               <div>
-                <p className="text-gray-400 text-xs uppercase tracking-wide mb-0.5">Email</p>
+                <p className="text-muted-foreground text-xs uppercase tracking-wide mb-0.5 font-medium">Email</p>
                 <a
                   href={`mailto:${typedClient.email}`}
-                  className="text-blue-600 hover:underline truncate block"
+                  className="text-foreground hover:underline truncate block font-medium"
                 >
                   {typedClient.email}
                 </a>
@@ -137,76 +137,76 @@ export default async function ClientDetailPage({ params }: Props) {
             )}
             {typedClient.phone && (
               <div>
-                <p className="text-gray-400 text-xs uppercase tracking-wide mb-0.5">Teléfono</p>
-                <p className="text-gray-700">{typedClient.phone}</p>
+                <p className="text-muted-foreground text-xs uppercase tracking-wide mb-0.5 font-medium">Teléfono</p>
+                <p className="text-foreground">{typedClient.phone}</p>
               </div>
             )}
             {typedClient.website && (
               <div>
-                <p className="text-gray-400 text-xs uppercase tracking-wide mb-0.5">Sitio web</p>
+                <p className="text-muted-foreground text-xs uppercase tracking-wide mb-0.5 font-medium">Sitio web</p>
                 <a
                   href={typedClient.website}
                   target="_blank"
                   rel="noopener noreferrer"
-                  className="text-blue-600 hover:underline truncate block"
+                  className="text-foreground hover:underline truncate block font-medium"
                 >
                   {typedClient.website.replace(/^https?:\/\//, '')}
                 </a>
               </div>
             )}
             <div>
-              <p className="text-gray-400 text-xs uppercase tracking-wide mb-0.5">Moneda</p>
-              <p className="text-gray-700">{typedClient.currency}</p>
+              <p className="text-muted-foreground text-xs uppercase tracking-wide mb-0.5 font-medium">Moneda</p>
+              <p className="text-foreground">{typedClient.currency}</p>
             </div>
             <div>
-              <p className="text-gray-400 text-xs uppercase tracking-wide mb-0.5">Zona horaria</p>
-              <p className="text-gray-700">{typedClient.timezone}</p>
+              <p className="text-muted-foreground text-xs uppercase tracking-wide mb-0.5 font-medium">Zona horaria</p>
+              <p className="text-foreground">{typedClient.timezone}</p>
             </div>
           </div>
 
           {typedClient.notes && (
-            <div className="mt-4 pt-4 border-t border-gray-100">
-              <p className="text-xs text-gray-400 uppercase tracking-wide mb-1">Notas</p>
-              <p className="text-sm text-gray-600 whitespace-pre-wrap">{typedClient.notes}</p>
+            <div className="mt-4 pt-4 border-t border-border">
+              <p className="text-xs text-muted-foreground uppercase tracking-wide mb-1 font-medium">Notas</p>
+              <p className="text-sm text-foreground/90 whitespace-pre-wrap">{typedClient.notes}</p>
             </div>
           )}
         </div>
 
         {/* Documents */}
-        <div className="bg-white rounded-xl border border-gray-200 p-6">
+        <div className="bg-card text-card-foreground rounded-lg border border-border p-6">
           <div className="flex items-center justify-between mb-4">
-            <h2 className="font-semibold text-gray-900">Documentos</h2>
+            <h2 className="font-semibold text-foreground">Documentos</h2>
             {canManage && (
               <Link
                 href={`/clients/${clientId}/documents/nuevo`}
-                className="text-sm text-red-600 hover:underline"
+                className="text-sm text-foreground font-semibold hover:underline"
               >
                 + Nuevo documento
               </Link>
             )}
           </div>
           {typedDocuments.length === 0 ? (
-            <p className="text-sm text-gray-400">
+            <p className="text-sm text-muted-foreground">
               Sin documentos. Crea el primero con el botón de arriba.
             </p>
           ) : (
-            <div className="divide-y divide-gray-50">
+            <div className="divide-y divide-border">
               {typedDocuments.map((doc) => (
                 <div key={doc.id} className="flex items-center justify-between py-3">
                   <div>
                     <Link
                       href={`/clients/${clientId}/documents/${doc.document_key}`}
-                      className="font-medium text-gray-800 hover:text-red-600 transition-colors"
+                      className="font-medium text-foreground hover:underline transition-colors"
                     >
                       {doc.title}
                     </Link>
-                    <p className="text-xs text-gray-400 mt-0.5">
+                    <p className="text-xs text-muted-foreground mt-0.5">
                       {doc.category} · v{doc.version} · {doc.status}
                     </p>
                   </div>
                   <Link
                     href={`/clients/${clientId}/documents/${doc.document_key}`}
-                    className="text-xs text-gray-400 hover:text-red-600 transition-colors"
+                    className="text-xs font-medium text-muted-foreground hover:text-foreground transition-colors"
                   >
                     Editar →
                   </Link>
@@ -217,24 +217,24 @@ export default async function ClientDetailPage({ params }: Props) {
         </div>
 
         {/* Contacts */}
-        <div className="bg-white rounded-xl border border-gray-200 p-6">
-          <h2 className="font-semibold text-gray-900 mb-4">Contactos</h2>
+        <div className="bg-card text-card-foreground rounded-lg border border-border p-6">
+          <h2 className="font-semibold text-foreground mb-4">Contactos</h2>
           {typedContacts.length === 0 ? (
-            <p className="text-sm text-gray-400">Sin contactos registrados.</p>
+            <p className="text-sm text-muted-foreground">Sin contactos registrados.</p>
           ) : (
-            <div className="divide-y divide-gray-50">
+            <div className="divide-y divide-border">
               {typedContacts.map((contact) => (
                 <div key={contact.id} className="py-3">
                   <div className="flex items-center gap-2">
-                    <p className="font-medium text-gray-800 text-sm">{contact.name}</p>
+                    <p className="font-medium text-foreground text-sm">{contact.name}</p>
                     {contact.is_primary && (
-                      <span className="text-xs bg-blue-50 text-blue-600 px-1.5 py-0.5 rounded">
+                      <span className="text-xs bg-amber-100/80 text-amber-900 border border-amber-200 px-1.5 py-0.5 rounded font-medium">
                         Principal
                       </span>
                     )}
                   </div>
-                  {contact.title && <p className="text-xs text-gray-400 mt-0.5">{contact.title}</p>}
-                  <div className="flex gap-4 mt-1 text-xs text-gray-500">
+                  {contact.title && <p className="text-xs text-muted-foreground mt-0.5">{contact.title}</p>}
+                  <div className="flex gap-4 mt-1 text-xs text-muted-foreground">
                     {contact.email && (
                       <a href={`mailto:${contact.email}`} className="hover:underline">
                         {contact.email}
@@ -249,13 +249,13 @@ export default async function ClientDetailPage({ params }: Props) {
         </div>
 
         {/* Integrations */}
-        <div className="bg-white rounded-xl border border-gray-200 p-6">
+        <div className="bg-card text-card-foreground rounded-lg border border-border p-6">
           <div className="flex items-center justify-between mb-4">
-            <h2 className="font-semibold text-gray-900">Integraciones</h2>
+            <h2 className="font-semibold text-foreground">Integraciones</h2>
             {canManage && (
               <a
                 href={`/api/auth/oauth/google/start?organizationId=${organization.id}&clientId=${clientId}&intent=connect`}
-                className="text-xs px-3 py-1.5 bg-indigo-600 text-white font-medium rounded-md hover:bg-indigo-700 transition-colors"
+                className="text-xs px-3 py-1.5 bg-primary text-primary-foreground font-medium rounded-md hover:bg-primary-hover transition-colors"
               >
                 + Conectar Google Ads
               </a>
@@ -263,30 +263,30 @@ export default async function ClientDetailPage({ params }: Props) {
           </div>
 
           {typedIntegrations.length === 0 ? (
-            <p className="text-sm text-gray-400">Sin integraciones configuradas.</p>
+            <p className="text-sm text-muted-foreground">Sin integraciones configuradas.</p>
           ) : (
-            <div className="divide-y divide-gray-50">
+            <div className="divide-y divide-border">
               {typedIntegrations.map((integration) => (
                 <div key={integration.id} className="flex items-center justify-between py-3">
                   <div>
-                    <p className="font-medium text-gray-800 text-sm capitalize">
+                    <p className="font-medium text-foreground text-sm capitalize">
                       {integration.provider.replace('_', ' ')}
                     </p>
-                    <p className="text-xs text-gray-400 font-mono">{integration.external_account_id}</p>
+                    <p className="text-xs text-muted-foreground font-mono">{integration.external_account_id}</p>
                     {typeof (integration.configuration as Record<string, unknown> | null)?.['customer_name'] === 'string' && (
-                      <p className="text-xs text-gray-500 font-medium">
+                      <p className="text-xs text-muted-foreground font-medium">
                         {(integration.configuration as Record<string, unknown>)['customer_name'] as string}
                       </p>
                     )}
                   </div>
                   <div className="flex items-center gap-2">
                     <span
-                      className={`text-xs px-2 py-0.5 rounded-full ${
+                      className={`text-xs px-2 py-0.5 rounded-full font-medium ${
                         integration.status === 'active'
-                          ? 'bg-green-50 text-green-700'
+                          ? 'bg-emerald-50 text-emerald-800 border border-emerald-200'
                           : integration.status === 'error'
-                            ? 'bg-red-50 text-red-700'
-                            : 'bg-gray-50 text-gray-500'
+                            ? 'bg-red-50 text-red-800 border border-red-200'
+                            : 'bg-muted text-muted-foreground'
                       }`}
                     >
                       {integration.status}
@@ -295,7 +295,7 @@ export default async function ClientDetailPage({ params }: Props) {
                     {integration.provider === 'google' && canManage && (
                       <a
                         href={`/api/auth/oauth/google/start?organizationId=${organization.id}&clientId=${clientId}&intent=reconnect`}
-                        className="text-xs text-indigo-600 hover:text-indigo-800 underline ml-2"
+                        className="text-xs text-foreground font-medium hover:underline ml-2"
                       >
                         Reconectar
                       </a>
@@ -307,12 +307,11 @@ export default async function ClientDetailPage({ params }: Props) {
           )}
         </div>
 
-
         {/* Danger zone */}
         {canDelete && (
-          <div className="bg-white rounded-xl border border-red-200 p-6">
-            <h2 className="font-semibold text-red-700 mb-2">Zona de peligro</h2>
-            <p className="text-sm text-gray-500 mb-4">
+          <div className="bg-card rounded-lg border border-destructive/40 p-6">
+            <h2 className="font-semibold text-destructive mb-2">Zona de peligro</h2>
+            <p className="text-sm text-muted-foreground mb-4">
               Eliminar el cliente lo marcará como eliminado y no aparecerá en la lista. Esta acción
               puede revertirse desde la base de datos.
             </p>
@@ -324,7 +323,7 @@ export default async function ClientDetailPage({ params }: Props) {
             >
               <button
                 type="submit"
-                className="px-4 py-2 bg-red-600 text-white text-sm rounded-lg hover:bg-red-700 transition-colors"
+                className="px-4 py-2 bg-destructive text-destructive-foreground text-sm rounded-md font-medium hover:bg-destructive/90 transition-colors"
               >
                 Eliminar cliente
               </button>
