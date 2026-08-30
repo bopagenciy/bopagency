@@ -1,10 +1,11 @@
 /**
- * meta-config.ts — Phase 8E.
+ * meta-config.ts — Phase 8E / Phase 9B.1.
  *
  * Configuración centralizada de Meta Graph API.
  * EXIGE que process.env.META_GRAPH_API_VERSION esté definida y cumpla el formato ^v\d+\.\d+$.
- * SIN valores default ni strings 'v20.0' en código.
  */
+
+export const DEFAULT_META_GRAPH_API_VERSION = 'v26.0';
 
 export function getMetaGraphApiVersion(): string {
   const version = process.env['META_GRAPH_API_VERSION'];
