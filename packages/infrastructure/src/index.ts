@@ -14,6 +14,10 @@ export { SupabaseMetricsRepository } from './supabase/repositories/supabase-metr
 export { SupabaseAlertRepository } from './supabase/repositories/supabase-alert.repository';
 export { SupabaseTaskRepository } from './supabase/repositories/supabase-task.repository';
 
+// Phase 9A repositories
+export { SupabaseReportsRepository } from './supabase/repositories/supabase-reports.repository';
+export { SupabaseCampaignMetricSnapshotRepository } from './supabase/repositories/supabase-campaign-metric-snapshot.repository';
+
 // Phase 7B repositories
 export { SupabaseCampaignRepository } from './supabase/repositories/supabase-campaign.repository';
 
@@ -55,6 +59,12 @@ export { rowToAlert } from './supabase/mappers/alert.mapper';
 export type { AlertRow } from './supabase/mappers/alert.mapper';
 export { rowToTask } from './supabase/mappers/task.mapper';
 export type { TaskRow } from './supabase/mappers/task.mapper';
+
+// Phase 9A mappers
+export { rowToCampaignMetricSnapshot } from './supabase/mappers/campaign-metric-snapshot.mapper';
+export type { CampaignMetricSnapshotRow } from './supabase/mappers/campaign-metric-snapshot.mapper';
+export { rowToReport, rowToReportDelivery } from './supabase/mappers/report.mapper';
+export type { ReportRow, ReportDeliveryRow } from './supabase/mappers/report.mapper';
 
 // Phase 7B mappers
 export { rowToCampaign } from './supabase/mappers/campaign.mapper';

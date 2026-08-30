@@ -107,7 +107,39 @@ export type {
   DataQualityStatus,
 } from './entities/metric';
 export { validateMetricValues, validateMetricPeriod } from './entities/metric';
-export type { ReportId, ReportType, ReportStatus, Report } from './entities/report';
+
+// Phase 9A — CampaignMetricSnapshot & Report Entities
+export type {
+  CampaignMetricSnapshotId,
+  SnapshotGranularity,
+  SnapshotScope,
+  CampaignMetricSnapshotValues,
+  CampaignMetricSnapshot,
+} from './entities/campaign-metric-snapshot';
+export {
+  campaignMetricSnapshotId,
+  parseMonetaryAmount,
+  validateCampaignMetricSnapshotValues,
+  computeDerivedSnapshotMetrics,
+} from './entities/campaign-metric-snapshot';
+
+export type {
+  ReportId,
+  ReportDeliveryId,
+  ReportType,
+  ReportStatus,
+  DeliveryChannel,
+  DeliveryStatus,
+  ReportSummary,
+  ReportDelivery,
+  Report,
+} from './entities/report';
+export {
+  reportId,
+  reportDeliveryId,
+  canTransitionReportStatus,
+  validateReportPeriod,
+} from './entities/report';
 
 // Automation entity — Phase 6A
 export type {
@@ -162,13 +194,24 @@ export type { CampaignRepository } from './repositories/campaign.repository';
 export type { CampaignApprovalRepository } from './repositories/campaign-approval.repository';
 export type { ComplianceRuleRepository } from './repositories/compliance-rule.repository';
 export type { AlertRepository, AlertCountBySeverity } from './repositories/alert.repository';
-export type { ReportRepository } from './repositories/report.repository';
+export type {
+  ReportsRepository,
+  ReportRepository,
+  ReportFilter,
+  CreateReportInput,
+  CreateReportDeliveryInput,
+} from './repositories/reports.repository';
 export type { TaskRepository, TaskCountByStatus } from './repositories/task.repository';
 export type {
   MetricsRepository,
   AvailablePeriod,
   MetricOrganizationSummary,
 } from './repositories/metrics.repository';
+export type {
+  CampaignMetricSnapshotRepository,
+  SnapshotFilter,
+  SaveCampaignMetricSnapshotInput,
+} from './repositories/campaign-metric-snapshot.repository';
 export type { AgentRepository } from './repositories/agent.repository';
 export type { SkillRepository } from './repositories/skill.repository';
 export type { TemplateRepository } from './repositories/template.repository';
