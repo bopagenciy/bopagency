@@ -200,5 +200,132 @@ describe.skipIf(!SHOULD_RUN_REAL_DB)(
       const updatedStream1 = dbRows2?.find((r) => r.provider_account_id === 'act_e2e_111');
       expect(updatedStream1?.spend).toBe(1500.00);
     });
+
+    it('proves real PostgreSQL round-trip for fractional attributed conversions (2.5 and 0.3333)', async () => {
+      const recFrac: NormalizedMetricRecord = {
+        organizationId: orgId,
+        clientId: cliId,
+        campaignId: cmpId,
+        platform: 'google',
+        providerAccountId: '1234567890',
+        externalCampaignId: 'ext_cmp_google_frac',
+        snapshotDate: '2026-08-30',
+        spend: '25.50',
+        impressions: 2000,
+        reach: null,
+        clicks: 100,
+        leads: null,
+        conversions: 2.5, // Conversión atribuida fraccional
+        revenue: null,
+      };
+
+      const provider = new FakeMetricsProvider({
+        platform: 'google',
+        pages: [{ records: [recFrac], nextCursor: null }],
+      });
+      const localRegistry = new InMemoryMetricsProviderRegistry();
+      localRegistry.register(provider);
+
+      const res = await syncCampaignMetrics(
+        {
+          actorUserId: userId,
+          organizationId: orgId,
+          clientId: cliId,
+          platform: 'google',
+          startDate: '2026-08-30',
+          endDate: '2026-08-30',
+        },
+        {
+          snapshotRepository: repo,
+          providerRegistry: localRegistry,
+          isOrganizationMember: async () => true,
+          logger: mockLogger,
+        },
+      );
+
+      expect(res.success).toBe(true);
+
+      const { data: dbRows } = await supabase
+        .from('campaign_metric_snapshots')
+        .select('*')
+        .eq('external_campaign_id', 'ext_cmp_google_frac');
+
+      expect(dbRows?.length).toBe(1);
+      expect(dbRows?.[0]?.conversions).toBe(2.5); // Persistido en PostgreSQL numeric(14,4) como 2.5 exactamente
+    });
+
+    it('proves real PostgreSQL round-trip for provider 0.33335 -> application 0.3334 and 0.33334 -> 0.3333', async () => {
+      const recFrac1: NormalizedMetricRecord = {
+        organizationId: orgId,
+        clientId: cliId,
+        campaignId: cmpId,
+        platform: 'google',
+        providerAccountId: '1234567890',
+        externalCampaignId: 'ext_cmp_google_round_up',
+        snapshotDate: '2026-08-30',
+        spend: '10.00',
+        impressions: 1000,
+        reach: null,
+        clicks: 50,
+        leads: null,
+        conversions: 0.33335, // Redondeo half-up -> 0.3334
+        revenue: null,
+      };
+
+      const recFrac2: NormalizedMetricRecord = {
+        organizationId: orgId,
+        clientId: cliId,
+        campaignId: cmpId,
+        platform: 'google',
+        providerAccountId: '1234567890',
+        externalCampaignId: 'ext_cmp_google_round_down',
+        snapshotDate: '2026-08-30',
+        spend: '10.00',
+        impressions: 1000,
+        reach: null,
+        clicks: 50,
+        leads: null,
+        conversions: 0.33334, // Redondeo half-down -> 0.3333
+        revenue: null,
+      };
+
+      const provider = new FakeMetricsProvider({
+        platform: 'google',
+        pages: [{ records: [recFrac1, recFrac2], nextCursor: null }],
+      });
+      const localRegistry = new InMemoryMetricsProviderRegistry();
+      localRegistry.register(provider);
+
+      const res = await syncCampaignMetrics(
+        {
+          actorUserId: userId,
+          organizationId: orgId,
+          clientId: cliId,
+          platform: 'google',
+          startDate: '2026-08-30',
+          endDate: '2026-08-30',
+        },
+        {
+          snapshotRepository: repo,
+          providerRegistry: localRegistry,
+          isOrganizationMember: async () => true,
+          logger: mockLogger,
+        },
+      );
+
+      expect(res.success).toBe(true);
+
+      const { data: dbRows1 } = await supabase
+        .from('campaign_metric_snapshots')
+        .select('*')
+        .eq('external_campaign_id', 'ext_cmp_google_round_up');
+      expect(dbRows1?.[0]?.conversions).toBe(0.3334);
+
+      const { data: dbRows2 } = await supabase
+        .from('campaign_metric_snapshots')
+        .select('*')
+        .eq('external_campaign_id', 'ext_cmp_google_round_down');
+      expect(dbRows2?.[0]?.conversions).toBe(0.3333);
+    });
   },
 );

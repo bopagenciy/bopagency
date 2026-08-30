@@ -163,10 +163,28 @@ export type { MetaMonitorAdapterDeps } from './meta/meta-monitor.adapter';
 
 // Phase 9B.1 — Meta Ads Metrics Adapter Infrastructure
 export { MetaMetricsAdapter } from './meta/meta-metrics.adapter';
-export type { MetaMetricsAdapterConfig } from './meta/meta-metrics.adapter';
+export type {
+  MetaMetricsAdapterConfig,
+  ExternalCampaignResolutionContext,
+  ResolvedExternalCampaignResource,
+} from './meta/meta-metrics.adapter';
 export { mapMetaResponseToMetricsError } from './meta/meta-metrics-error.mapper';
 export { extractMetaLeads, resolveMetaPurchaseMetrics } from './meta/meta-actions.mapper';
 export type { ResolvedPurchaseMetrics } from './meta/meta-actions.mapper';
+
+// Phase 9B.2 — Google Ads Metrics Adapter Infrastructure
+export { DEFAULT_GOOGLE_ADS_API_VERSION, getGoogleAdsApiVersion } from './google/google-config';
+export { GoogleMetricsAdapter } from './google/google-metrics.adapter';
+export type {
+  GoogleMetricsAdapterConfig,
+  ExternalGoogleCampaignResolutionContext,
+  ResolvedGoogleCampaignResource,
+  GoogleAdsCredentials,
+} from './google/google-metrics.adapter';
+export {
+  mapGoogleResponseToMetricsError,
+  convertCostMicrosToMonetaryString,
+} from './google/google-metrics-error.mapper';
 
 export { SupabaseCredentialRepository } from './supabase/repositories/supabase-credential.repository';
 export type { ResolvedPageCredential } from './supabase/repositories/supabase-credential.repository';

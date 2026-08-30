@@ -19,10 +19,13 @@ import {
   syncCampaignMetrics,
   diffCalendarDays,
   isValidCalendarDate,
+  normalizeAttributedCount,
   MAX_METRICS_SYNC_RANGE_DAYS,
   MAX_PAGINATION_PAGES,
+  MAX_CANONICAL_ATTRIBUTED_CONVERSIONS,
   type SyncCampaignMetricsDeps,
 } from '../sync-campaign-metrics.use-case';
+
 
 const mockLogger: LoggerPort = {
   debug: () => {},
@@ -767,5 +770,201 @@ describe('syncCampaignMetrics Hardened Use Case (Phase 9B.0)', () => {
     expect(repo.savedInputs[0]?.metrics.impressions).toBeNull();
     expect(repo.savedInputs[1]?.metrics.spend).toBe('0.00');
     expect(repo.savedInputs[1]?.metrics.impressions).toBe(0);
+  });
+
+  it('accepts fractional attributed conversion counts (e.g. 2.5 or 0.33) in Sub-Phase 9B.2A', async () => {
+    const fractionalRec: NormalizedMetricRecord = {
+      organizationId: orgId,
+      clientId: cliId,
+      campaignId: cmpId,
+      platform: 'google',
+      providerAccountId: 'act_frac',
+      externalCampaignId: 'ext_frac',
+      snapshotDate: '2026-08-30',
+      spend: '10.00',
+      impressions: 100,
+      reach: null,
+      clicks: 10,
+      leads: 2,
+      conversions: 2.5, // Conversión atribuida fraccional de Google Ads
+      revenue: null,
+    };
+
+    const provider = new FakeMetricsProvider({
+      platform: 'google',
+      pages: [{ records: [fractionalRec], nextCursor: null }],
+    });
+    registry.register(provider);
+
+    const res = await syncCampaignMetrics(
+      {
+        actorUserId: 'user-1',
+        organizationId: orgId,
+        clientId: cliId,
+        campaignId: cmpId,
+        platform: 'google',
+        startDate: '2026-08-30',
+        endDate: '2026-08-30',
+      },
+      deps,
+    );
+
+    expect(res.success).toBe(true);
+    expect(repo.savedInputs[0]?.metrics.conversions).toBe(2.5);
+  });
+
+  it('rejects non-integer leads, impressions, or clicks while accepting fractional conversions', async () => {
+    const invalidLeadsRec: NormalizedMetricRecord = {
+      organizationId: orgId,
+      clientId: cliId,
+      campaignId: cmpId,
+      platform: 'google',
+      providerAccountId: 'act_invalid',
+      externalCampaignId: 'ext_invalid',
+      snapshotDate: '2026-08-30',
+      spend: '10.00',
+      impressions: 100,
+      reach: null,
+      clicks: 10,
+      leads: 2.5, // Inválido: los leads deben ser enteros no negativos
+      conversions: 2.5,
+      revenue: null,
+    };
+
+    const provider = new FakeMetricsProvider({
+      platform: 'google',
+      pages: [{ records: [invalidLeadsRec], nextCursor: null }],
+    });
+    registry.register(provider);
+
+    const res = await syncCampaignMetrics(
+      {
+        actorUserId: 'user-1',
+        organizationId: orgId,
+        clientId: cliId,
+        campaignId: cmpId,
+        platform: 'google',
+        startDate: '2026-08-30',
+        endDate: '2026-08-30',
+      },
+      deps,
+    );
+
+    expect(res.success).toBe(false);
+    if (!res.success) {
+      expect(res.error.code).toBe('INVALID_ARGUMENT');
+      expect(res.error.message).toContain("Invalid provider metric 'leads': must be a non-negative integer, got 2.5");
+    }
+  });
+
+  it('verifies normalizeAttributedCount deterministic half-up decimal rounding and boundary conditions', () => {
+    expect(normalizeAttributedCount(null)).toBeNull();
+    expect(normalizeAttributedCount(undefined)).toBeNull();
+    expect(normalizeAttributedCount(-1)).toBeNull();
+    expect(normalizeAttributedCount(NaN)).toBeNull();
+    expect(normalizeAttributedCount(Infinity)).toBeNull();
+
+    expect(normalizeAttributedCount(0)).toBe(0);
+    expect(normalizeAttributedCount(1)).toBe(1);
+    expect(normalizeAttributedCount(2.5)).toBe(2.5);
+    expect(normalizeAttributedCount(0.33)).toBe(0.33);
+    expect(normalizeAttributedCount(0.3333)).toBe(0.3333);
+    expect(normalizeAttributedCount(0.33334)).toBe(0.3333);
+    expect(normalizeAttributedCount(0.33335)).toBe(0.3334);
+    expect(normalizeAttributedCount(0.33336)).toBe(0.3334);
+    expect(normalizeAttributedCount(1.23494)).toBe(1.2349);
+    expect(normalizeAttributedCount(1.23495)).toBe(1.235);
+    expect(normalizeAttributedCount(1.23496)).toBe(1.235);
+    expect(normalizeAttributedCount(9999999999.99994)).toBe(9999999999.9999);
+    expect(normalizeAttributedCount(1e-7)).toBe(0);
+    expect(normalizeAttributedCount(1.234567e5)).toBe(123456.7);
+
+    // Excede MAX_CANONICAL_ATTRIBUTED_CONVERSIONS (9999999999.9999)
+    expect(normalizeAttributedCount(MAX_CANONICAL_ATTRIBUTED_CONVERSIONS + 1)).toBeNull();
+  });
+
+  it('proves provider conversions 0.33335 normalizes to 0.3334 end-to-end through syncCampaignMetrics', async () => {
+    const providerRec: NormalizedMetricRecord = {
+      organizationId: orgId,
+      clientId: cliId,
+      campaignId: cmpId,
+      platform: 'google',
+      providerAccountId: 'act_half_up',
+      externalCampaignId: 'ext_half_up',
+      snapshotDate: '2026-08-30',
+      spend: '10.00',
+      impressions: 100,
+      reach: null,
+      clicks: 10,
+      leads: null,
+      conversions: 0.33335, // Se redondea half-up a 0.3334 en la escala de 4 decimales
+      revenue: null,
+    };
+
+    const provider = new FakeMetricsProvider({
+      platform: 'google',
+      pages: [{ records: [providerRec], nextCursor: null }],
+    });
+    registry.register(provider);
+
+    const res = await syncCampaignMetrics(
+      {
+        actorUserId: 'user-1',
+        organizationId: orgId,
+        clientId: cliId,
+        campaignId: cmpId,
+        platform: 'google',
+        startDate: '2026-08-30',
+        endDate: '2026-08-30',
+      },
+      deps,
+    );
+
+    expect(res.success).toBe(true);
+    expect(repo.savedInputs[0]?.metrics.conversions).toBe(0.3334);
+  });
+
+  it('rejects provider conversions exceeding MAX_CANONICAL_ATTRIBUTED_CONVERSIONS', async () => {
+    const overflowRec: NormalizedMetricRecord = {
+      organizationId: orgId,
+      clientId: cliId,
+      campaignId: cmpId,
+      platform: 'google',
+      providerAccountId: 'act_overflow',
+      externalCampaignId: 'ext_overflow',
+      snapshotDate: '2026-08-30',
+      spend: '10.00',
+      impressions: 100,
+      reach: null,
+      clicks: 10,
+      leads: null,
+      conversions: 10000000000.0, // Excede MAX_CANONICAL_ATTRIBUTED_CONVERSIONS (9999999999.9999)
+      revenue: null,
+    };
+
+    const provider = new FakeMetricsProvider({
+      platform: 'google',
+      pages: [{ records: [overflowRec], nextCursor: null }],
+    });
+    registry.register(provider);
+
+    const res = await syncCampaignMetrics(
+      {
+        actorUserId: 'user-1',
+        organizationId: orgId,
+        clientId: cliId,
+        campaignId: cmpId,
+        platform: 'google',
+        startDate: '2026-08-30',
+        endDate: '2026-08-30',
+      },
+      deps,
+    );
+
+    expect(res.success).toBe(false);
+    if (!res.success) {
+      expect(res.error.code).toBe('INVALID_ARGUMENT');
+      expect(res.error.message).toContain("must be a non-negative finite number <= 9999999999.9999");
+    }
   });
 });
