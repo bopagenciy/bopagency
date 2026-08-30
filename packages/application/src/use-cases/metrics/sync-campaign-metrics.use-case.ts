@@ -1,5 +1,5 @@
 /**
- * syncCampaignMetrics — Caso de uso endurecido para la sincronización e ingestión de métricas de proveedores (Phase 9B.0 Hardened).
+ * syncCampaignMetrics — Caso de uso endurecido para la sincronización e ingestión de métricas de proveedores (Phase 9B.0 / Phase 9B.2A Hardened).
  */
 
 import { ok, err } from '@bop-agency/shared';
@@ -64,7 +64,49 @@ export type SyncCampaignMetricsError =
 export const MAX_METRICS_SYNC_RANGE_DAYS = 90;
 export const MAX_PAGINATION_PAGES = 50;
 
+/** Capacidad máxima canónica de conversiones atribuidas en BopAgency (NUMERIC(14,4) = 10 enteros + 4 decimales) */
+export const MAX_CANONICAL_ATTRIBUTED_CONVERSIONS = 9999999999.9999;
+export const CANONICAL_ATTRIBUTION_SCALE = 4;
+
 const CURRENCY_REGEX = /^[A-Z]{3}$/;
+
+/**
+ * Normaliza una métrica de conteo atribuido (e.g. conversions) a la escala decimal canónica de BopAgency (4 decimales)
+ * usando redondeo determinista half-up sin imprecisión aritmética flotante.
+ */
+export function normalizeAttributedCount(
+  val: number | null | undefined,
+  scale: number = CANONICAL_ATTRIBUTION_SCALE,
+): number | null {
+  if (val === null || val === undefined) return null;
+  if (typeof val !== 'number' || !Number.isFinite(val) || val < 0) return null;
+  if (val > MAX_CANONICAL_ATTRIBUTED_CONVERSIONS) return null;
+
+  const fixedStr = val.toFixed(scale + 6);
+  const [intPart = '0', fracPart = ''] = fixedStr.split('.');
+
+  if (fracPart.length <= scale) {
+    return parseFloat(fixedStr);
+  }
+
+  const targetFrac = fracPart.slice(0, scale);
+  const roundDigit = parseInt(fracPart[scale] || '0', 10);
+
+  if (roundDigit < 5) {
+    return parseFloat(`${intPart}.${targetFrac}`);
+  }
+
+  const factor = 10 ** scale;
+  const scaledInt = BigInt(intPart) * BigInt(factor) + BigInt(targetFrac) + 1n;
+  const newInt = scaledInt / BigInt(factor);
+  const newFrac = (scaledInt % BigInt(factor)).toString().padStart(scale, '0');
+  const normalizedVal = parseFloat(`${newInt}.${newFrac}`);
+
+  if (normalizedVal > MAX_CANONICAL_ATTRIBUTED_CONVERSIONS) {
+    return null;
+  }
+  return normalizedVal;
+}
 
 /**
  * Valida la validez de un formato y una fecha en el calendario real (e.g. rechaza 2026-02-30 o 2026-13-01).
@@ -306,22 +348,36 @@ export async function syncCampaignMetrics(
       });
     }
 
-    // Métricas primitivas no negativas / enteras
+    // Métricas primitivas estrictamente enteras (impressions, reach, clicks, leads)
     const intMetrics = [
       { name: 'impressions', val: record.impressions },
       { name: 'reach', val: record.reach },
       { name: 'clicks', val: record.clicks },
       { name: 'leads', val: record.leads },
-      { name: 'conversions', val: record.conversions },
     ];
     for (const m of intMetrics) {
       if (m.val !== null && m.val !== undefined) {
-        if (m.val < 0 || !Number.isInteger(m.val)) {
+        if (m.val < 0 || !Number.isInteger(m.val) || m.val > Number.MAX_SAFE_INTEGER) {
           return err({
             code: 'INVALID_ARGUMENT',
-            message: `Invalid provider metric '${m.name}': must be a non-negative integer, got ${m.val}`,
+            message: `Invalid provider metric '${m.name}': must be a non-negative integer within safe limits, got ${m.val}`,
           });
         }
+      }
+    }
+
+    // Métricas fraccionales atribuidas (conversions soporta números fraccionales de atribuición como 2.5 o 0.3333 hasta MAX_CANONICAL_ATTRIBUTED_CONVERSIONS)
+    if (record.conversions !== null && record.conversions !== undefined) {
+      if (
+        typeof record.conversions !== 'number' ||
+        !Number.isFinite(record.conversions) ||
+        record.conversions < 0 ||
+        record.conversions > MAX_CANONICAL_ATTRIBUTED_CONVERSIONS
+      ) {
+        return err({
+          code: 'INVALID_ARGUMENT',
+          message: `Invalid provider metric 'conversions': must be a non-negative finite number <= ${MAX_CANONICAL_ATTRIBUTED_CONVERSIONS}, got ${record.conversions}`,
+        });
       }
     }
 
@@ -405,6 +461,7 @@ export async function syncCampaignMetrics(
   const saveInputs: SaveCampaignMetricSnapshotInput[] = deduplicatedRecords.map((record) => {
     const safeSpend = parseMonetaryAmount(record.spend);
     const safeRevenue = parseMonetaryAmount(record.revenue);
+    const normalizedConversions = normalizeAttributedCount(record.conversions);
 
     const derived = computeDerivedSnapshotMetrics({
       spend: record.spend,
@@ -431,7 +488,7 @@ export async function syncCampaignMetrics(
         reach: record.reach ?? null,
         clicks: record.clicks ?? null,
         leads: record.leads ?? null,
-        conversions: record.conversions ?? null,
+        conversions: normalizedConversions,
         revenue: safeRevenue,
         ctr: derived.ctr,
         cpc: derived.cpc,
