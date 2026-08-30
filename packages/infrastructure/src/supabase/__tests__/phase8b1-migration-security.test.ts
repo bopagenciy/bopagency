@@ -269,7 +269,7 @@ describe('Phase 8B.1 migration - autorizacion por capa (service_role solo en RPC
   it('actor derivado SIEMPRE de auth.uid() - ninguna RPC de usuario acepta un actor/userId como parametro', () => {
     for (const fn of userFacingFns) {
       const fnMatch = mustMatch(
-        new RegExp(`CREATE OR REPLACE FUNCTION public\\.${fn}\\(([\\s\\S]*?)\\)\\n(RETURNS|RETURNS TABLE)`),
+        new RegExp(`CREATE OR REPLACE FUNCTION public\\.${fn}\\(([\\s\\S]*?)\\)\\r?\\n(RETURNS|RETURNS TABLE)`),
       );
       expect((fnMatch[1] ?? '').toLowerCase()).not.toMatch(/p_actor|p_user_id|p_created_by/);
     }
