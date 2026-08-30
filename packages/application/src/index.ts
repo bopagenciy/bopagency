@@ -2,6 +2,16 @@
 export type { LoggerPort, LogLevel, LogContext } from './ports/logger.port';
 export type { EventBusPort, DomainEvent } from './ports/event-bus.port';
 
+// Use Cases — Metrics Ingestion (Phase 9B.0)
+export * from './dtos/normalized-metric-record.dto';
+export * from './ports/metrics-provider.port';
+export * from './ports/metrics-provider-registry';
+export * from './use-cases/metrics/sync-campaign-metrics.use-case';
+
+// Testing utilities (Phase 9B.0)
+export * from './testing/fake-metrics-provider';
+export * from './testing/in-memory-metrics-provider-registry';
+
 // Use cases — Clients
 export { listClients } from './use-cases/clients/list-clients.use-case';
 export type { ListClientsInput, ListClientsDeps } from './use-cases/clients/list-clients.use-case';
