@@ -2,11 +2,14 @@
 export type { LoggerPort, LogLevel, LogContext } from './ports/logger.port';
 export type { EventBusPort, DomainEvent } from './ports/event-bus.port';
 
-// Use Cases — Metrics Ingestion (Phase 9B.0)
+// Use Cases — Metrics Ingestion & Scheduling (Phase 9B.0 / 9B.3)
 export * from './dtos/normalized-metric-record.dto';
 export * from './ports/metrics-provider.port';
 export * from './ports/metrics-provider-registry';
 export * from './use-cases/metrics/sync-campaign-metrics.use-case';
+export * from './use-cases/metrics/list-due-metrics-sync-targets.use-case';
+export * from './use-cases/metrics/execute-metrics-sync-target.use-case';
+
 
 // Testing utilities (Phase 9B.0)
 export * from './testing/fake-metrics-provider';

@@ -18,6 +18,11 @@ export { SupabaseTaskRepository } from './supabase/repositories/supabase-task.re
 export { SupabaseReportsRepository } from './supabase/repositories/supabase-reports.repository';
 export { SupabaseCampaignMetricSnapshotRepository } from './supabase/repositories/supabase-campaign-metric-snapshot.repository';
 
+// Phase 9B.3 repositories
+export { SupabaseCampaignMetricsSyncStateRepository } from './supabase/repositories/supabase-campaign-metrics-sync-state.repository';
+export { rowToCampaignMetricsSyncState } from './supabase/mappers/campaign-metrics-sync-state.mapper';
+
+
 // Phase 7B repositories
 export { SupabaseCampaignRepository } from './supabase/repositories/supabase-campaign.repository';
 
