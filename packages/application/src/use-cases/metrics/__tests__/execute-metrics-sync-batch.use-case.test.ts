@@ -7,17 +7,19 @@ import type {
   CampaignActivationTargetId,
   CampaignMetricsSyncState,
   CampaignMetricsSyncStateRepository,
-  CampaignActivationRepository,
   CreateMetricsSyncStateInput,
   MarkSyncSuccessInput,
   MarkSyncFailureInput,
   ClaimDueTargetResult,
+  CampaignMetricSnapshotRepository,
 } from '@bop-agency/domain';
 import { campaignMetricsSyncStateId, organizationId, campaignActivationId, campaignActivationTargetId } from '@bop-agency/domain';
 import { ok, err } from '@bop-agency/shared';
 import type { Result, MetricPlatform } from '@bop-agency/shared';
 import type { LoggerPort } from '../../../ports/logger.port';
-import { listDueMetricsSyncTargets } from '../list-due-metrics-sync-targets.use-case';
+import { InMemoryMetricsProviderRegistry } from '../../../testing/in-memory-metrics-provider-registry';
+import { FakeMetricsProvider } from '../../../testing/fake-metrics-provider';
+import { executeMetricsSyncBatch } from '../execute-metrics-sync-batch.use-case';
 
 const mockLogger: LoggerPort = {
   debug: () => {},
@@ -30,7 +32,7 @@ class InMemoryMetricsSyncStateRepository implements CampaignMetricsSyncStateRepo
   public states: Map<string, CampaignMetricsSyncState> = new Map();
 
   async getOrCreateSyncState(input: CreateMetricsSyncStateInput): Promise<Result<CampaignMetricsSyncState>> {
-    const key = `${input.organizationId}:${input.targetId}`;
+    const key = String(input.targetId);
     let state = this.states.get(key);
     if (!state) {
       const now = new Date();
@@ -74,10 +76,8 @@ class InMemoryMetricsSyncStateRepository implements CampaignMetricsSyncStateRepo
   }
 
   async findByTargetId(targetId: CampaignActivationTargetId): Promise<Result<CampaignMetricsSyncState>> {
-    for (const st of this.states.values()) {
-      if (st.targetId === targetId) return ok(st);
-    }
-    return err({ code: 'NOT_FOUND', message: 'Not found' });
+    const st = this.states.get(String(targetId));
+    return st ? ok(st) : err({ code: 'NOT_FOUND', message: 'Not found' });
   }
 
   async listDueTargets(orgId: OrganizationId, platform?: MetricPlatform | null, limit = 50): Promise<Result<CampaignMetricsSyncState[]>> {
@@ -174,55 +174,26 @@ class InMemoryMetricsSyncStateRepository implements CampaignMetricsSyncStateRepo
   }
 }
 
-describe('listDueMetricsSyncTargets Use Case (Phase 9B.3)', () => {
-  const orgId = organizationId('org-sched-100');
-  const cliId = 'cli-sched-200' as ClientId;
-  const cmpId = 'cmp-sched-300' as CampaignId;
-  const actId = campaignActivationId('act-sched-400');
-  const trgId = campaignActivationTargetId('trg-sched-500');
+describe('executeMetricsSyncBatch Use Case (Phase 9B.4)', () => {
+  const orgA = organizationId('org-batch-A');
+  const orgB = organizationId('org-batch-B');
+  const cliId = 'cli-batch-10' as ClientId;
+  const cmpId = 'cmp-batch-10' as CampaignId;
+  const actId = campaignActivationId('act-batch-10');
+  const trgIdMeta = campaignActivationTargetId('trg-meta-1');
+  const trgIdGoogle = campaignActivationTargetId('trg-google-1');
 
-  it('rejects unauthorized actor users', async () => {
+  it('handles zero due targets cleanly with zero counts', async () => {
     const syncRepo = new InMemoryMetricsSyncStateRepository();
-    const mockActivationRepo = {} as CampaignActivationRepository;
+    const mockSnapshotRepo = { upsertBatch: async () => ok([]) } as unknown as CampaignMetricSnapshotRepository;
+    const registry = new InMemoryMetricsProviderRegistry();
 
-    const res = await listDueMetricsSyncTargets(
-      { actorUserId: 'user-unauth', organizationId: orgId },
+    const res = await executeMetricsSyncBatch(
+      {},
       {
         syncStateRepository: syncRepo,
-        activationRepository: mockActivationRepo,
-        isOrganizationMember: async () => false,
-        logger: mockLogger,
-      },
-    );
-
-    expect(res.success).toBe(false);
-    if (!res.success) {
-      expect(res.error.code).toBe('UNAUTHORIZED');
-    }
-  });
-
-  it('returns due metrics sync state targets for authorized organization members', async () => {
-    const syncRepo = new InMemoryMetricsSyncStateRepository();
-    await syncRepo.getOrCreateSyncState({
-      organizationId: orgId,
-      clientId: cliId,
-      campaignId: cmpId,
-      activationId: actId,
-      targetId: trgId,
-      platform: 'google',
-      providerAccountId: '1234567890',
-      externalCampaignId: 'ext-cmp-999',
-    });
-
-    const mockActivationRepo = {
-      findByOrganization: async () => ({ data: [], total: 0, page: 1, pageSize: 50, totalPages: 0 }),
-    } as unknown as CampaignActivationRepository;
-
-    const res = await listDueMetricsSyncTargets(
-      { actorUserId: 'user-auth', organizationId: orgId },
-      {
-        syncStateRepository: syncRepo,
-        activationRepository: mockActivationRepo,
+        snapshotRepository: mockSnapshotRepo,
+        providerRegistry: registry,
         isOrganizationMember: async () => true,
         logger: mockLogger,
         now: () => new Date('2026-08-30T12:00:00Z'),
@@ -231,9 +202,116 @@ describe('listDueMetricsSyncTargets Use Case (Phase 9B.3)', () => {
 
     expect(res.success).toBe(true);
     if (res.success) {
-      expect(res.value.length).toBe(1);
-      expect(res.value[0]?.targetId).toBe(trgId);
-      expect(res.value[0]?.status).toBe('never_synced');
+      expect(res.value.discovered).toBe(0);
+      expect(res.value.claimed).toBe(0);
+      expect(res.value.succeeded).toBe(0);
+      expect(res.value.failed).toBe(0);
+    }
+  });
+
+  it('processes multi-tenant candidates, meta/google provider mix, and partial target failure isolation', async () => {
+    const syncRepo = new InMemoryMetricsSyncStateRepository();
+
+    // Seed Meta target for Org A
+    await syncRepo.getOrCreateSyncState({
+      organizationId: orgA,
+      clientId: cliId,
+      campaignId: cmpId,
+      activationId: actId,
+      targetId: trgIdMeta,
+      platform: 'meta',
+      providerAccountId: 'act_meta_1',
+      externalCampaignId: 'meta_cmp_1',
+    });
+
+    // Seed Google target for Org B
+    await syncRepo.getOrCreateSyncState({
+      organizationId: orgB,
+      clientId: cliId,
+      campaignId: cmpId,
+      activationId: actId,
+      targetId: trgIdGoogle,
+      platform: 'google',
+      providerAccountId: '1234567890',
+      externalCampaignId: 'google_cmp_1',
+    });
+
+    const mockSnapshotRepo = { upsertBatch: async () => ok([]) } as unknown as CampaignMetricSnapshotRepository;
+
+    const metaProvider = new FakeMetricsProvider({
+      platform: 'meta',
+      pages: [{ records: [], nextCursor: null }],
+    });
+
+    const googleProvider = new FakeMetricsProvider({
+      platform: 'google',
+      errorToReturn: { category: 'TRANSIENT_FAILURE', message: 'Temporary network timeout', isRetryable: true },
+    });
+
+    const registry = new InMemoryMetricsProviderRegistry();
+    registry.register(metaProvider);
+    registry.register(googleProvider);
+
+    const res = await executeMetricsSyncBatch(
+      { batchSize: 10 },
+      {
+        syncStateRepository: syncRepo,
+        snapshotRepository: mockSnapshotRepo,
+        providerRegistry: registry,
+        isOrganizationMember: async () => true,
+        logger: mockLogger,
+        now: () => new Date('2026-08-30T12:00:00Z'),
+      },
+    );
+
+    expect(res.success).toBe(true);
+    if (res.success) {
+      expect(res.value.discovered).toBe(2);
+      expect(res.value.claimed).toBe(2);
+      expect(res.value.succeeded).toBe(1); // Meta succeeded
+      expect(res.value.failed).toBe(1);    // Google failed transiently
+      expect(res.value.targetSummaries.length).toBe(2);
+    }
+  });
+
+  it('respects execution deadline and defers remaining targets when time budget is exhausted', async () => {
+    const syncRepo = new InMemoryMetricsSyncStateRepository();
+
+    for (let i = 0; i < 5; i++) {
+      await syncRepo.getOrCreateSyncState({
+        organizationId: orgA,
+        clientId: cliId,
+        campaignId: cmpId,
+        activationId: actId,
+        targetId: campaignActivationTargetId(`trg-deadline-${i}`),
+        platform: 'meta',
+        providerAccountId: 'act_meta_1',
+        externalCampaignId: `meta_cmp_${i}`,
+      });
+    }
+
+    const mockSnapshotRepo = { upsertBatch: async () => ok([]) } as unknown as CampaignMetricSnapshotRepository;
+    const metaProvider = new FakeMetricsProvider({ platform: 'meta', pages: [{ records: [], nextCursor: null }] });
+    const registry = new InMemoryMetricsProviderRegistry();
+    registry.register(metaProvider);
+
+    // Pass a 0ms deadline so after 1 target, remaining 4 are deferred
+    const res = await executeMetricsSyncBatch(
+      { deadlineMs: 0 },
+      {
+        syncStateRepository: syncRepo,
+        snapshotRepository: mockSnapshotRepo,
+        providerRegistry: registry,
+        isOrganizationMember: async () => true,
+        logger: mockLogger,
+        now: () => new Date('2026-08-30T12:00:00Z'),
+      },
+    );
+
+    expect(res.success).toBe(true);
+    if (res.success) {
+      expect(res.value.discovered).toBe(5);
+      expect(res.value.deferred).toBe(5);
     }
   });
 });

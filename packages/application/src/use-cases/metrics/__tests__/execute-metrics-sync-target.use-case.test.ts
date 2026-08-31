@@ -90,6 +90,16 @@ class InMemoryMetricsSyncStateRepository implements CampaignMetricsSyncStateRepo
     return ok(res.slice(0, limit));
   }
 
+  async listDueTargetsGlobal(platform?: MetricPlatform | null, limit = 50): Promise<Result<CampaignMetricsSyncState[]>> {
+    const res: CampaignMetricsSyncState[] = [];
+    for (const st of this.states.values()) {
+      if (!platform || st.platform === platform) {
+        res.push(st);
+      }
+    }
+    return ok(res.slice(0, limit));
+  }
+
   async claimDueTarget(syncStateId: CampaignMetricsSyncStateId, claimToken: string): Promise<Result<ClaimDueTargetResult>> {
     for (const [key, st] of this.states.entries()) {
       if (st.id === syncStateId) {

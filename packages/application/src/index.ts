@@ -9,6 +9,8 @@ export * from './ports/metrics-provider-registry';
 export * from './use-cases/metrics/sync-campaign-metrics.use-case';
 export * from './use-cases/metrics/list-due-metrics-sync-targets.use-case';
 export * from './use-cases/metrics/execute-metrics-sync-target.use-case';
+export * from './use-cases/metrics/execute-metrics-sync-batch.use-case';
+
 
 
 // Testing utilities (Phase 9B.0)
