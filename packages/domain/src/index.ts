@@ -425,3 +425,28 @@ export type { ContentCalendarRepository } from './repositories/content-calendar.
 
 // Re-export shared channel/provider types for convenience
 export type { ActivationChannel, ActivationProvider } from '@bop-agency/shared';
+
+// CampaignMetricsSyncState entity & repository — Phase 9B.3
+export type {
+  CampaignMetricsSyncStateId,
+  MetricsSyncStatus,
+  MetricsSyncErrorCategory,
+  CampaignMetricsSyncState,
+} from './entities/campaign-metrics-sync-state';
+export {
+  campaignMetricsSyncStateId,
+  DEFAULT_SYNC_LOOKBACK_DAYS,
+  DEFAULT_SYNC_INTERVAL_MINUTES,
+  CLAIM_LEASE_MINUTES,
+  MAX_SYNC_BATCH_SIZE,
+  MAX_CONSECUTIVE_FAILURES,
+  MAX_SYNC_ERROR_MESSAGE_LENGTH,
+  ERROR_BACKOFF_MINUTES,
+} from './entities/campaign-metrics-sync-state';
+export type {
+  CreateMetricsSyncStateInput,
+  MarkSyncSuccessInput,
+  MarkSyncFailureInput,
+  ClaimDueTargetResult,
+  CampaignMetricsSyncStateRepository,
+} from './repositories/campaign-metrics-sync-state.repository';
