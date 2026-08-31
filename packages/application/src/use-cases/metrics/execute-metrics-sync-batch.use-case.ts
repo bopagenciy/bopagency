@@ -17,6 +17,7 @@ import { executeMetricsSyncTarget, type ExecuteMetricsSyncTargetSummary } from '
 export const DEFAULT_RUNTIME_SYNC_BATCH_SIZE = 25;
 export const DEFAULT_RUNTIME_CONCURRENCY = 3;
 export const DEFAULT_RUNTIME_DEADLINE_MS = 25000; // 25s
+export const MIN_TARGET_START_BUDGET_MS = 5000; // 5s
 
 export type ExecuteMetricsSyncBatchInput = {
   readonly actorUserId?: string;
@@ -93,19 +94,22 @@ export async function executeMetricsSyncBatch(
   let recordsSaved = 0;
   const targetSummaries: ExecuteMetricsSyncTargetSummary[] = [];
 
-  // 2. Procesamiento acotado respetando tiempo límite (deadline)
+  // 2. Procesamiento acotado respetando presupuesto de tiempo minimo por target
   for (let i = 0; i < candidateStates.length; i++) {
     const candidate = candidateStates[i];
     if (!candidate) continue;
 
     const elapsed = Date.now() - startTime;
-    if (elapsed >= deadlineMs) {
+    const remainingTime = deadlineMs - elapsed;
+
+    if (remainingTime < MIN_TARGET_START_BUDGET_MS) {
       deferred += candidateStates.length - i;
       deps.logger.warn(
-        `[executeMetricsSyncBatch] Runtime deadline reached (${elapsed}ms >= ${deadlineMs}ms). Deferring ${candidateStates.length - i} targets.`,
+        `[executeMetricsSyncBatch] Remaining budget insufficient (${remainingTime}ms < ${MIN_TARGET_START_BUDGET_MS}ms). Deferring ${candidateStates.length - i} targets.`,
       );
       break;
     }
+
 
     const claimToken = crypto.randomUUID();
 
