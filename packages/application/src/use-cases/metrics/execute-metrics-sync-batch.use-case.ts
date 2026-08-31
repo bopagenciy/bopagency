@@ -6,21 +6,24 @@
 import { ok, err } from '@bop-agency/shared';
 import type { Result, MetricPlatform } from '@bop-agency/shared';
 import type {
-  OrganizationId,
   CampaignMetricsSyncStateRepository,
   CampaignMetricSnapshotRepository,
 } from '@bop-agency/domain';
 import type { LoggerPort } from '../../ports/logger.port';
 import type { MetricsProviderRegistry } from '../../ports/metrics-provider-registry';
-import { executeMetricsSyncTarget, type ExecuteMetricsSyncTargetSummary } from './execute-metrics-sync-target.use-case';
+import {
+  executeMetricsSyncTarget,
+  type ExecutionPrincipal,
+  type ExecuteMetricsSyncTargetSummary,
+} from './execute-metrics-sync-target.use-case';
 
 export const DEFAULT_RUNTIME_SYNC_BATCH_SIZE = 25;
-export const DEFAULT_RUNTIME_CONCURRENCY = 3;
-export const DEFAULT_RUNTIME_DEADLINE_MS = 25000; // 25s
+export const DEFAULT_RUNTIME_CONCURRENCY = 1;
+export const DEFAULT_RUNTIME_DEADLINE_MS = 20000; // 20s
 export const MIN_TARGET_START_BUDGET_MS = 5000; // 5s
 
 export type ExecuteMetricsSyncBatchInput = {
-  readonly actorUserId?: string;
+  readonly principal?: ExecutionPrincipal;
   readonly batchSize?: number;
   readonly maxConcurrency?: number;
   readonly deadlineMs?: number;
@@ -31,7 +34,6 @@ export type ExecuteMetricsSyncBatchDeps = {
   readonly syncStateRepository: CampaignMetricsSyncStateRepository;
   readonly snapshotRepository: CampaignMetricSnapshotRepository;
   readonly providerRegistry: MetricsProviderRegistry;
-  readonly isOrganizationMember: (organizationId: OrganizationId, userId: string) => Promise<boolean>;
   readonly logger: LoggerPort;
   readonly now?: () => Date;
 };
@@ -64,7 +66,18 @@ export async function executeMetricsSyncBatch(
   const startTime = Date.now();
   const startedAtDate = getNow();
   const invocationId = crypto.randomUUID();
-  const actorUserId = input.actorUserId || `system:metrics-scheduler:${invocationId}`;
+
+  const principal: ExecutionPrincipal = input.principal || {
+    type: 'system',
+    systemId: 'metrics_scheduler',
+  };
+
+  if (principal.type !== 'system' || principal.systemId !== 'metrics_scheduler') {
+    return err({
+      code: 'UNAUTHORIZED',
+      message: 'Batch execution requires system metrics_scheduler principal',
+    });
+  }
 
   const batchSize = Math.min(Math.max(1, input.batchSize || DEFAULT_RUNTIME_SYNC_BATCH_SIZE), 50);
   const deadlineMs = input.deadlineMs || DEFAULT_RUNTIME_DEADLINE_MS;
@@ -94,7 +107,7 @@ export async function executeMetricsSyncBatch(
   let recordsSaved = 0;
   const targetSummaries: ExecuteMetricsSyncTargetSummary[] = [];
 
-  // 2. Procesamiento acotado respetando presupuesto de tiempo minimo por target
+  // 2. Procesamiento acotado respetando presupuesto de tiempo mínimo por target
   for (let i = 0; i < candidateStates.length; i++) {
     const candidate = candidateStates[i];
     if (!candidate) continue;
@@ -110,12 +123,11 @@ export async function executeMetricsSyncBatch(
       break;
     }
 
-
     const claimToken = crypto.randomUUID();
 
     const execRes = await executeMetricsSyncTarget(
       {
-        actorUserId,
+        principal,
         organizationId: candidate.organizationId,
         syncStateId: candidate.id,
         claimToken,
@@ -124,7 +136,6 @@ export async function executeMetricsSyncBatch(
         syncStateRepository: deps.syncStateRepository,
         snapshotRepository: deps.snapshotRepository,
         providerRegistry: deps.providerRegistry,
-        isOrganizationMember: deps.isOrganizationMember,
         logger: deps.logger,
         now: getNow,
       },

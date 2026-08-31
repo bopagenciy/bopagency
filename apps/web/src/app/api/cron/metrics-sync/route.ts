@@ -1,25 +1,27 @@
 /**
- * /api/cron/metrics-sync/route.ts — Worker Cron Runtime de Sincronización de Métricas (Phase 9B.4)
+ * /api/cron/metrics-sync/route.ts — Worker Cron Runtime de Sincronización de Métricas (Phase 9B.4 Final)
  *
  * Scannea targets de métricas vencidos de forma multi-tenant y ejecuta la sincronización
  * mediante `executeMetricsSyncBatch` de manera acotada, aislada y determinística.
  *
- * AUTORIZACIÓN:
- *   Requiere header `Authorization: Bearer <CRON_SECRET>`, `x-bop-cron-secret: <CRON_SECRET>`
- *   o `x-vercel-cron: <CRON_SECRET>`.
- *   Verificación mediante tiempo constante (timingSafeCompare) para mitigar ataques de tiempo.
+ * AUTORIZACIÓN VERCEL CRON OFICIAL:
+ *   Requiere exclusivamente header `Authorization: Bearer <CRON_SECRET>`.
+ *   Verificación mediante tiempo constante (`crypto.timingSafeEqual`) para mitigar ataques de tiempo.
+ *   Falla cerrado (`401 Unauthorized`) si la variable `CRON_SECRET` no está configurada o no coincide.
  *
- * REGLAS DE SEGURIDAD Y CONCURRENCIA:
- *   - `CRON_SECRET` es server-only.
- *   - Solo usa `createMetricsSchedulingWorkerComposition` (service_role).
- *   - Reclamo atómico por target mediante la RPC `claim_due_metrics_sync_target`.
- *   - Los fallos de un target no abortan el batch.
+ * CONFIGURACIÓN DE RUNTIME VERCEL:
+ *   - `export const maxDuration = 30;` (Límite máximo de función en Vercel).
+ *   - Límite interno de aplicación `DEFAULT_RUNTIME_DEADLINE_MS = 20000` (20s) para asegurar
+ *     un margen de seguridad de 10s antes de la terminación de la función por parte de Vercel.
+ *   - Método HTTP soportado: EXCLUSIVAMENTE `GET` (invocado nativamente por Vercel Cron).
  */
 
 import { NextResponse, type NextRequest } from 'next/server';
 import crypto from 'node:crypto';
 import { createAdminClient } from '@/lib/supabase/server';
 import { createMetricsSchedulingWorkerComposition } from '@/lib/composition/metrics-scheduling.composition';
+
+export const maxDuration = 30;
 
 function requireCronSecret(): string {
   const secret = process.env['CRON_SECRET'];
@@ -45,26 +47,17 @@ function verifyCronAuthorization(request: Request): boolean {
   }
 
   const authHeader = request.headers.get('authorization');
-  const cronHeader = request.headers.get('x-bop-cron-secret');
-  const vercelCronHeader = request.headers.get('x-vercel-cron');
-
   if (authHeader && authHeader.startsWith('Bearer ')) {
     const token = authHeader.substring(7).trim();
-    if (timingSafeCompare(token, expectedSecret)) return true;
-  }
-
-  if (cronHeader && timingSafeCompare(cronHeader.trim(), expectedSecret)) {
-    return true;
-  }
-
-  if (vercelCronHeader && timingSafeCompare(vercelCronHeader.trim(), expectedSecret)) {
-    return true;
+    if (timingSafeCompare(token, expectedSecret)) {
+      return true;
+    }
   }
 
   return false;
 }
 
-async function handleMetricsSyncCron(request: NextRequest): Promise<Response> {
+export async function GET(request: NextRequest): Promise<Response> {
   if (!verifyCronAuthorization(request)) {
     return NextResponse.json({ error: 'Unauthorized' }, { status: 401 });
   }
@@ -85,6 +78,7 @@ async function handleMetricsSyncCron(request: NextRequest): Promise<Response> {
   const composition = createMetricsSchedulingWorkerComposition(adminClient);
 
   const batchResult = await composition.useCases.executeMetricsSyncBatch({
+    principal: { type: 'system', systemId: 'metrics_scheduler' },
     batchSize,
   });
 
@@ -113,12 +107,4 @@ async function handleMetricsSyncCron(request: NextRequest): Promise<Response> {
     },
     { status: 200 },
   );
-}
-
-export async function GET(request: NextRequest): Promise<Response> {
-  return handleMetricsSyncCron(request);
-}
-
-export async function POST(request: NextRequest): Promise<Response> {
-  return handleMetricsSyncCron(request);
 }

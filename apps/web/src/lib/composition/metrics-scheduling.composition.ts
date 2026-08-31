@@ -5,7 +5,7 @@
  * (Phase 9B.3/9B.4) para `apps/web`.
  *
  * Usa el cliente `service_role` (adminClient) para ejecución de worker/cron
- * de fondo multi-tenant de manera acotada y segura.
+ * de fondo multi-tenant de manera acotada y segura con Principal del sistema explícito.
  */
 
 import type { SupabaseClient } from '@supabase/supabase-js';
@@ -98,9 +98,6 @@ export function createMetricsSchedulingWorkerComposition(
   providerRegistry.register(metaMetricsAdapter);
   providerRegistry.register(googleMetricsAdapter);
 
-  // Verificador de membresía confiable para worker del sistema (service_role)
-  const isOrganizationMember = async (_orgId: unknown, _userId: string) => true;
-
   return {
     repositories: {
       syncStateRepository,
@@ -119,7 +116,7 @@ export function createMetricsSchedulingWorkerComposition(
         listDueMetricsSyncTargets(input, {
           syncStateRepository,
           activationRepository,
-          isOrganizationMember,
+          isOrganizationMember: async () => true,
           logger: consoleLogger,
         }),
       executeMetricsSyncTarget: (input: Parameters<typeof executeMetricsSyncTarget>[0]) =>
@@ -127,7 +124,6 @@ export function createMetricsSchedulingWorkerComposition(
           syncStateRepository,
           snapshotRepository,
           providerRegistry,
-          isOrganizationMember,
           logger: consoleLogger,
         }),
       executeMetricsSyncBatch: (input: Parameters<typeof executeMetricsSyncBatch>[0]) =>
@@ -135,9 +131,9 @@ export function createMetricsSchedulingWorkerComposition(
           syncStateRepository,
           snapshotRepository,
           providerRegistry,
-          isOrganizationMember,
           logger: consoleLogger,
         }),
     },
+
   };
 }

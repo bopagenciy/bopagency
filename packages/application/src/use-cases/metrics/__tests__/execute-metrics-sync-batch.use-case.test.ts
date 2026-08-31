@@ -189,12 +189,11 @@ describe('executeMetricsSyncBatch Use Case (Phase 9B.4)', () => {
     const registry = new InMemoryMetricsProviderRegistry();
 
     const res = await executeMetricsSyncBatch(
-      {},
+      { principal: { type: 'system', systemId: 'metrics_scheduler' } },
       {
         syncStateRepository: syncRepo,
         snapshotRepository: mockSnapshotRepo,
         providerRegistry: registry,
-        isOrganizationMember: async () => true,
         logger: mockLogger,
         now: () => new Date('2026-08-30T12:00:00Z'),
       },
@@ -253,12 +252,11 @@ describe('executeMetricsSyncBatch Use Case (Phase 9B.4)', () => {
     registry.register(googleProvider);
 
     const res = await executeMetricsSyncBatch(
-      { batchSize: 10 },
+      { principal: { type: 'system', systemId: 'metrics_scheduler' }, batchSize: 10 },
       {
         syncStateRepository: syncRepo,
         snapshotRepository: mockSnapshotRepo,
         providerRegistry: registry,
-        isOrganizationMember: async () => true,
         logger: mockLogger,
         now: () => new Date('2026-08-30T12:00:00Z'),
       },
@@ -295,14 +293,13 @@ describe('executeMetricsSyncBatch Use Case (Phase 9B.4)', () => {
     const registry = new InMemoryMetricsProviderRegistry();
     registry.register(metaProvider);
 
-    // Pass a 0ms deadline so after 1 target, remaining 4 are deferred
+    // Pass a 0ms deadline so after check remaining budget, all 5 are deferred
     const res = await executeMetricsSyncBatch(
-      { deadlineMs: 0 },
+      { principal: { type: 'system', systemId: 'metrics_scheduler' }, deadlineMs: 0 },
       {
         syncStateRepository: syncRepo,
         snapshotRepository: mockSnapshotRepo,
         providerRegistry: registry,
-        isOrganizationMember: async () => true,
         logger: mockLogger,
         now: () => new Date('2026-08-30T12:00:00Z'),
       },
