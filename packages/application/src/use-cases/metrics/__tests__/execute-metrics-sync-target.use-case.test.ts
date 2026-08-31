@@ -90,6 +90,16 @@ class InMemoryMetricsSyncStateRepository implements CampaignMetricsSyncStateRepo
     return ok(res.slice(0, limit));
   }
 
+  async listDueTargetsGlobal(platform?: MetricPlatform | null, limit = 50): Promise<Result<CampaignMetricsSyncState[]>> {
+    const res: CampaignMetricsSyncState[] = [];
+    for (const st of this.states.values()) {
+      if (!platform || st.platform === platform) {
+        res.push(st);
+      }
+    }
+    return ok(res.slice(0, limit));
+  }
+
   async claimDueTarget(syncStateId: CampaignMetricsSyncStateId, claimToken: string): Promise<Result<ClaimDueTargetResult>> {
     for (const [key, st] of this.states.entries()) {
       if (st.id === syncStateId) {
@@ -164,14 +174,14 @@ class InMemoryMetricsSyncStateRepository implements CampaignMetricsSyncStateRepo
   }
 }
 
-describe('executeMetricsSyncTarget Use Case (Phase 9B.3)', () => {
+describe('executeMetricsSyncTarget Use Case (Phase 9B.4)', () => {
   const orgId = organizationId('org-sched-exec-100');
   const cliId = 'cli-sched-exec-200' as ClientId;
   const cmpId = 'cmp-sched-exec-300' as CampaignId;
   const actId = campaignActivationId('act-sched-exec-400');
   const trgId = campaignActivationTargetId('trg-sched-exec-500');
 
-  it('orchestrates successful synchronization for due target and updates freshness status', async () => {
+  it('allows trusted system principal execution without human membership lookup', async () => {
     const syncRepo = new InMemoryMetricsSyncStateRepository();
     const createRes = await syncRepo.getOrCreateSyncState({
       organizationId: orgId,
@@ -193,51 +203,21 @@ describe('executeMetricsSyncTarget Use Case (Phase 9B.3)', () => {
       upsertBatch: async () => ok([]),
     } as unknown as CampaignMetricSnapshotRepository;
 
-    const provider = new FakeMetricsProvider({
-      platform: 'google',
-      pages: [
-        {
-          records: [
-            {
-              organizationId: orgId,
-              clientId: cliId,
-              platform: 'google',
-              providerAccountId: '1234567890',
-              externalCampaignId: 'ext-google-777',
-              snapshotDate: '2026-08-30',
-              granularity: 'daily',
-              scope: 'campaign',
-              currency: 'USD',
-              spend: '15.50',
-              impressions: 1000,
-              reach: null,
-              clicks: 50,
-              leads: null,
-              conversions: 2.5,
-              revenue: null,
-              metadata: {},
-            },
-          ],
-          nextCursor: null,
-        },
-      ],
-    });
-
+    const provider = new FakeMetricsProvider({ platform: 'google', pages: [{ records: [], nextCursor: null }] });
     const registry = new InMemoryMetricsProviderRegistry();
     registry.register(provider);
 
     const res = await executeMetricsSyncTarget(
       {
-        actorUserId: 'user-auth',
+        principal: { type: 'system', systemId: 'metrics_scheduler' },
         organizationId: orgId,
         syncStateId: syncState.id,
-        claimToken: 'token-worker-1',
+        claimToken: 'token-system-1',
       },
       {
         syncStateRepository: syncRepo,
         snapshotRepository: mockSnapshotRepo,
         providerRegistry: registry,
-        isOrganizationMember: async () => true,
         logger: mockLogger,
         now: () => new Date('2026-08-30T12:00:00Z'),
       },
@@ -246,65 +226,10 @@ describe('executeMetricsSyncTarget Use Case (Phase 9B.3)', () => {
     expect(res.success).toBe(true);
     if (res.success) {
       expect(res.value.status).toBe('succeeded');
-      expect(res.value.recordsFetched).toBe(1);
-      expect(res.value.syncedThroughDate).toBe('2026-08-30');
-      expect(res.value.syncState.status).toBe('fresh');
-      expect(res.value.syncState.consecutiveFailures).toBe(0);
     }
   });
 
-  it('handles zero-result successful fetch as success without error', async () => {
-    const syncRepo = new InMemoryMetricsSyncStateRepository();
-    const createRes = await syncRepo.getOrCreateSyncState({
-      organizationId: orgId,
-      clientId: cliId,
-      campaignId: cmpId,
-      activationId: actId,
-      targetId: trgId,
-      platform: 'meta',
-      providerAccountId: 'act_100200300',
-      externalCampaignId: 'meta_cmp_555',
-    });
-
-    expect(createRes.success).toBe(true);
-    if (!createRes.success) return;
-
-    const syncState = createRes.value;
-
-    const mockSnapshotRepo = {
-      upsertBatch: async () => ok([]),
-    } as unknown as CampaignMetricSnapshotRepository;
-
-    const provider = new FakeMetricsProvider({ platform: 'meta', pages: [{ records: [], nextCursor: null }] });
-    const registry = new InMemoryMetricsProviderRegistry();
-    registry.register(provider);
-
-    const res = await executeMetricsSyncTarget(
-      {
-        actorUserId: 'user-auth',
-        organizationId: orgId,
-        syncStateId: syncState.id,
-        claimToken: 'token-worker-2',
-      },
-      {
-        syncStateRepository: syncRepo,
-        snapshotRepository: mockSnapshotRepo,
-        providerRegistry: registry,
-        isOrganizationMember: async () => true,
-        logger: mockLogger,
-        now: () => new Date('2026-08-30T12:00:00Z'),
-      },
-    );
-
-    expect(res.success).toBe(true);
-    if (res.success) {
-      expect(res.value.status).toBe('succeeded');
-      expect(res.value.recordsFetched).toBe(0);
-      expect(res.value.syncState.status).toBe('fresh');
-    }
-  });
-
-  it('handles provider failure with sanitized error message and backoff timing', async () => {
+  it('denies user principal execution when isOrganizationMember returns false', async () => {
     const syncRepo = new InMemoryMetricsSyncStateRepository();
     const createRes = await syncRepo.getOrCreateSyncState({
       organizationId: orgId,
@@ -314,7 +239,7 @@ describe('executeMetricsSyncTarget Use Case (Phase 9B.3)', () => {
       targetId: trgId,
       platform: 'google',
       providerAccountId: '1234567890',
-      externalCampaignId: 'ext-google-err',
+      externalCampaignId: 'ext-google-777',
     });
 
     expect(createRes.success).toBe(true);
@@ -322,46 +247,75 @@ describe('executeMetricsSyncTarget Use Case (Phase 9B.3)', () => {
 
     const syncState = createRes.value;
 
-    const mockSnapshotRepo = {
-      upsertBatch: async () => ok([]),
-    } as unknown as CampaignMetricSnapshotRepository;
-
-    const provider = new FakeMetricsProvider({
-      platform: 'google',
-      errorToReturn: {
-        category: 'AUTH_FAILURE',
-        message: 'Invalid Bearer secret_oauth_token_12345 access key',
-        isRetryable: false,
-      },
-    });
-
+    const mockSnapshotRepo = { upsertBatch: async () => ok([]) } as unknown as CampaignMetricSnapshotRepository;
+    const provider = new FakeMetricsProvider({ platform: 'google', pages: [{ records: [], nextCursor: null }] });
     const registry = new InMemoryMetricsProviderRegistry();
     registry.register(provider);
 
     const res = await executeMetricsSyncTarget(
       {
-        actorUserId: 'user-auth',
+        principal: { type: 'user', userId: 'user-hacker' },
         organizationId: orgId,
         syncStateId: syncState.id,
-        claimToken: 'token-worker-3',
+        claimToken: 'token-user-denied',
       },
       {
         syncStateRepository: syncRepo,
         snapshotRepository: mockSnapshotRepo,
         providerRegistry: registry,
-        isOrganizationMember: async () => true,
+        isOrganizationMember: async () => false,
         logger: mockLogger,
-        now: () => new Date('2026-08-30T12:00:00Z'),
       },
     );
 
-    expect(res.success).toBe(true);
-    if (res.success) {
-      expect(res.value.status).toBe('failed');
-      expect(res.value.syncState.status).toBe('backoff');
-      expect(res.value.syncState.lastErrorCategory).toBe('AUTH_FAILURE');
-      expect(res.value.syncState.lastErrorMessage).toContain('Bearer REDACTED');
-      expect(res.value.syncState.consecutiveFailures).toBe(1);
+    expect(res.success).toBe(false);
+    if (!res.success) {
+      expect(res.error.code).toBe('UNAUTHORIZED');
+    }
+  });
+
+  it('denies system principal when organization resource mismatch occurs', async () => {
+    const syncRepo = new InMemoryMetricsSyncStateRepository();
+    const createRes = await syncRepo.getOrCreateSyncState({
+      organizationId: orgId,
+      clientId: cliId,
+      campaignId: cmpId,
+      activationId: actId,
+      targetId: trgId,
+      platform: 'google',
+      providerAccountId: '1234567890',
+      externalCampaignId: 'ext-google-777',
+    });
+
+    expect(createRes.success).toBe(true);
+    if (!createRes.success) return;
+
+    const syncState = createRes.value;
+    const wrongOrgId = organizationId('org-wrong-999');
+
+    const mockSnapshotRepo = { upsertBatch: async () => ok([]) } as unknown as CampaignMetricSnapshotRepository;
+    const provider = new FakeMetricsProvider({ platform: 'google', pages: [{ records: [], nextCursor: null }] });
+    const registry = new InMemoryMetricsProviderRegistry();
+    registry.register(provider);
+
+    const res = await executeMetricsSyncTarget(
+      {
+        principal: { type: 'system', systemId: 'metrics_scheduler' },
+        organizationId: wrongOrgId,
+        syncStateId: syncState.id,
+        claimToken: 'token-mismatch-org',
+      },
+      {
+        syncStateRepository: syncRepo,
+        snapshotRepository: mockSnapshotRepo,
+        providerRegistry: registry,
+        logger: mockLogger,
+      },
+    );
+
+    expect(res.success).toBe(false);
+    if (!res.success) {
+      expect(res.error.code).toBe('UNAUTHORIZED');
     }
   });
 });

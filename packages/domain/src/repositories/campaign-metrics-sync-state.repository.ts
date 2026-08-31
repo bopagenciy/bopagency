@@ -1,6 +1,6 @@
 /**
  * CampaignMetricsSyncStateRepository — Puerto de repositorio de dominio para la persistencia,
- * consulta de vencimientos y reclamo atómico de estados de sincronización de métricas (Phase 9B.3).
+ * consulta de vencimientos y reclamo atómico de estados de sincronización de métricas (Phase 9B.3/9B.4).
  */
 
 import type { Result } from '@bop-agency/shared';
@@ -65,10 +65,18 @@ export interface CampaignMetricsSyncStateRepository {
   findByTargetId(targetId: CampaignActivationTargetId): Promise<Result<CampaignMetricsSyncState>>;
 
   /**
-   * Lista los targets vencidos (due) elegibles para sincronización.
+   * Lista los targets vencidos (due) elegibles para sincronización en una organización específica.
    */
   listDueTargets(
     organizationId: OrganizationId,
+    platform?: MetricPlatform | null,
+    limit?: number,
+  ): Promise<Result<CampaignMetricsSyncState[]>>;
+
+  /**
+   * Lista los targets vencidos (due) elegibles para sincronización de forma global (multi-tenant) (Phase 9B.4).
+   */
+  listDueTargetsGlobal(
     platform?: MetricPlatform | null,
     limit?: number,
   ): Promise<Result<CampaignMetricsSyncState[]>>;

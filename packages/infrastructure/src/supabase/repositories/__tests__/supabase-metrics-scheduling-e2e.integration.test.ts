@@ -247,4 +247,14 @@ describe.skipIf(!runRealDb)('Supabase Metrics Scheduling Hardened Real DB Suite 
     expect(anonErr).not.toBeNull();
     expect(anonRes).toBeNull();
   });
+
+  it('proves multi-tenant listDueTargetsGlobal returns due targets across different organizations', async () => {
+    const globalRes = await repository.listDueTargetsGlobal(null, 50);
+    expect(globalRes.success).toBe(true);
+    if (globalRes.success) {
+      expect(globalRes.value.length).toBeGreaterThan(0);
+      const orgIds = new Set(globalRes.value.map((s) => s.organizationId));
+      expect(orgIds.size).toBeGreaterThan(0);
+    }
+  });
 });

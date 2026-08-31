@@ -1,6 +1,6 @@
 /**
  * SupabaseCampaignMetricsSyncStateRepository — Implementación Supabase/PostgreSQL para la persistencia,
- * consulta de vencimientos y reclamo atómico de estados de sincronización de métricas (Phase 9B.3).
+ * consulta de vencimientos y reclamo atómico de estados de sincronización de métricas (Phase 9B.3/9B.4).
  */
 
 import { ok, err } from '@bop-agency/shared';
@@ -167,6 +167,37 @@ export class SupabaseCampaignMetricsSyncStateRepository implements CampaignMetri
       return err({
         code: 'INTERNAL_ERROR',
         message: `Unexpected error in listDueTargets: ${cause instanceof Error ? cause.message : String(cause)}`,
+      });
+    }
+  }
+
+  async listDueTargetsGlobal(
+    platform?: MetricPlatform | null,
+    limit: number = 50,
+  ): Promise<Result<CampaignMetricsSyncState[]>> {
+    try {
+      let query = this.client
+        .from('campaign_metrics_sync_states')
+        .select('*')
+        .order('next_eligible_sync_at', { ascending: true })
+        .limit(limit);
+
+      if (platform) {
+        query = query.eq('platform', platform);
+      }
+
+      const { data, error } = await query;
+
+      if (error) {
+        return err({ code: 'INTERNAL_ERROR', message: `Failed to list due sync states globally: ${error.message}` });
+      }
+
+      const states = (data || []).map((r) => rowToCampaignMetricsSyncState(r as SupabaseCampaignMetricsSyncStateRow));
+      return ok(states);
+    } catch (cause) {
+      return err({
+        code: 'INTERNAL_ERROR',
+        message: `Unexpected error in listDueTargetsGlobal: ${cause instanceof Error ? cause.message : String(cause)}`,
       });
     }
   }
