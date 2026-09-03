@@ -318,4 +318,54 @@ describe('executeMetricsSyncTarget Use Case (Phase 9B.4)', () => {
       expect(res.error.code).toBe('UNAUTHORIZED');
     }
   });
+
+  it('Phase 9B.5: propagates externalCampaignId and activationId from syncState to provider fetch request', async () => {
+    const syncRepo = new InMemoryMetricsSyncStateRepository();
+    const createRes = await syncRepo.getOrCreateSyncState({
+      organizationId: orgId,
+      clientId: cliId,
+      campaignId: cmpId,
+      activationId: actId,
+      targetId: trgId,
+      platform: 'meta',
+      providerAccountId: 'act-meta-123456',
+      externalCampaignId: 'meta-remote-campaign-999888',
+    });
+
+    expect(createRes.success).toBe(true);
+    if (!createRes.success) return;
+
+    const syncState = createRes.value;
+
+    const mockSnapshotRepo = {
+      upsertBatch: async () => ok([]),
+    } as unknown as CampaignMetricSnapshotRepository;
+
+    const provider = new FakeMetricsProvider({ platform: 'meta', pages: [{ records: [], nextCursor: null }] });
+    const registry = new InMemoryMetricsProviderRegistry();
+    registry.register(provider);
+
+    const res = await executeMetricsSyncTarget(
+      {
+        principal: { type: 'system', systemId: 'metrics_scheduler' },
+        organizationId: orgId,
+        syncStateId: syncState.id,
+        claimToken: 'token-propagation-test',
+      },
+      {
+        syncStateRepository: syncRepo,
+        snapshotRepository: mockSnapshotRepo,
+        providerRegistry: registry,
+        logger: mockLogger,
+        now: () => new Date('2026-08-30T12:00:00Z'),
+      },
+    );
+
+    expect(res.success).toBe(true);
+    expect(provider.receivedRequests.length).toBe(1);
+    const receivedReq = provider.receivedRequests[0];
+    expect(receivedReq?.externalCampaignId).toBe('meta-remote-campaign-999888');
+    expect(receivedReq?.activationId).toBe(actId);
+    expect(receivedReq?.campaignId).toBe(cmpId);
+  });
 });

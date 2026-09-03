@@ -187,4 +187,84 @@ describe('GoogleMetricsAdapter Hardening Gate (Phase 9B.2)', () => {
       expect(res.error.message).toContain('Malformed external campaign ID resolved');
     }
   });
+
+  it('Phase 9B.5: uses request.externalCampaignId directly and does NOT invoke resolveExternalCampaignId when present', async () => {
+    let capturedBody: Record<string, unknown> = {};
+    const mockFetch = vi.fn(async (_url: string | URL | Request, init?: RequestInit) => {
+      if (init?.body) {
+        capturedBody = JSON.parse(String(init.body));
+      }
+      return new Response(
+        JSON.stringify([
+          {
+            results: [
+              {
+                campaign: { id: '98765432101' },
+                segments: { date: '2026-08-01' },
+                metrics: {
+                  costMicros: '1000000',
+                  impressions: '100',
+                  clicks: '10',
+                },
+                customer: { currencyCode: 'USD' },
+              },
+            ],
+          },
+        ]),
+        { status: 200 },
+      );
+    });
+
+    const mockResolverSpy = vi.fn(mockResolver);
+
+    const adapter = new GoogleMetricsAdapter({
+      getCredentials: dummyGetCredentials,
+      resolveExternalCampaignId: mockResolverSpy,
+      fetchFn: mockFetch as unknown as typeof fetch,
+    });
+
+    const res = await adapter.fetchMetrics({
+      ...validRequest,
+      externalCampaignId: '98765432101',
+    });
+
+    expect(res.success).toBe(true);
+    expect(mockResolverSpy).not.toHaveBeenCalled();
+    expect(capturedBody['query']).toContain('campaign.id = 98765432101');
+  });
+
+  it('Phase 9B.5: succeeds when resolveExternalCampaignId is undefined if request.externalCampaignId is provided', async () => {
+    const mockFetch = vi.fn(async () => {
+      return new Response(
+        JSON.stringify([
+          {
+            results: [
+              {
+                campaign: { id: '1122334455' },
+                segments: { date: '2026-08-01' },
+                metrics: {
+                  costMicros: '500000',
+                },
+                customer: { currencyCode: 'USD' },
+              },
+            ],
+          },
+        ]),
+        { status: 200 },
+      );
+    });
+
+    const adapter = new GoogleMetricsAdapter({
+      getCredentials: dummyGetCredentials,
+      fetchFn: mockFetch as unknown as typeof fetch,
+    });
+
+    const res = await adapter.fetchMetrics({
+      ...validRequest,
+      externalCampaignId: '1122334455',
+    });
+
+    expect(res.success).toBe(true);
+    expect(mockFetch).toHaveBeenCalled();
+  });
 });

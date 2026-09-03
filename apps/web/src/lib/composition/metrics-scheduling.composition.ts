@@ -41,12 +41,21 @@ export function createMetricsSchedulingWorkerComposition(
   const clientRepository = new SupabaseClientRepository(adminClient);
   const activationRepository = new SupabaseCampaignActivationRepository(adminClient);
 
+  const UUID_REGEX = /^[0-9a-f]{8}-[0-9a-f]{4}-[1-5][0-9a-f]{3}-[89ab][0-9a-f]{3}-[0-9a-f]{12}$/i;
+
   const metaMetricsAdapter = new MetaMetricsAdapter({
     getAccessToken: async (_organizationId, providerAccountId) => {
       if (!providerAccountId) {
         return err({
           category: 'AUTH_FAILURE',
           message: 'Provider account ID is required for Meta Ads access token',
+          isRetryable: false,
+        });
+      }
+      if (!UUID_REGEX.test(providerAccountId)) {
+        return err({
+          category: 'AUTH_FAILURE',
+          message: `Provider account ID '${providerAccountId}' is not a valid client integration UUID. Credential resolution requires client integration ID contract.`,
           isRetryable: false,
         });
       }
@@ -68,6 +77,13 @@ export function createMetricsSchedulingWorkerComposition(
         return err({
           category: 'AUTH_FAILURE',
           message: 'Provider account ID is required for Google Ads credentials',
+          isRetryable: false,
+        });
+      }
+      if (!UUID_REGEX.test(providerAccountId)) {
+        return err({
+          category: 'AUTH_FAILURE',
+          message: `Provider account ID '${providerAccountId}' is not a valid client integration UUID. Credential resolution requires client integration ID contract.`,
           isRetryable: false,
         });
       }

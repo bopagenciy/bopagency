@@ -967,4 +967,33 @@ describe('syncCampaignMetrics Hardened Use Case (Phase 9B.0)', () => {
       expect(res.error.message).toContain("must be a non-negative finite number <= 9999999999.9999");
     }
   });
+
+  it('Phase 9B.5: forwards externalCampaignId and activationId to provider fetch request', async () => {
+    const provider = new FakeMetricsProvider({
+      platform: 'meta',
+      pages: [{ records: [], nextCursor: null }],
+    });
+    registry.register(provider);
+
+    const res = await syncCampaignMetrics(
+      {
+        actorUserId: 'user-1',
+        organizationId: orgId,
+        clientId: cliId,
+        campaignId: cmpId,
+        activationId: 'act-meta-test-123',
+        externalCampaignId: 'meta-remote-cmp-789',
+        platform: 'meta',
+        startDate: '2026-08-30',
+        endDate: '2026-08-30',
+      },
+      deps,
+    );
+
+    expect(res.success).toBe(true);
+    expect(provider.receivedRequests.length).toBe(1);
+    const req = provider.receivedRequests[0];
+    expect(req?.externalCampaignId).toBe('meta-remote-cmp-789');
+    expect(req?.activationId).toBe('act-meta-test-123');
+  });
 });

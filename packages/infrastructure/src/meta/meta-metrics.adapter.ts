@@ -145,63 +145,70 @@ export class MetaMetricsAdapter implements MetricsProvider {
       });
     }
 
-    // 4. Invariante estricta: resolveExternalCampaignId DEBE existir en el adaptador para resolver el ID de Meta
-    if (!this.resolveExternalCampaignId) {
-      return err({
-        category: 'INVALID_REQUEST',
-        message: `MetaMetricsAdapter requires a resolveExternalCampaignId resolver to query metrics for BopAgency campaignId '${request.campaignId}'`,
-        isRetryable: false,
+    let expectedExternalCampaignId: string;
+
+    // 4. Prioridad 1: externalCampaignId provisto directamente en el request (Phase 9B.5)
+    if (request.externalCampaignId && request.externalCampaignId.trim().length > 0) {
+      expectedExternalCampaignId = request.externalCampaignId.trim();
+    } else {
+      // Prioridad 2: Fallback mediante resolveExternalCampaignId (Phase 9B.1 legacy / manual)
+      if (!this.resolveExternalCampaignId) {
+        return err({
+          category: 'INVALID_REQUEST',
+          message: `MetaMetricsAdapter requires a resolveExternalCampaignId resolver to query metrics for BopAgency campaignId '${request.campaignId}'`,
+          isRetryable: false,
+        });
+      }
+
+      // 5. Invocación al resolver confiable de recursos de Phase 8
+      const resolutionRes = await this.resolveExternalCampaignId({
+        organizationId: request.organizationId,
+        clientId: request.clientId,
+        campaignId: request.campaignId,
+        activationId: request.activationId ?? null,
+        providerAccountId: canonicalRawAccountId,
       });
+
+      if (!resolutionRes.success) {
+        return err(resolutionRes.error);
+      }
+
+      const resolved = resolutionRes.value;
+      if (!resolved || !resolved.externalCampaignId || resolved.externalCampaignId.trim().length === 0) {
+        return err({
+          category: 'INVALID_REQUEST',
+          message: `No valid external Meta campaign resource mapping found for internal BopAgency campaignId '${request.campaignId}'`,
+          isRetryable: false,
+        });
+      }
+
+      // 6. Validar consistencia de Cuenta, Organización y Cliente devueltos por el resolver
+      if (resolved.providerAccountId && resolved.providerAccountId !== canonicalRawAccountId) {
+        return err({
+          category: 'INVALID_REQUEST',
+          message: `Resource account mismatch: resolved Meta campaign belongs to account '${resolved.providerAccountId}', but request specified '${canonicalRawAccountId}'`,
+          isRetryable: false,
+        });
+      }
+
+      if (resolved.organizationId && resolved.organizationId !== request.organizationId) {
+        return err({
+          category: 'INVALID_REQUEST',
+          message: `Resource organization mismatch: resolved Meta campaign belongs to organization '${resolved.organizationId}', but request specified '${request.organizationId}'`,
+          isRetryable: false,
+        });
+      }
+
+      if (resolved.clientId && resolved.clientId !== request.clientId) {
+        return err({
+          category: 'INVALID_REQUEST',
+          message: `Resource client mismatch: resolved Meta campaign belongs to client '${resolved.clientId}', but request specified '${request.clientId}'`,
+          isRetryable: false,
+        });
+      }
+
+      expectedExternalCampaignId = resolved.externalCampaignId.trim();
     }
-
-    // 5. Invocación al resolver confiable de recursos de Phase 8
-    const resolutionRes = await this.resolveExternalCampaignId({
-      organizationId: request.organizationId,
-      clientId: request.clientId,
-      campaignId: request.campaignId,
-      activationId: request.activationId ?? null,
-      providerAccountId: canonicalRawAccountId,
-    });
-
-    if (!resolutionRes.success) {
-      return err(resolutionRes.error);
-    }
-
-    const resolved = resolutionRes.value;
-    if (!resolved || !resolved.externalCampaignId || resolved.externalCampaignId.trim().length === 0) {
-      return err({
-        category: 'INVALID_REQUEST',
-        message: `No valid external Meta campaign resource mapping found for internal BopAgency campaignId '${request.campaignId}'`,
-        isRetryable: false,
-      });
-    }
-
-    // 6. Validar consistencia de Cuenta, Organización y Cliente devueltos por el resolver
-    if (resolved.providerAccountId && resolved.providerAccountId !== canonicalRawAccountId) {
-      return err({
-        category: 'INVALID_REQUEST',
-        message: `Resource account mismatch: resolved Meta campaign belongs to account '${resolved.providerAccountId}', but request specified '${canonicalRawAccountId}'`,
-        isRetryable: false,
-      });
-    }
-
-    if (resolved.organizationId && resolved.organizationId !== request.organizationId) {
-      return err({
-        category: 'INVALID_REQUEST',
-        message: `Resource organization mismatch: resolved Meta campaign belongs to organization '${resolved.organizationId}', but request specified '${request.organizationId}'`,
-        isRetryable: false,
-      });
-    }
-
-    if (resolved.clientId && resolved.clientId !== request.clientId) {
-      return err({
-        category: 'INVALID_REQUEST',
-        message: `Resource client mismatch: resolved Meta campaign belongs to client '${resolved.clientId}', but request specified '${request.clientId}'`,
-        isRetryable: false,
-      });
-    }
-
-    const expectedExternalCampaignId = resolved.externalCampaignId.trim();
 
     // 7. Obtener Access Token sanitizado usando la cuenta canónica
     const tokenRes = await this.getAccessToken(request.organizationId, canonicalRawAccountId);

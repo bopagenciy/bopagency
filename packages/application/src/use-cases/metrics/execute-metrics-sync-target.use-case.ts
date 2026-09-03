@@ -169,6 +169,8 @@ export async function executeMetricsSyncTarget(
       organizationId: syncState.organizationId,
       clientId: syncState.clientId,
       campaignId: syncState.campaignId,
+      activationId: syncState.activationId,
+      externalCampaignId: syncState.externalCampaignId,
       platform: syncState.platform,
       providerAccountId: syncState.providerAccountId,
       startDate,

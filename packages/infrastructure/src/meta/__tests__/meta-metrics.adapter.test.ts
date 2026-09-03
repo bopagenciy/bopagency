@@ -176,4 +176,81 @@ describe('MetaMetricsAdapter (Phase 9B.1 Resource Resolver Integrity Gate)', () 
       expect(res.error.message).toContain('0 rows matched expected external campaign ID');
     }
   });
+
+  it('Phase 9B.5: uses request.externalCampaignId directly and does NOT invoke resolveExternalCampaignId when present', async () => {
+    let capturedUrl = '';
+    const mockFetch = vi.fn(async (url: string | URL | Request) => {
+      capturedUrl = String(url);
+      return new Response(
+        JSON.stringify({
+          data: [
+            {
+              campaign_id: 'explicit-meta-cmp-999',
+              account_id: '123456789',
+              date_start: '2026-08-01',
+              date_stop: '2026-08-01',
+              spend: '75.00',
+              impressions: '500',
+              account_currency: 'USD',
+            },
+          ],
+        }),
+        { status: 200 },
+      );
+    });
+
+    const mockResolverSpy = vi.fn(mockResolver);
+
+    const adapter = new MetaMetricsAdapter({
+      getAccessToken: dummyGetAccessToken,
+      resolveExternalCampaignId: mockResolverSpy,
+      fetchFn: mockFetch as unknown as typeof fetch,
+    });
+
+    const res = await adapter.fetchMetrics({
+      ...validRequest,
+      externalCampaignId: 'explicit-meta-cmp-999',
+    });
+
+    expect(res.success).toBe(true);
+    expect(mockResolverSpy).not.toHaveBeenCalled();
+    const parsedUrl = new URL(capturedUrl);
+    const filteringParam = parsedUrl.searchParams.get('filtering');
+    expect(filteringParam).toBe(
+      JSON.stringify([{ field: 'campaign.id', operator: 'IN', value: ['explicit-meta-cmp-999'] }]),
+    );
+    expect(capturedUrl).toContain('explicit-meta-cmp-999');
+  });
+
+  it('Phase 9B.5: succeeds when resolveExternalCampaignId is undefined if request.externalCampaignId is provided', async () => {
+    const mockFetch = vi.fn(async () => {
+      return new Response(
+        JSON.stringify({
+          data: [
+            {
+              campaign_id: 'standalone-meta-123',
+              date_start: '2026-08-01',
+              date_stop: '2026-08-01',
+              spend: '10.00',
+              account_currency: 'USD',
+            },
+          ],
+        }),
+        { status: 200 },
+      );
+    });
+
+    const adapter = new MetaMetricsAdapter({
+      getAccessToken: dummyGetAccessToken,
+      fetchFn: mockFetch as unknown as typeof fetch,
+    });
+
+    const res = await adapter.fetchMetrics({
+      ...validRequest,
+      externalCampaignId: 'standalone-meta-123',
+    });
+
+    expect(res.success).toBe(true);
+    expect(mockFetch).toHaveBeenCalled();
+  });
 });
