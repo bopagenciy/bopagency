@@ -88,9 +88,9 @@ describe('middleware execution flow', () => {
         auth: {
           getUser: mockGetUser,
         },
-      } as any,
+      },
       supabaseResponse: mockSupabaseResponse,
-    });
+    } as unknown as ReturnType<typeof supabaseMiddleware.createMiddlewareClient>);
 
     const req = new NextRequest(new Request('http://localhost:3000/dashboard'));
     const res = await middleware(req);
