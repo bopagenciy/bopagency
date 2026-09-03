@@ -52,6 +52,7 @@ export async function connectMetaIntegration(
     'pages_manage_posts',
     'instagram_basic',
     'instagram_content_publish',
+    'ads_read',
   ].join(',');
 
   const oauthUrl = new URL(`https://www.facebook.com/${input.apiVersion}/dialog/oauth`);

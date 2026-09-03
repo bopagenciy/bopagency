@@ -156,7 +156,7 @@ export { encryptCredential, decryptCredential } from './security/credential-ciph
 export type { EncryptedPayload } from './security/credential-cipher';
 export { getMetaGraphApiVersion, getMetaAppConfig } from './meta/meta-config';
 export { MetaGraphApiClient } from './meta/meta-graph-api.client';
-export type { DiscoveredMetaPage, MetaPublishResult } from './meta/meta-graph-api.client';
+export type { DiscoveredMetaPage, DiscoveredMetaAdAccount, MetaPublishResult } from './meta/meta-graph-api.client';
 export { mapMetaErrorToFailureCategory } from './meta/meta-error.mapper';
 export { MetaPublisherAdapter } from './meta/meta-publisher.adapter';
 export type {

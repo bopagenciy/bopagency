@@ -80,15 +80,19 @@ export async function GET(request: Request) {
   const redirectUri = `${requestUrl.origin}/api/auth/oauth/meta/callback`;
 
   try {
-    // 3. Intercambiar code por User Token y descubrir Páginas
+    // 3. Intercambiar code por User Token y descubrir Páginas y Ad Accounts
     const apiClient = new MetaGraphApiClient();
     const shortUserToken = await apiClient.exchangeCodeForUserToken(code, redirectUri);
     const longUserToken = await apiClient.exchangeUserTokenForLongLived(shortUserToken);
-    const pages = await apiClient.discoverPagesAndAccounts(longUserToken);
 
-    if (!pages || pages.length === 0) {
+    const [pages, adAccounts] = await Promise.all([
+      apiClient.discoverPagesAndAccounts(longUserToken).catch(() => []),
+      apiClient.discoverAdAccounts(longUserToken).catch(() => []),
+    ]);
+
+    if ((!pages || pages.length === 0) && (!adAccounts || adAccounts.length === 0)) {
       return NextResponse.redirect(
-        `${requestUrl.origin}/clients/${clientId}/settings?error=${encodeURIComponent('No Facebook Pages found for this account')}`,
+        `${requestUrl.origin}/clients/${clientId}?error=${encodeURIComponent('No Facebook Pages or Meta Ad Accounts found for this account')}`,
       );
     }
 
@@ -101,17 +105,19 @@ export async function GET(request: Request) {
       clientId,
       userId: user.id,
       pages,
+      adAccounts,
+      userAccessToken: longUserToken,
       ttlMinutes: 10,
     });
 
-    // 5. Redirigir al cliente a settings con pendingConnectionId (0 tokens expuestos)
+    // 5. Redirigir al cliente a select con pendingId (0 tokens expuestos)
     return NextResponse.redirect(
-      `${requestUrl.origin}/clients/${clientId}/settings?pendingConnectionId=${pendingConnectionId}`,
+      `${requestUrl.origin}/clients/${clientId}/integrations/meta/select?pendingId=${pendingConnectionId}`,
     );
   } catch (err: unknown) {
     const msg = err instanceof Error ? err.message : 'OAuth exchange failed';
     return NextResponse.redirect(
-      `${requestUrl.origin}/clients/${clientId}/settings?error=${encodeURIComponent(msg)}`,
+      `${requestUrl.origin}/clients/${clientId}?error=${encodeURIComponent(msg)}`,
     );
   }
 }

@@ -592,11 +592,22 @@ export type {
 export { disconnectMetaIntegration } from './use-cases/integrations/disconnect-meta-integration.use-case';
 export type { DisconnectMetaIntegrationInput } from './use-cases/integrations/disconnect-meta-integration.use-case';
 
-export { finalizeMetaConnection } from './use-cases/integrations/finalize-meta-connection.use-case';
+export {
+  finalizeMetaConnection,
+  finalizeMetaAdAccountConnection,
+} from './use-cases/integrations/finalize-meta-connection.use-case';
 export type {
   FinalizeMetaConnectionInput,
   FinalizeMetaConnectionResult,
+  FinalizeMetaAdAccountConnectionInput,
 } from './use-cases/integrations/finalize-meta-connection.use-case';
+
+export { getPendingMetaResources } from './use-cases/integrations/get-pending-meta-resources.use-case';
+export type {
+  GetPendingMetaResourcesInput,
+  GetPendingMetaResourcesDeps,
+  MetaDiscoveredResource,
+} from './use-cases/integrations/get-pending-meta-resources.use-case';
 
 // Use cases — Google Integration (Phase 8F.1)
 export { connectGoogleIntegration } from './use-cases/integrations/connect-google-integration.use-case';

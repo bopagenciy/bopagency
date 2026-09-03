@@ -155,4 +155,110 @@ describe('MetaGraphApiClient Direct Unit Tests (Phase 8G.2 Hardened)', () => {
     expect(obs.httpStatus).toBe(503);
     expect(obs.errorCode).toBe(2);
   });
+
+  describe('discoverAdAccounts (Phase 9B.6B)', () => {
+    it('discovers a single ad account and strips act_ prefix for canonicalAdAccountId', async () => {
+      const mockFetch = vi.fn().mockResolvedValue({
+        ok: true,
+        json: vi.fn().mockResolvedValue({
+          data: [
+            {
+              id: 'act_1020304050',
+              account_id: '1020304050',
+              name: 'Acme Ads Production',
+              account_status: 1,
+              currency: 'USD',
+              timezone_name: 'America/New_York',
+            },
+          ],
+        }),
+      });
+
+      const client = new MetaGraphApiClient(mockFetch);
+      const accounts = await client.discoverAdAccounts('user-long-token-999');
+
+      expect(accounts).toHaveLength(1);
+      expect(accounts[0]).toEqual({
+        id: 'act_1020304050',
+        canonicalAdAccountId: '1020304050',
+        name: 'Acme Ads Production',
+        account_status: 1,
+        currency: 'USD',
+        timezone_name: 'America/New_York',
+      });
+
+      const callUrl = new URL(String(mockFetch.mock.calls[0]?.[0] ?? ''));
+      expect(callUrl.pathname).toBe('/v21.0/me/adaccounts');
+      expect(callUrl.searchParams.get('fields')).toBe('id,name,account_id,account_status,currency,timezone_name');
+      expect(callUrl.searchParams.get('access_token')).toBe('user-long-token-999');
+    });
+
+    it('discovers multiple accounts and handles raw IDs without act_ prefix', async () => {
+      const mockFetch = vi.fn().mockResolvedValue({
+        ok: true,
+        json: vi.fn().mockResolvedValue({
+          data: [
+            { id: '111222333', account_id: '111222333', name: 'Account 1', account_status: 1, currency: 'EUR', timezone_name: 'Europe/Madrid' },
+            { id: 'act_444555666', account_id: '444555666', name: 'Account 2', account_status: 2, currency: 'USD', timezone_name: 'America/Bogota' },
+          ],
+        }),
+      });
+
+      const client = new MetaGraphApiClient(mockFetch);
+      const accounts = await client.discoverAdAccounts('user-token');
+
+      expect(accounts).toHaveLength(2);
+      const acc0 = accounts[0];
+      const acc1 = accounts[1];
+      expect(acc0).toBeDefined();
+      expect(acc1).toBeDefined();
+      if (acc0 && acc1) {
+        expect(acc0.canonicalAdAccountId).toBe('111222333');
+        expect(acc0.id).toBe('act_111222333');
+        expect(acc0.account_status).toBe(1);
+
+        expect(acc1.canonicalAdAccountId).toBe('444555666');
+        expect(acc1.id).toBe('act_444555666');
+        expect(acc1.account_status).toBe(2);
+      }
+    });
+
+    it('handles empty response gracefully', async () => {
+      const mockFetch = vi.fn().mockResolvedValue({
+        ok: true,
+        json: vi.fn().mockResolvedValue({ data: [] }),
+      });
+
+      const client = new MetaGraphApiClient(mockFetch);
+      const accounts = await client.discoverAdAccounts('user-token');
+      expect(accounts).toEqual([]);
+    });
+
+    it('throws descriptive error on Meta API failure', async () => {
+      const mockFetch = vi.fn().mockResolvedValue({
+        ok: false,
+        statusText: 'Bad Request',
+        json: vi.fn().mockResolvedValue({
+          error: { message: 'Session has expired', code: 190 },
+        }),
+      });
+
+      const client = new MetaGraphApiClient(mockFetch);
+      await expect(client.discoverAdAccounts('expired-token')).rejects.toThrow(
+        /Meta ad accounts discovery failed: Session has expired/,
+      );
+    });
+
+    it('throws error when response data is malformed', async () => {
+      const mockFetch = vi.fn().mockResolvedValue({
+        ok: true,
+        json: vi.fn().mockResolvedValue({ not_data: {} }),
+      });
+
+      const client = new MetaGraphApiClient(mockFetch);
+      await expect(client.discoverAdAccounts('user-token')).rejects.toThrow(
+        /Meta ad accounts discovery failed/,
+      );
+    });
+  });
 });

@@ -53,3 +53,18 @@ export async function finalizeMetaConnection(
     eventType: data.event_type as 'connected' | 'reauthorized',
   });
 }
+
+export type FinalizeMetaAdAccountConnectionInput = {
+  pendingConnectionId: string;
+  selectedAccountId: string;
+};
+
+export async function finalizeMetaAdAccountConnection(
+  client: SupabaseClient,
+  input: FinalizeMetaAdAccountConnectionInput,
+): Promise<Result<FinalizeMetaConnectionResult>> {
+  return finalizeMetaConnection(client, {
+    pendingConnectionId: input.pendingConnectionId,
+    selectedPageId: input.selectedAccountId,
+  });
+}

@@ -15,6 +15,15 @@ export type DiscoveredMetaPage = {
   instagram_username: string | null;
 };
 
+export type DiscoveredMetaAdAccount = {
+  id: string;
+  canonicalAdAccountId: string;
+  name: string;
+  account_status: number;
+  currency: string | null;
+  timezone_name: string | null;
+};
+
 export type MetaPublishResult = {
   id: string;
   post_id?: string;
@@ -111,6 +120,38 @@ export class MetaGraphApiClient {
         page_access_token: String(item['access_token'] || ''),
         instagram_account_id: ig?.id ? String(ig.id) : null,
         instagram_username: ig?.username ? String(ig.username) : null,
+      };
+    });
+  }
+
+  /**
+   * Descubre Cuentas Publicitarias (Meta Ad Accounts) a las que tiene acceso el usuario (/me/adaccounts).
+   * Requiere permiso 'ads_read'.
+   */
+  async discoverAdAccounts(userAccessToken: string): Promise<DiscoveredMetaAdAccount[]> {
+    const url = new URL(`${this.baseUrl}/me/adaccounts`);
+    url.searchParams.set('fields', 'id,name,account_id,account_status,currency,timezone_name');
+    url.searchParams.set('access_token', userAccessToken);
+
+    const res = await this.fetchFn(url.toString(), { method: 'GET' });
+    const data = await res.json();
+
+    if (!res.ok || !data.data || !Array.isArray(data.data)) {
+      throw new Error(`Meta ad accounts discovery failed: ${data.error?.message || res.statusText}`);
+    }
+
+    return (data.data as Array<Record<string, unknown>>).map((item) => {
+      const rawId = String(item['id'] || '');
+      const rawAccountId = item['account_id'] ? String(item['account_id']) : rawId;
+      const canonical = rawAccountId.startsWith('act_') ? rawAccountId.slice(4) : rawAccountId;
+
+      return {
+        id: rawId.startsWith('act_') ? rawId : `act_${rawId}`,
+        canonicalAdAccountId: canonical,
+        name: String(item['name'] || `Ad Account ${canonical}`),
+        account_status: typeof item['account_status'] === 'number' ? item['account_status'] : 1,
+        currency: item['currency'] ? String(item['currency']) : null,
+        timezone_name: item['timezone_name'] ? String(item['timezone_name']) : null,
       };
     });
   }

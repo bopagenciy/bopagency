@@ -7,13 +7,15 @@
 
 import type { SupabaseClient } from '@supabase/supabase-js';
 import { encryptCredential } from '../../security/credential-cipher';
-import type { DiscoveredMetaPage } from '../../meta/meta-graph-api.client';
+import type { DiscoveredMetaPage, DiscoveredMetaAdAccount } from '../../meta/meta-graph-api.client';
 
 export type CreatePendingSessionInput = {
   organizationId: string;
   clientId: string;
   userId: string;
-  pages: DiscoveredMetaPage[];
+  pages?: DiscoveredMetaPage[];
+  adAccounts?: DiscoveredMetaAdAccount[];
+  userAccessToken?: string;
   ttlMinutes?: number;
 };
 
@@ -48,10 +50,12 @@ export class SupabasePendingConnectionRepository {
 
     const pendingConnectionId = conn.id;
 
-    if (input.pages.length > 0) {
-      const resourceRows = input.pages.map((p) => {
+    const resourceRows: Array<Record<string, unknown>> = [];
+
+    if (input.pages && input.pages.length > 0) {
+      for (const p of input.pages) {
         const encrypted = encryptCredential(p.page_access_token);
-        return {
+        resourceRows.push({
           pending_connection_id: pendingConnectionId,
           page_id: p.page_id,
           page_name: p.page_name,
@@ -61,9 +65,28 @@ export class SupabasePendingConnectionRepository {
           encrypted_page_token: encrypted.ciphertext,
           iv: encrypted.iv,
           auth_tag: encrypted.authTag,
-        };
-      });
+        });
+      }
+    }
 
+    if (input.adAccounts && input.adAccounts.length > 0 && input.userAccessToken) {
+      const encryptedUserToken = encryptCredential(input.userAccessToken);
+      for (const ad of input.adAccounts) {
+        resourceRows.push({
+          pending_connection_id: pendingConnectionId,
+          page_id: ad.canonicalAdAccountId,
+          page_name: ad.name,
+          instagram_account_id: ad.currency || 'USD',
+          instagram_username: ad.timezone_name || 'UTC',
+          key_version: encryptedUserToken.keyVersion,
+          encrypted_page_token: encryptedUserToken.ciphertext,
+          iv: encryptedUserToken.iv,
+          auth_tag: encryptedUserToken.authTag,
+        });
+      }
+    }
+
+    if (resourceRows.length > 0) {
       const { error: resErr } = await this.client
         .from('pending_oauth_resources')
         .insert(resourceRows);
