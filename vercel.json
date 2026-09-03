@@ -1,4 +1,6 @@
 {
+  "$schema": "https://openapi.vercel.sh/vercel.json",
+  "outputDirectory": "apps/web/.next",
   "crons": [
     {
       "path": "/api/cron/metrics-sync",
