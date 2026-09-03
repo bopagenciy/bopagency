@@ -17,6 +17,7 @@ export type ConnectMetaIntegrationInput = {
   redirectUri: string;
   appId: string;
   apiVersion: string;
+  configId?: string | null | undefined;
 };
 
 export type ConnectMetaIntegrationResult = {
@@ -59,8 +60,14 @@ export async function connectMetaIntegration(
   oauthUrl.searchParams.set('client_id', input.appId);
   oauthUrl.searchParams.set('redirect_uri', input.redirectUri);
   oauthUrl.searchParams.set('state', nonce);
-  oauthUrl.searchParams.set('scope', scopes);
   oauthUrl.searchParams.set('response_type', 'code');
+
+  const trimmedConfigId = input.configId?.trim();
+  if (trimmedConfigId) {
+    oauthUrl.searchParams.set('config_id', trimmedConfigId);
+  } else {
+    oauthUrl.searchParams.set('scope', scopes);
+  }
 
   return ok({
     oauthUrl: oauthUrl.toString(),

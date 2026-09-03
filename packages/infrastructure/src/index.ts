@@ -154,7 +154,7 @@ export type { AIProviderConfig } from './ai/ai-provider-config';
 // Phase 8E — Meta Integration Infrastructure
 export { encryptCredential, decryptCredential } from './security/credential-cipher';
 export type { EncryptedPayload } from './security/credential-cipher';
-export { getMetaGraphApiVersion, getMetaAppConfig } from './meta/meta-config';
+export { getMetaGraphApiVersion, getMetaAppConfig, getMetaLoginConfigId } from './meta/meta-config';
 export { MetaGraphApiClient } from './meta/meta-graph-api.client';
 export type { DiscoveredMetaPage, DiscoveredMetaAdAccount, MetaPublishResult } from './meta/meta-graph-api.client';
 export { mapMetaErrorToFailureCategory } from './meta/meta-error.mapper';

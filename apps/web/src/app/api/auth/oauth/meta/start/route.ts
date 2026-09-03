@@ -8,7 +8,7 @@
 import { NextResponse } from 'next/server';
 import { createServerSupabaseClient } from '@/lib/supabase/server';
 import { connectMetaIntegration } from '@bop-agency/application';
-import { getMetaGraphApiVersion, getMetaAppConfig } from '@bop-agency/infrastructure';
+import { getMetaGraphApiVersion, getMetaAppConfig, getMetaLoginConfigId } from '@bop-agency/infrastructure';
 
 export async function GET(request: Request) {
   const supabase = await createServerSupabaseClient();
@@ -37,11 +37,13 @@ export async function GET(request: Request) {
 
   let appId: string;
   let apiVersion: string;
+  let configId: string | undefined;
 
   try {
     const config = getMetaAppConfig();
     appId = config.appId;
     apiVersion = getMetaGraphApiVersion();
+    configId = getMetaLoginConfigId();
   } catch (err: unknown) {
     const msg = err instanceof Error ? err.message : String(err);
     return NextResponse.json({ error: `Server configuration error: ${msg}` }, { status: 500 });
@@ -54,6 +56,7 @@ export async function GET(request: Request) {
     redirectUri,
     appId,
     apiVersion,
+    configId,
   });
 
   if (!result.success) {

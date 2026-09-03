@@ -43,6 +43,62 @@ describe('Meta Integration Use Cases (Phase 9B.6B)', () => {
         // Verify ads_read is present exactly once
         const adsReadOccurrences = scopes.filter((s) => s === 'ads_read');
         expect(adsReadOccurrences).toHaveLength(1);
+        expect(url.searchParams.has('config_id')).toBe(false);
+      }
+    });
+
+    it('generates Facebook Login for Business URL with config_id and NO scope when configId is provided', async () => {
+      const insertMock = vi.fn().mockResolvedValue({ error: null });
+      const mockSupabase = {
+        from: vi.fn().mockReturnValue({ insert: insertMock }),
+      } as unknown as SupabaseClient;
+
+      const res = await connectMetaIntegration(mockSupabase, {
+        organizationId: orgId,
+        clientId,
+        actorUserId: userId,
+        redirectUri: 'https://bop-agency.vercel.app/api/auth/oauth/meta/callback',
+        appId: 'test-app-id',
+        apiVersion: 'v26.0',
+        configId: 'test-config-id-999',
+      });
+
+      expect(res.success).toBe(true);
+      if (res.success) {
+        const url = new URL(res.value.oauthUrl);
+        expect(url.searchParams.get('client_id')).toBe('test-app-id');
+        expect(url.searchParams.get('redirect_uri')).toBe('https://bop-agency.vercel.app/api/auth/oauth/meta/callback');
+        expect(url.searchParams.get('response_type')).toBe('code');
+        expect(url.searchParams.get('state')).toBe(res.value.stateNonce);
+        expect(url.searchParams.get('config_id')).toBe('test-config-id-999');
+
+        // Critical rule: scope MUST be omitted when using config_id
+        expect(url.searchParams.has('scope')).toBe(false);
+      }
+    });
+
+    it('falls back to classic scopes when configId is whitespace or null', async () => {
+      const insertMock = vi.fn().mockResolvedValue({ error: null });
+      const mockSupabase = {
+        from: vi.fn().mockReturnValue({ insert: insertMock }),
+      } as unknown as SupabaseClient;
+
+      const res = await connectMetaIntegration(mockSupabase, {
+        organizationId: orgId,
+        clientId,
+        actorUserId: userId,
+        redirectUri: 'https://bop-agency.vercel.app/api/auth/oauth/meta/callback',
+        appId: 'test-app-id',
+        apiVersion: 'v26.0',
+        configId: '   ',
+      });
+
+      expect(res.success).toBe(true);
+      if (res.success) {
+        const url = new URL(res.value.oauthUrl);
+        expect(url.searchParams.has('config_id')).toBe(false);
+        expect(url.searchParams.has('scope')).toBe(true);
+        expect(url.searchParams.get('scope')).toContain('ads_read');
       }
     });
   });

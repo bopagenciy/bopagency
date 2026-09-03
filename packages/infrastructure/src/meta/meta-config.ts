@@ -42,3 +42,15 @@ export function getMetaAppConfig(): { appId: string; appSecret: string } {
     appSecret: appSecret.trim(),
   };
 }
+
+/**
+ * Obtiene opcionalmente el Configuration ID para Facebook Login for Business.
+ * Si process.env.META_LOGIN_CONFIG_ID está vacío o ausente, retorna undefined.
+ */
+export function getMetaLoginConfigId(): string | undefined {
+  const raw = process.env['META_LOGIN_CONFIG_ID'];
+  if (!raw || !raw.trim()) {
+    return undefined;
+  }
+  return raw.trim();
+}

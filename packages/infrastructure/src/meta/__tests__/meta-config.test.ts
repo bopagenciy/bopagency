@@ -1,5 +1,5 @@
 import { describe, it, expect, afterEach } from 'vitest';
-import { getMetaGraphApiVersion, getMetaAppConfig } from '../meta-config';
+import { getMetaGraphApiVersion, getMetaAppConfig, getMetaLoginConfigId } from '../meta-config';
 
 describe('Meta Config', () => {
   const origVersion = process.env['META_GRAPH_API_VERSION'];
@@ -36,5 +36,29 @@ describe('Meta Config', () => {
     process.env['META_APP_ID'] = '123456';
     process.env['META_APP_SECRET'] = 'secret789';
     expect(getMetaAppConfig()).toEqual({ appId: '123456', appSecret: 'secret789' });
+  });
+
+  describe('getMetaLoginConfigId (Phase 9B.6D)', () => {
+    const origConfigId = process.env['META_LOGIN_CONFIG_ID'];
+
+    afterEach(() => {
+      if (origConfigId) process.env['META_LOGIN_CONFIG_ID'] = origConfigId;
+      else delete process.env['META_LOGIN_CONFIG_ID'];
+    });
+
+    it('retorna el configId trimmed si está configurado', () => {
+      process.env['META_LOGIN_CONFIG_ID'] = '  cfg_test_12345  ';
+      expect(getMetaLoginConfigId()).toBe('cfg_test_12345');
+    });
+
+    it('retorna undefined si META_LOGIN_CONFIG_ID no está configurado', () => {
+      delete process.env['META_LOGIN_CONFIG_ID'];
+      expect(getMetaLoginConfigId()).toBeUndefined();
+    });
+
+    it('retorna undefined si META_LOGIN_CONFIG_ID es solo espacios en blanco', () => {
+      process.env['META_LOGIN_CONFIG_ID'] = '   ';
+      expect(getMetaLoginConfigId()).toBeUndefined();
+    });
   });
 });
