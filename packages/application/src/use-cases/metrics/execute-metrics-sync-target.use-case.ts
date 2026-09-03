@@ -11,6 +11,8 @@ import { ok, err } from '@bop-agency/shared';
 import type { Result } from '@bop-agency/shared';
 import type {
   OrganizationId,
+  CampaignActivationTarget,
+  CampaignActivationTargetId,
   CampaignMetricsSyncStateId,
   CampaignMetricsSyncState,
   CampaignMetricsSyncStateRepository,
@@ -45,6 +47,12 @@ export type ExecuteMetricsSyncTargetDeps = {
   readonly syncStateRepository: CampaignMetricsSyncStateRepository;
   readonly snapshotRepository: Parameters<typeof syncCampaignMetrics>[1]['snapshotRepository'];
   readonly providerRegistry: MetricsProviderRegistry;
+  readonly activationRepository?: {
+    readonly findTargetById: (
+      id: CampaignActivationTargetId,
+      organizationId: OrganizationId,
+    ) => Promise<Result<CampaignActivationTarget>>;
+  } | undefined;
   readonly isOrganizationMember?: (organizationId: OrganizationId, userId: string) => Promise<boolean>;
   readonly logger: LoggerPort;
   readonly now?: () => Date;
@@ -163,6 +171,21 @@ export async function executeMetricsSyncTarget(
   // 3. Ejecución de la sincronización de métricas
   const actorId = principal.type === 'user' ? principal.userId : `system:metrics-scheduler:${input.claimToken}`;
 
+  let clientIntegrationId: string | null = null;
+  if (deps.activationRepository && syncState.targetId) {
+    try {
+      const targetRes = await deps.activationRepository.findTargetById(
+        syncState.targetId,
+        syncState.organizationId,
+      );
+      if (targetRes.success && targetRes.value.clientIntegrationId) {
+        clientIntegrationId = String(targetRes.value.clientIntegrationId);
+      }
+    } catch (cause) {
+      deps.logger.warn(`Non-fatal error resolving clientIntegrationId for target ${syncState.targetId}`, { cause });
+    }
+  }
+
   const syncRes = await syncCampaignMetrics(
     {
       actorUserId: actorId,
@@ -171,6 +194,7 @@ export async function executeMetricsSyncTarget(
       campaignId: syncState.campaignId,
       activationId: syncState.activationId,
       externalCampaignId: syncState.externalCampaignId,
+      clientIntegrationId,
       platform: syncState.platform,
       providerAccountId: syncState.providerAccountId,
       startDate,

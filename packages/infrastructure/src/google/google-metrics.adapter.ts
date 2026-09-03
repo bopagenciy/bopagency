@@ -45,6 +45,7 @@ export type GoogleMetricsAdapterConfig = {
   readonly getCredentials: (
     organizationId: OrganizationId,
     providerAccountId?: string | null,
+    clientIntegrationId?: string | null,
   ) => Promise<Result<GoogleAdsCredentials, MetricsProviderError>>;
   readonly resolveExternalCampaignId?: (
     context: ExternalGoogleCampaignResolutionContext,
@@ -92,6 +93,7 @@ export class GoogleMetricsAdapter implements MetricsProvider {
   private readonly getCredentials: (
     organizationId: OrganizationId,
     providerAccountId?: string | null,
+    clientIntegrationId?: string | null,
   ) => Promise<Result<GoogleAdsCredentials, MetricsProviderError>>;
   private readonly resolveExternalCampaignId?: ((
     context: ExternalGoogleCampaignResolutionContext,
@@ -229,7 +231,11 @@ export class GoogleMetricsAdapter implements MetricsProvider {
     }
 
     // 7. Obtener credenciales OAuth y Developer Token
-    const credsRes = await this.getCredentials(request.organizationId, cleanCustomerId);
+    const credsRes = await this.getCredentials(
+      request.organizationId,
+      cleanCustomerId,
+      request.clientIntegrationId ?? null,
+    );
     if (!credsRes.success) {
       return err(credsRes.error);
     }

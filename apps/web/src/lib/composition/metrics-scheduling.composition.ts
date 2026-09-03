@@ -44,57 +44,69 @@ export function createMetricsSchedulingWorkerComposition(
   const UUID_REGEX = /^[0-9a-f]{8}-[0-9a-f]{4}-[1-5][0-9a-f]{3}-[89ab][0-9a-f]{3}-[0-9a-f]{12}$/i;
 
   const metaMetricsAdapter = new MetaMetricsAdapter({
-    getAccessToken: async (_organizationId, providerAccountId) => {
-      if (!providerAccountId) {
+    getAccessToken: async (organizationId, providerAccountId, clientIntegrationId) => {
+      const effectiveIntegrationId =
+        clientIntegrationId || (providerAccountId && UUID_REGEX.test(providerAccountId) ? providerAccountId : null);
+
+      if (!effectiveIntegrationId) {
         return err({
           category: 'AUTH_FAILURE',
-          message: 'Provider account ID is required for Meta Ads access token',
+          message: `No valid client integration UUID provided for Meta Ads credentials (providerAccountId='${providerAccountId}')`,
           isRetryable: false,
         });
       }
-      if (!UUID_REGEX.test(providerAccountId)) {
-        return err({
-          category: 'AUTH_FAILURE',
-          message: `Provider account ID '${providerAccountId}' is not a valid client integration UUID. Credential resolution requires client integration ID contract.`,
-          isRetryable: false,
-        });
-      }
-      const tokenData = await credentialRepository.resolvePageAccessToken(providerAccountId);
+
+      const tokenData = await credentialRepository.resolvePageAccessToken(effectiveIntegrationId);
       if (!tokenData?.pageAccessToken) {
         return err({
           category: 'AUTH_FAILURE',
-          message: `Meta credentials not found for provider account ${providerAccountId}`,
+          message: `Meta credentials not found for client integration ${effectiveIntegrationId}`,
           isRetryable: false,
         });
       }
+
+      if (tokenData.organizationId !== organizationId) {
+        return err({
+          category: 'AUTH_FAILURE',
+          message: `Tenant mismatch: credential organization '${tokenData.organizationId}' does not match request organization '${organizationId}'`,
+          isRetryable: false,
+        });
+      }
+
       return ok(tokenData.pageAccessToken);
     },
   });
 
   const googleMetricsAdapter = new GoogleMetricsAdapter({
-    getCredentials: async (_organizationId, providerAccountId) => {
-      if (!providerAccountId) {
+    getCredentials: async (organizationId, providerAccountId, clientIntegrationId) => {
+      const effectiveIntegrationId =
+        clientIntegrationId || (providerAccountId && UUID_REGEX.test(providerAccountId) ? providerAccountId : null);
+
+      if (!effectiveIntegrationId) {
         return err({
           category: 'AUTH_FAILURE',
-          message: 'Provider account ID is required for Google Ads credentials',
+          message: `No valid client integration UUID provided for Google Ads credentials (providerAccountId='${providerAccountId}')`,
           isRetryable: false,
         });
       }
-      if (!UUID_REGEX.test(providerAccountId)) {
-        return err({
-          category: 'AUTH_FAILURE',
-          message: `Provider account ID '${providerAccountId}' is not a valid client integration UUID. Credential resolution requires client integration ID contract.`,
-          isRetryable: false,
-        });
-      }
-      const credData = await credentialRepository.resolveGoogleRefreshToken(providerAccountId);
+
+      const credData = await credentialRepository.resolveGoogleRefreshToken(effectiveIntegrationId);
       if (!credData?.refreshToken) {
         return err({
           category: 'AUTH_FAILURE',
-          message: `Google Ads refresh token not found for provider account ${providerAccountId}`,
+          message: `Google Ads refresh token not found for client integration ${effectiveIntegrationId}`,
           isRetryable: false,
         });
       }
+
+      if (credData.organizationId !== organizationId) {
+        return err({
+          category: 'AUTH_FAILURE',
+          message: `Tenant mismatch: credential organization '${credData.organizationId}' does not match request organization '${organizationId}'`,
+          isRetryable: false,
+        });
+      }
+
       const developerToken = process.env['GOOGLE_ADS_DEVELOPER_TOKEN'] || '';
       if (!developerToken) {
         return err({
@@ -140,6 +152,7 @@ export function createMetricsSchedulingWorkerComposition(
           syncStateRepository,
           snapshotRepository,
           providerRegistry,
+          activationRepository,
           logger: consoleLogger,
         }),
       executeMetricsSyncBatch: (input: Parameters<typeof executeMetricsSyncBatch>[0]) =>
@@ -147,6 +160,7 @@ export function createMetricsSchedulingWorkerComposition(
           syncStateRepository,
           snapshotRepository,
           providerRegistry,
+          activationRepository,
           logger: consoleLogger,
         }),
     },

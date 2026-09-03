@@ -267,4 +267,47 @@ describe('GoogleMetricsAdapter Hardening Gate (Phase 9B.2)', () => {
     expect(res.success).toBe(true);
     expect(mockFetch).toHaveBeenCalled();
   });
+
+  it('Phase 9B.5B: forwards clientIntegrationId to getCredentials', async () => {
+    let capturedIntegrationId: string | null | undefined;
+    const customGetCreds = vi.fn(async (_orgId, _accId, clientIntegrationId?: string | null) => {
+      capturedIntegrationId = clientIntegrationId;
+      return ok({
+        accessToken: 'google-access-token',
+        developerToken: 'google-dev-token',
+      });
+    });
+
+    const mockFetch = vi.fn(async () => {
+      return new Response(
+        JSON.stringify([
+          {
+            results: [
+              {
+                campaign: { id: '3344556677' },
+                segments: { date: '2026-08-01' },
+                metrics: { costMicros: '100000' },
+                customer: { currencyCode: 'USD' },
+              },
+            ],
+          },
+        ]),
+        { status: 200 },
+      );
+    });
+
+    const adapter = new GoogleMetricsAdapter({
+      getCredentials: customGetCreds,
+      fetchFn: mockFetch as unknown as typeof fetch,
+    });
+
+    const res = await adapter.fetchMetrics({
+      ...validRequest,
+      externalCampaignId: '3344556677',
+      clientIntegrationId: 'google-int-uuid-5678',
+    });
+
+    expect(res.success).toBe(true);
+    expect(capturedIntegrationId).toBe('google-int-uuid-5678');
+  });
 });

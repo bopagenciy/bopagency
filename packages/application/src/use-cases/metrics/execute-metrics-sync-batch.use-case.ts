@@ -34,6 +34,7 @@ export type ExecuteMetricsSyncBatchDeps = {
   readonly syncStateRepository: CampaignMetricsSyncStateRepository;
   readonly snapshotRepository: CampaignMetricSnapshotRepository;
   readonly providerRegistry: MetricsProviderRegistry;
+  readonly activationRepository?: Parameters<typeof executeMetricsSyncTarget>[1]['activationRepository'] | undefined;
   readonly logger: LoggerPort;
   readonly now?: () => Date;
 };
@@ -136,6 +137,7 @@ export async function executeMetricsSyncBatch(
         syncStateRepository: deps.syncStateRepository,
         snapshotRepository: deps.snapshotRepository,
         providerRegistry: deps.providerRegistry,
+        activationRepository: deps.activationRepository,
         logger: deps.logger,
         now: getNow,
       },

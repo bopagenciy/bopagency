@@ -42,6 +42,7 @@ export type MetaMetricsAdapterConfig = {
   readonly getAccessToken: (
     organizationId: OrganizationId,
     providerAccountId?: string | null,
+    clientIntegrationId?: string | null,
   ) => Promise<Result<string, MetricsProviderError>>;
   readonly resolveExternalCampaignId?: (
     context: ExternalCampaignResolutionContext,
@@ -90,6 +91,7 @@ export class MetaMetricsAdapter implements MetricsProvider {
   private readonly getAccessToken: (
     organizationId: OrganizationId,
     providerAccountId?: string | null,
+    clientIntegrationId?: string | null,
   ) => Promise<Result<string, MetricsProviderError>>;
   private readonly resolveExternalCampaignId?: ((
     context: ExternalCampaignResolutionContext,
@@ -211,7 +213,11 @@ export class MetaMetricsAdapter implements MetricsProvider {
     }
 
     // 7. Obtener Access Token sanitizado usando la cuenta canónica
-    const tokenRes = await this.getAccessToken(request.organizationId, canonicalRawAccountId);
+    const tokenRes = await this.getAccessToken(
+      request.organizationId,
+      canonicalRawAccountId,
+      request.clientIntegrationId ?? null,
+    );
     if (!tokenRes.success) {
       return err(tokenRes.error);
     }

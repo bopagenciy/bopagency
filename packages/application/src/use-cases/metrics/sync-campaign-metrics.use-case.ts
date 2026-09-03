@@ -32,6 +32,7 @@ export type SyncCampaignMetricsInput = {
   readonly activationId?: CampaignActivationId | string | null;
   readonly providerAccountId?: string | null;
   readonly externalCampaignId?: string | null;
+  readonly clientIntegrationId?: string | null;
   readonly granularity?: SnapshotGranularity;
   readonly scope?: SnapshotScope;
 };
@@ -241,6 +242,7 @@ export async function syncCampaignMetrics(
       activationId: input.activationId ?? null,
       providerAccountId: input.providerAccountId ?? null,
       externalCampaignId: input.externalCampaignId ?? null,
+      clientIntegrationId: input.clientIntegrationId ?? null,
       granularity: input.granularity,
       scope: input.scope,
       pageCursor,

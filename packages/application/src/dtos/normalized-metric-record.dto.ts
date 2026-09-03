@@ -47,6 +47,7 @@ export type SyncMetricsRequest = {
   readonly activationId?: CampaignActivationId | string | null | undefined;
   readonly providerAccountId?: string | null | undefined;
   readonly externalCampaignId?: string | null | undefined;
+  readonly clientIntegrationId?: string | null | undefined;
   readonly granularity?: SnapshotGranularity | undefined;
   readonly scope?: SnapshotScope | undefined;
 };

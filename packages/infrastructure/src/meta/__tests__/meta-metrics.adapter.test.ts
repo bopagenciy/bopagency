@@ -253,4 +253,43 @@ describe('MetaMetricsAdapter (Phase 9B.1 Resource Resolver Integrity Gate)', () 
     expect(res.success).toBe(true);
     expect(mockFetch).toHaveBeenCalled();
   });
+
+  it('Phase 9B.5B: forwards clientIntegrationId to getAccessToken', async () => {
+    let capturedIntegrationId: string | null | undefined;
+    const customGetToken = vi.fn(async (_orgId, _accId, clientIntegrationId?: string | null) => {
+      capturedIntegrationId = clientIntegrationId;
+      return ok('test-access-token');
+    });
+
+    const mockFetch = vi.fn(async () => {
+      return new Response(
+        JSON.stringify({
+          data: [
+            {
+              campaign_id: 'meta-cmp-555',
+              date_start: '2026-08-01',
+              date_stop: '2026-08-01',
+              spend: '15.00',
+              account_currency: 'USD',
+            },
+          ],
+        }),
+        { status: 200 },
+      );
+    });
+
+    const adapter = new MetaMetricsAdapter({
+      getAccessToken: customGetToken,
+      fetchFn: mockFetch as unknown as typeof fetch,
+    });
+
+    const res = await adapter.fetchMetrics({
+      ...validRequest,
+      externalCampaignId: 'meta-cmp-555',
+      clientIntegrationId: 'integration-uuid-1234',
+    });
+
+    expect(res.success).toBe(true);
+    expect(capturedIntegrationId).toBe('integration-uuid-1234');
+  });
 });
