@@ -29,7 +29,7 @@ const AUTH_ROUTES = ['/login', '/signup', '/forgot-password', '/reset-password']
 // (ver apps/web/src/app/api/webhooks/n8n/route.ts) y NUNCA reciben una cookie
 // de sesión de Supabase — si el middleware las interceptara, el callback real
 // de n8n sería redirigido a /login en lugar de llegar al route handler.
-const ALWAYS_PUBLIC_PREFIXES = ['/_next', '/favicon', '/api/health', '/api/webhooks'];
+const ALWAYS_PUBLIC_PREFIXES = ['/_next', '/favicon', '/api/health', '/api/webhooks', '/api/cron'];
 
 export function isPublicRoute(pathname: string): boolean {
   if (ALWAYS_PUBLIC_PREFIXES.some((prefix) => pathname.startsWith(prefix))) {
@@ -44,6 +44,10 @@ function isAuthRoute(pathname: string): boolean {
 
 export async function middleware(request: NextRequest) {
   const { pathname } = request.nextUrl;
+
+  if (isPublicRoute(pathname)) {
+    return NextResponse.next({ request });
+  }
 
   const response = NextResponse.next({ request });
   const { supabase, supabaseResponse } = createMiddlewareClient(request, response);
@@ -78,8 +82,9 @@ export const config = {
      * - _next/static (static files)
      * - _next/image (image optimization)
      * - favicon.ico
+     * - api/cron (server-to-server endpoints)
      * - files with extensions (images, fonts, etc.)
      */
-    '/((?!_next/static|_next/image|favicon.ico|.*\\.(?:svg|png|jpg|jpeg|gif|webp|ico|css|js|woff|woff2)$).*)',
+    '/((?!_next/static|_next/image|favicon.ico|api/cron|.*\\.(?:svg|png|jpg|jpeg|gif|webp|ico|css|js|woff|woff2)$).*)',
   ],
 };
