@@ -22,16 +22,7 @@ import {
   UpdatePasswordSchema,
   ResendConfirmationSchema,
 } from './schemas';
-
-// --- Helpers ---
-
-function getAppUrl(): string {
-  return process.env['NEXT_PUBLIC_APP_URL'] ?? 'http://localhost:3200';
-}
-
-function buildRedirectUrl(path: string): string {
-  return `${getAppUrl()}${path}`;
-}
+import { buildRedirectUrl } from './url';
 
 // --- Actions ---
 
@@ -144,7 +135,7 @@ export async function requestPasswordReset(formData: FormData): Promise<void> {
   const supabase = await createServerSupabaseClient();
   // Siempre retornamos éxito para no revelar si el email existe
   await supabase.auth.resetPasswordForEmail(parsed.data.email, {
-    redirectTo: buildRedirectUrl('/reset-password'),
+    redirectTo: buildRedirectUrl('/auth/callback?next=/reset-password'),
   });
 
   redirect(
@@ -154,7 +145,7 @@ export async function requestPasswordReset(formData: FormData): Promise<void> {
 
 /**
  * Actualiza la contraseña del usuario autenticado.
- * Solo funciona cuando el usuario llegó desde el enlace de recuperación.
+ * Solo funciona cuando el usuario llegó desde el enlace de recuperación y tiene sesión activa.
  */
 export async function updatePassword(formData: FormData): Promise<void> {
   const rawData = {
@@ -169,6 +160,16 @@ export async function updatePassword(formData: FormData): Promise<void> {
   }
 
   const supabase = await createServerSupabaseClient();
+  const {
+    data: { user },
+  } = await supabase.auth.getUser();
+
+  if (!user) {
+    redirect(
+      `/reset-password?error=${encodeURIComponent('No hay una sesión activa de recuperación. Por favor solicita un nuevo enlace.')}`,
+    );
+  }
+
   const { error } = await supabase.auth.updateUser({
     password: parsed.data.password,
   });
@@ -178,6 +179,9 @@ export async function updatePassword(formData: FormData): Promise<void> {
       `/reset-password?error=${encodeURIComponent('No se pudo actualizar la contraseña. El enlace puede haber expirado.')}`,
     );
   }
+
+  // Cerrar la sesión de recuperación para obligar a login limpio con la nueva contraseña
+  await supabase.auth.signOut();
 
   redirect(
     `/login?message=${encodeURIComponent('Contraseña actualizada correctamente. Ya puedes iniciar sesión.')}`,

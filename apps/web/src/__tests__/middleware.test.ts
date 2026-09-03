@@ -100,4 +100,14 @@ describe('middleware execution flow', () => {
     expect(res.headers.get('location')).toContain('redirectTo=%2Fdashboard');
     expect(res.status).toBe(307);
   });
+
+  it('/reset-password passes through as a public route without redirecting to /dashboard', async () => {
+    const req = new NextRequest(new Request('http://localhost:3000/reset-password'));
+    const res = await middleware(req);
+
+    // Because /reset-password is in PUBLIC_ROUTES, the early return executes
+    expect(supabaseMiddleware.createMiddlewareClient).not.toHaveBeenCalled();
+    expect(res.headers.get('location')).toBeNull();
+    expect(res.status).toBe(200);
+  });
 });

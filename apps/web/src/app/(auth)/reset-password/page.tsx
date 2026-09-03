@@ -1,16 +1,67 @@
 import type { Metadata } from 'next';
+import Link from 'next/link';
+import { redirect } from 'next/navigation';
 import { updatePassword } from '@/lib/auth/actions';
+import { createServerSupabaseClient } from '@/lib/supabase/server';
 
 export const metadata: Metadata = {
   title: 'Nueva contraseña',
 };
 
 type ResetPasswordPageProps = {
-  searchParams: Promise<{ error?: string; message?: string }>;
+  searchParams: Promise<{ error?: string; message?: string; code?: string }>;
 };
 
 export default async function ResetPasswordPage({ searchParams }: ResetPasswordPageProps) {
   const params = await searchParams;
+
+  // Estado A: Si viene el parámetro code (enlace previo o directo), redirigir al callback para auto-recuperar la sesión
+  if (params.code) {
+    redirect(`/auth/callback?code=${encodeURIComponent(params.code)}&next=/reset-password`);
+  }
+
+  // Comprobar si existe sesión activa
+  const supabase = await createServerSupabaseClient();
+  const {
+    data: { user },
+  } = await supabase.auth.getUser();
+
+  // Estado C: Sin código y sin sesión activa
+  if (!user) {
+    return (
+      <>
+        <h1 className="text-xl font-bold tracking-tight text-foreground mb-1">
+          Enlace no válido o expirado
+        </h1>
+        <p className="text-sm text-muted-foreground mb-6">
+          El enlace de recuperación no es válido, ha expirado o ya fue utilizado. Por favor solicita un nuevo enlace para restablecer tu contraseña.
+        </p>
+
+        {params.error && (
+          <div className="mb-4 p-3 rounded-md bg-red-50/80 border border-red-200 text-red-900 text-sm">
+            {params.error}
+          </div>
+        )}
+
+        <div className="space-y-4">
+          <Link
+            href="/forgot-password"
+            className="block w-full py-2.5 px-4 text-center rounded-md bg-primary hover:bg-primary-hover text-primary-foreground text-sm font-medium transition-colors"
+          >
+            Solicitar nuevo enlace
+          </Link>
+
+          <p className="mt-6 text-center text-sm text-muted-foreground">
+            <Link href="/login" className="text-foreground font-medium hover:underline transition-colors">
+              ← Volver al inicio de sesión
+            </Link>
+          </p>
+        </div>
+      </>
+    );
+  }
+
+  // Estado B: Sesión activa válida -> mostrar formulario de cambio de contraseña
 
   return (
     <>
