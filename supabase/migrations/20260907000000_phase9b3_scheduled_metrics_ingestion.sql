@@ -46,10 +46,7 @@ ALTER TABLE public.campaign_metrics_sync_states ENABLE ROW LEVEL SECURITY;
 CREATE POLICY tenant_select_campaign_metrics_sync_states ON public.campaign_metrics_sync_states
   FOR SELECT
   USING (
-    organization_id IN (
-      SELECT organization_id FROM public.organization_memberships
-      WHERE user_id = auth.uid()
-    )
+    public.is_organization_member(organization_id)
   );
 
 CREATE POLICY tenant_all_service_role_metrics_sync_states ON public.campaign_metrics_sync_states
