@@ -66,6 +66,9 @@ export default async function ClientDetailPage({ params }: Props) {
   const typedContacts = (contacts ?? []) as ClientContactRow[];
   const typedDocuments = (documents ?? []) as ClientDocumentRow[];
   const typedIntegrations = (integrations ?? []) as ClientIntegrationRow[];
+  const hasMetaIntegration = typedIntegrations.some(
+    (i) => i.provider === 'meta' && i.status === 'active',
+  );
 
   const canManage = ['operator', 'strategist', 'admin', 'owner'].includes(membership.role);
   const canDelete = ['admin', 'owner'].includes(membership.role);
@@ -253,12 +256,26 @@ export default async function ClientDetailPage({ params }: Props) {
           <div className="flex items-center justify-between mb-4">
             <h2 className="font-semibold text-foreground">Integraciones</h2>
             {canManage && (
-              <a
-                href={`/api/auth/oauth/google/start?organizationId=${organization.id}&clientId=${clientId}&intent=connect`}
-                className="text-xs px-3 py-1.5 bg-primary text-primary-foreground font-medium rounded-md hover:bg-primary-hover transition-colors"
-              >
-                + Conectar Google Ads
-              </a>
+              <div className="flex items-center gap-2">
+                <a
+                  href={`/api/auth/oauth/google/start?organizationId=${organization.id}&clientId=${clientId}&intent=connect`}
+                  className="text-xs px-3 py-1.5 bg-primary text-primary-foreground font-medium rounded-md hover:bg-primary-hover transition-colors"
+                >
+                  + Conectar Google Ads
+                </a>
+                {!hasMetaIntegration ? (
+                  <a
+                    href={`/api/auth/oauth/meta/start?organizationId=${organization.id}&clientId=${clientId}&redirect=true`}
+                    className="text-xs px-3 py-1.5 bg-secondary text-secondary-foreground border border-border font-medium rounded-md hover:bg-secondary/80 transition-colors"
+                  >
+                    + Conectar Meta
+                  </a>
+                ) : (
+                  <span className="text-xs px-2.5 py-1 text-muted-foreground font-medium border border-border rounded-md bg-muted/40">
+                    Meta conectada
+                  </span>
+                )}
+              </div>
             )}
           </div>
 
@@ -278,6 +295,16 @@ export default async function ClientDetailPage({ params }: Props) {
                         {(integration.configuration as Record<string, unknown>)['customer_name'] as string}
                       </p>
                     )}
+                    {typeof (integration.configuration as Record<string, unknown> | null)?.['page_name'] === 'string' && (
+                      <p className="text-xs text-muted-foreground font-medium">
+                        {(integration.configuration as Record<string, unknown>)['page_name'] as string}
+                      </p>
+                    )}
+                    {typeof (integration.configuration as Record<string, unknown> | null)?.['account_name'] === 'string' && (
+                      <p className="text-xs text-muted-foreground font-medium">
+                        {(integration.configuration as Record<string, unknown>)['account_name'] as string}
+                      </p>
+                    )}
                   </div>
                   <div className="flex items-center gap-2">
                     <span
@@ -295,6 +322,14 @@ export default async function ClientDetailPage({ params }: Props) {
                     {integration.provider === 'google' && canManage && (
                       <a
                         href={`/api/auth/oauth/google/start?organizationId=${organization.id}&clientId=${clientId}&intent=reconnect`}
+                        className="text-xs text-foreground font-medium hover:underline ml-2"
+                      >
+                        Reconectar
+                      </a>
+                    )}
+                    {integration.provider === 'meta' && canManage && (
+                      <a
+                        href={`/api/auth/oauth/meta/start?organizationId=${organization.id}&clientId=${clientId}&redirect=true`}
                         className="text-xs text-foreground font-medium hover:underline ml-2"
                       >
                         Reconectar

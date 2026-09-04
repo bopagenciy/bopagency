@@ -63,6 +63,14 @@ export async function GET(request: Request) {
     return NextResponse.json({ error: result.error.message }, { status: 500 });
   }
 
+  const shouldRedirect =
+    searchParams.get('redirect') === 'true' ||
+    Boolean(request.headers.get('accept')?.includes('text/html'));
+
+  if (shouldRedirect) {
+    return NextResponse.redirect(result.value.oauthUrl);
+  }
+
   return NextResponse.json({
     success: true,
     oauthUrl: result.value.oauthUrl,

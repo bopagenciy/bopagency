@@ -83,4 +83,53 @@ describe('Meta OAuth Start Route (Phase 9B.6D)', () => {
       }),
     );
   });
+
+  it('redirects to oauthUrl when redirect=true is passed', async () => {
+    mockGetUser.mockResolvedValue({ data: { user: { id: 'user-1' } }, error: null });
+    mockConnectMetaIntegration.mockResolvedValue({
+      success: true,
+      value: {
+        oauthUrl: 'https://www.facebook.com/v26.0/dialog/oauth?client_id=app-123',
+        stateNonce: 'nonce-123',
+        expiresAt: '2026-09-03T18:00:00Z',
+      },
+    });
+
+    const req = new Request(
+      'https://bop-agency.vercel.app/api/auth/oauth/meta/start?organizationId=org-1&clientId=cli-1&redirect=true',
+    );
+    const res = await GET(req);
+
+    expect(res.status).toBe(307);
+    expect(res.headers.get('location')).toBe(
+      'https://www.facebook.com/v26.0/dialog/oauth?client_id=app-123',
+    );
+  });
+
+  it('redirects to oauthUrl when accept header includes text/html', async () => {
+    mockGetUser.mockResolvedValue({ data: { user: { id: 'user-1' } }, error: null });
+    mockConnectMetaIntegration.mockResolvedValue({
+      success: true,
+      value: {
+        oauthUrl: 'https://www.facebook.com/v26.0/dialog/oauth?client_id=app-123',
+        stateNonce: 'nonce-123',
+        expiresAt: '2026-09-03T18:00:00Z',
+      },
+    });
+
+    const req = new Request(
+      'https://bop-agency.vercel.app/api/auth/oauth/meta/start?organizationId=org-1&clientId=cli-1',
+      {
+        headers: {
+          accept: 'text/html,application/xhtml+xml',
+        },
+      },
+    );
+    const res = await GET(req);
+
+    expect(res.status).toBe(307);
+    expect(res.headers.get('location')).toBe(
+      'https://www.facebook.com/v26.0/dialog/oauth?client_id=app-123',
+    );
+  });
 });
