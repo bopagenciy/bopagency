@@ -21,6 +21,12 @@ vi.mock('@/components/clients/ClientStatusBadge', () => ({
   ClientStatusBadge: () => ({ type: 'badge' }),
 }));
 
+import { TestMetaConnectionButton } from '@/components/clients/TestMetaConnectionButton';
+
+vi.mock('@/components/clients/TestMetaConnectionButton', () => ({
+  TestMetaConnectionButton: vi.fn(),
+}));
+
 vi.mock('next/link', () => ({
   default: ({ children, href }: { children: unknown; href: string }) => ({
     type: 'a',
@@ -34,6 +40,33 @@ vi.mock('@/lib/supabase/server', () => ({
     from: (table: string) => mockSupabaseFrom(table),
   })),
 }));
+
+type ReactLikeNode = {
+  type?: unknown;
+  props?: {
+    children?: unknown;
+    [key: string]: unknown;
+  };
+};
+
+function findElement(
+  node: unknown,
+  predicate: (node: ReactLikeNode) => boolean,
+): ReactLikeNode | null {
+  if (!node) return null;
+  if (typeof node === 'object' && predicate(node as ReactLikeNode)) return node as ReactLikeNode;
+  if (Array.isArray(node)) {
+    for (const child of node) {
+      const found = findElement(child, predicate);
+      if (found) return found;
+    }
+  }
+  const candidate = node as ReactLikeNode;
+  if (candidate.props?.children) {
+    return findElement(candidate.props.children, predicate);
+  }
+  return null;
+}
 
 describe('ClientDetailPage — Integrations Section (Phase 9B.6E)', () => {
   const orgId = 'org-legalink-colombia-123';
@@ -150,23 +183,49 @@ describe('ClientDetailPage — Integrations Section (Phase 9B.6E)', () => {
     // Google Ads button remains available
     expect(stringified).toContain('+ Conectar Google Ads');
 
-    // Integrations list shows active Meta row and Reconectar action
+    // Integrations list shows active Meta row, TestMetaConnectionButton, and Reconectar action
     expect(stringified).toContain('act_1020304050');
     expect(stringified).toContain('Legalink Meta Ads');
     expect(stringified).toContain('Reconectar');
     expect(stringified).toContain(
       `/api/auth/oauth/meta/start?organizationId=${orgId}&clientId=${clientId}&redirect=true`,
     );
+
+    // Verify TestMetaConnectionButton element is present with correct scoped props
+    const testButton = findElement(jsx, (node) => node?.type === TestMetaConnectionButton);
+    expect(testButton).toBeDefined();
+    expect(testButton.props).toEqual({
+      organizationId: orgId,
+      clientId,
+      clientIntegrationId: 'int-meta-789',
+    });
   });
 
-  it('does not render connection buttons when user has viewer role', async () => {
-    setupMocks({ role: 'viewer', integrations: [] });
+  it('does not render connection buttons or test connection button when user has viewer role', async () => {
+    setupMocks({
+      role: 'viewer',
+      integrations: [
+        {
+          id: 'int-meta-789',
+          organization_id: orgId,
+          client_id: clientId,
+          provider: 'meta',
+          external_account_id: 'act_1020304050',
+          status: 'active',
+          configuration: { account_name: 'Legalink Meta Ads' },
+        },
+      ],
+    });
 
     const jsx = await ClientDetailPage({ params: Promise.resolve({ clientId }) });
     const stringified = JSON.stringify(jsx);
 
     expect(stringified).not.toContain('+ Conectar Google Ads');
     expect(stringified).not.toContain('+ Conectar Meta');
+    expect(stringified).not.toContain('Reconectar');
+
+    const testButton = findElement(jsx, (node) => node?.type === TestMetaConnectionButton);
+    expect(testButton).toBeNull();
   });
 
   it('triggers notFound when client does not belong to the active organization', async () => {

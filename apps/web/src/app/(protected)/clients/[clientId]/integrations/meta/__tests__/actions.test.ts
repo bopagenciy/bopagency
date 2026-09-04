@@ -3,11 +3,15 @@ import {
   getPendingMetaResourcesAction,
   finalizeMetaIntegrationAction,
   disconnectMetaIntegrationAction,
+  testMetaConnectionAction,
 } from '../actions';
 
 const mockGetUser = vi.fn();
 const mockFrom = vi.fn();
-const mockAdminClient = { admin: true };
+const mockAdminClient = {
+  admin: true,
+  from: mockFrom,
+};
 
 vi.mock('@/lib/supabase/server', () => ({
   createServerSupabaseClient: vi.fn(() => ({
@@ -23,11 +27,20 @@ vi.mock('@/lib/supabase/server', () => ({
 const mockGetPendingMetaResources = vi.fn();
 const mockFinalizeMetaConnection = vi.fn();
 const mockDisconnectMetaIntegration = vi.fn();
+const mockTestMetaConnection = vi.fn();
 
 vi.mock('@bop-agency/application', () => ({
   getPendingMetaResources: (...args: unknown[]) => mockGetPendingMetaResources(...args),
   finalizeMetaConnection: (...args: unknown[]) => mockFinalizeMetaConnection(...args),
   disconnectMetaIntegration: (...args: unknown[]) => mockDisconnectMetaIntegration(...args),
+  testMetaConnection: (...args: unknown[]) => mockTestMetaConnection(...args),
+}));
+
+vi.mock('@bop-agency/infrastructure', () => ({
+  MetaGraphApiClient: vi.fn().mockImplementation(() => ({})),
+  SupabaseCredentialRepository: vi.fn().mockImplementation(() => ({
+    resolvePageAccessToken: vi.fn(),
+  })),
 }));
 
 describe('Meta Integration Server Actions (Phase 9B.6G Hardened)', () => {
@@ -209,6 +222,52 @@ describe('Meta Integration Server Actions (Phase 9B.6G Hardened)', () => {
 
       const res = await disconnectMetaIntegrationAction('int-uuid-456', orgId, clientId);
       expect(res).toEqual({ success: true });
+    });
+  });
+
+  describe('testMetaConnectionAction (Phase 9B.7B)', () => {
+    it('returns unauthorized when session is missing', async () => {
+      mockGetUser.mockResolvedValue({ data: { user: null } });
+
+      const res = await testMetaConnectionAction(orgId, clientId, 'int-uuid-456');
+      expect(res).toEqual({ success: false, error: 'Unauthorized' });
+    });
+
+    it('returns error when testMetaConnection use case fails', async () => {
+      mockGetUser.mockResolvedValue({ data: { user: { id: 'user-1' } } });
+      mockTestMetaConnection.mockResolvedValue({
+        success: false,
+        error: { code: 'CREDENTIAL_ERROR', message: 'Decryption failed' },
+      });
+
+      const res = await testMetaConnectionAction(orgId, clientId, 'int-uuid-456');
+      expect(res).toEqual({
+        success: false,
+        code: 'CREDENTIAL_ERROR',
+        error: 'Decryption failed',
+      });
+    });
+
+    it('returns success value when testMetaConnection succeeds', async () => {
+      mockGetUser.mockResolvedValue({ data: { user: { id: 'user-1' } } });
+      mockTestMetaConnection.mockResolvedValue({
+        success: true,
+        value: {
+          decryptionSucceeded: true,
+          account: { id: 'act_123', name: 'Legalink Account' },
+          campaignsCount: 1,
+          campaigns: [{ id: 'camp_1', name: 'Legalink Awareness' }],
+          candidateCampaignId: 'camp_1',
+          sampleMetrics: null,
+        },
+      });
+
+      const res = await testMetaConnectionAction(orgId, clientId, 'int-uuid-456', true);
+      expect(res.success).toBe(true);
+      if (res.success) {
+        expect(res.value?.decryptionSucceeded).toBe(true);
+        expect(res.value?.campaignsCount).toBe(1);
+      }
     });
   });
 });

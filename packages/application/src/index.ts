@@ -602,6 +602,14 @@ export type {
   FinalizeMetaAdAccountConnectionInput,
 } from './use-cases/integrations/finalize-meta-connection.use-case';
 
+export { testMetaConnection } from './use-cases/integrations/test-meta-connection.use-case';
+export type {
+  TestMetaConnectionInput,
+  TestMetaConnectionResult,
+  TestMetaConnectionError,
+  TestMetaConnectionDeps,
+} from './use-cases/integrations/test-meta-connection.use-case';
+
 export { getPendingMetaResources } from './use-cases/integrations/get-pending-meta-resources.use-case';
 export type {
   GetPendingMetaResourcesInput,

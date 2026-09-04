@@ -4,6 +4,7 @@ import { requireOrganization } from '@/lib/auth/server';
 import { createServerSupabaseClient } from '@/lib/supabase/server';
 import { Header } from '@/components/layout/Header';
 import { ClientStatusBadge } from '@/components/clients/ClientStatusBadge';
+import { TestMetaConnectionButton } from '@/components/clients/TestMetaConnectionButton';
 import { softDeleteClientAction } from '../actions';
 import type {
   ClientRow,
@@ -359,12 +360,21 @@ export default async function ClientDetailPage({ params, searchParams }: Props) 
                       </a>
                     )}
                     {integration.provider === 'meta' && canManage && (
-                      <a
-                        href={`/api/auth/oauth/meta/start?organizationId=${organization.id}&clientId=${clientId}&redirect=true`}
-                        className="text-xs text-foreground font-medium hover:underline ml-2"
-                      >
-                        Reconectar
-                      </a>
+                      <div className="flex items-center">
+                        {integration.status === 'active' && (
+                          <TestMetaConnectionButton
+                            organizationId={organization.id}
+                            clientId={clientId}
+                            clientIntegrationId={integration.id}
+                          />
+                        )}
+                        <a
+                          href={`/api/auth/oauth/meta/start?organizationId=${organization.id}&clientId=${clientId}&redirect=true`}
+                          className="text-xs text-foreground font-medium hover:underline ml-2"
+                        >
+                          Reconectar
+                        </a>
+                      </div>
                     )}
                   </div>
                 </div>

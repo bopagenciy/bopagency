@@ -433,4 +433,145 @@ describe('MetaGraphApiClient Direct Unit Tests (Phase 8G.2 Hardened)', () => {
       });
     });
   });
+
+  describe('Phase 9B.7B: getAdAccountDetails, discoverAdAccountCampaigns, getSampleCampaignInsights', () => {
+    it('getAdAccountDetails retrieves and normalizes ad account metadata', async () => {
+      const mockFetch = vi.fn().mockResolvedValue({
+        ok: true,
+        status: 200,
+        json: vi.fn().mockResolvedValue({
+          id: 'act_906768512465553',
+          account_id: '906768512465553',
+          name: 'Legalink Colombia',
+          account_status: 1,
+          currency: 'COP',
+          timezone_name: 'America/Bogota',
+        }),
+      });
+
+      const client = new MetaGraphApiClient(mockFetch);
+      const details = await client.getAdAccountDetails('906768512465553', 'secret-meta-token');
+
+      expect(details).toEqual({
+        id: 'act_906768512465553',
+        canonicalAdAccountId: '906768512465553',
+        name: 'Legalink Colombia',
+        account_status: 1,
+        currency: 'COP',
+        timezone_name: 'America/Bogota',
+      });
+
+      const calledUrl = new URL((mockFetch.mock.calls[0]?.[0] ?? '') as string);
+      expect(calledUrl.pathname).toBe('/v21.0/act_906768512465553');
+      expect(calledUrl.searchParams.get('fields')).toBe('id,name,account_id,account_status,currency,timezone_name');
+      expect(calledUrl.searchParams.get('access_token')).toBe('secret-meta-token');
+    });
+
+    it('discoverAdAccountCampaigns retrieves campaigns with limit and safe fields', async () => {
+      const mockFetch = vi.fn().mockResolvedValue({
+        ok: true,
+        status: 200,
+        json: vi.fn().mockResolvedValue({
+          data: [
+            {
+              id: 'camp_101',
+              name: 'Legalink Brand Awareness',
+              status: 'ACTIVE',
+              effective_status: 'ACTIVE',
+              created_time: '2026-08-01T10:00:00+0000',
+              updated_time: '2026-08-15T15:30:00+0000',
+            },
+          ],
+        }),
+      });
+
+      const client = new MetaGraphApiClient(mockFetch);
+      const campaigns = await client.discoverAdAccountCampaigns('act_906768512465553', 'secret-token', 5);
+
+      expect(campaigns).toEqual([
+        {
+          id: 'camp_101',
+          name: 'Legalink Brand Awareness',
+          status: 'ACTIVE',
+          effective_status: 'ACTIVE',
+          created_time: '2026-08-01T10:00:00+0000',
+          updated_time: '2026-08-15T15:30:00+0000',
+        },
+      ]);
+
+      const calledUrl = new URL((mockFetch.mock.calls[0]?.[0] ?? '') as string);
+      expect(calledUrl.pathname).toBe('/v21.0/act_906768512465553/campaigns');
+      expect(calledUrl.searchParams.get('limit')).toBe('5');
+    });
+
+    it('getSampleCampaignInsights retrieves read-only insights without persistence', async () => {
+      const mockFetch = vi.fn().mockResolvedValue({
+        ok: true,
+        status: 200,
+        json: vi.fn().mockResolvedValue({
+          data: [
+            {
+              campaign_id: 'camp_101',
+              date_start: '2026-08-25',
+              date_stop: '2026-08-31',
+              spend: '150000.50',
+              impressions: '12400',
+              reach: '9800',
+              clicks: '350',
+              account_currency: 'COP',
+            },
+          ],
+        }),
+      });
+
+      const client = new MetaGraphApiClient(mockFetch);
+      const insights = await client.getSampleCampaignInsights(
+        '906768512465553',
+        'camp_101',
+        'secret-token',
+        { since: '2026-08-25', until: '2026-08-31' },
+      );
+
+      expect(insights).toHaveLength(1);
+      expect(insights[0]).toEqual({
+        campaign_id: 'camp_101',
+        date_start: '2026-08-25',
+        date_stop: '2026-08-31',
+        spend: '150000.50',
+        impressions: 12400,
+        reach: 9800,
+        clicks: 350,
+        account_currency: 'COP',
+      });
+
+      const calledUrl = new URL((mockFetch.mock.calls[0]?.[0] ?? '') as string);
+      expect(calledUrl.pathname).toBe('/v21.0/act_906768512465553/insights');
+      expect(calledUrl.searchParams.get('level')).toBe('campaign');
+      expect(calledUrl.searchParams.get('access_token')).toBe('secret-token');
+    });
+
+    it('uses the canonical META_GRAPH_API_VERSION configured in environment (e.g. v26.0)', async () => {
+      process.env['META_GRAPH_API_VERSION'] = 'v26.0';
+
+      const mockFetch = vi.fn().mockResolvedValue({
+        ok: true,
+        status: 200,
+        json: vi.fn().mockResolvedValue({
+          id: 'act_906768512465553',
+          name: 'Legalink Colombia',
+          account_id: '906768512465553',
+          account_status: 1,
+          currency: 'COP',
+          timezone_name: 'America/Bogota',
+        }),
+      });
+
+      const client = new MetaGraphApiClient(mockFetch);
+      await client.getAdAccountDetails('906768512465553', 'token-abc');
+
+      const calledUrl = new URL((mockFetch.mock.calls[0]?.[0] ?? '') as string);
+      expect(calledUrl.pathname).toBe('/v26.0/act_906768512465553');
+      expect(calledUrl.origin).toBe('https://graph.facebook.com');
+    });
+  });
 });

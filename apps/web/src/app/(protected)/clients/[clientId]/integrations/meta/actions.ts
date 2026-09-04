@@ -6,7 +6,12 @@ import {
   getPendingMetaResources,
   finalizeMetaConnection,
   disconnectMetaIntegration,
+  testMetaConnection,
 } from '@bop-agency/application';
+import {
+  MetaGraphApiClient,
+  SupabaseCredentialRepository,
+} from '@bop-agency/infrastructure';
 
 async function getOrgRepository(supabase: SupabaseClient) {
   return {
@@ -129,4 +134,78 @@ export async function disconnectMetaIntegrationAction(
   }
 
   return { success: true };
+}
+
+export async function testMetaConnectionAction(
+  organizationId: string,
+  clientId: string,
+  clientIntegrationId: string,
+  fetchSampleMetrics?: boolean,
+) {
+  // 1. Authenticate the current user
+  const supabase = await createServerSupabaseClient();
+  const {
+    data: { user },
+  } = await supabase.auth.getUser();
+
+  if (!user) {
+    return { success: false, error: 'Unauthorized' };
+  }
+
+  // 2. Build repositories using adminClient for service-role decryption boundary
+  const adminClient = createAdminClient();
+  const orgRepo = await getOrgRepository(supabase);
+  const credentialRepo = new SupabaseCredentialRepository(adminClient);
+  const metaGraphApiClient = new MetaGraphApiClient();
+
+  const clientRepo = {
+    findById: async (cId: string, oId: string) => {
+      const { data } = await adminClient
+        .from('clients')
+        .select('id, organization_id')
+        .eq('id', cId)
+        .eq('organization_id', oId)
+        .maybeSingle();
+      return data;
+    },
+  };
+
+  const integrationRepo = {
+    findById: async (intId: string, cId: string, oId: string) => {
+      const { data } = await adminClient
+        .from('client_integrations')
+        .select('id, organization_id, client_id, provider, external_account_id, status, configuration')
+        .eq('id', intId)
+        .eq('client_id', cId)
+        .eq('organization_id', oId)
+        .maybeSingle();
+      return data;
+    },
+  };
+
+  // 3. Execute testMetaConnection use case
+  const result = await testMetaConnection(
+    {
+      organizationId,
+      clientId,
+      clientIntegrationId,
+      actorUserId: user.id,
+      fetchSampleMetrics: fetchSampleMetrics ?? false,
+    },
+    {
+      organizationRepository: orgRepo,
+      clientRepository: clientRepo,
+      integrationRepository: integrationRepo,
+      credentialRepository: {
+        resolvePageAccessToken: (id: string) => credentialRepo.resolvePageAccessToken(id),
+      },
+      metaGraphApiClient,
+    },
+  );
+
+  if (!result.success) {
+    return { success: false, error: result.error.message, code: result.error.code };
+  }
+
+  return { success: true, value: result.value };
 }

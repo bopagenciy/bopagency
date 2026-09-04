@@ -24,6 +24,35 @@ export type DiscoveredMetaAdAccount = {
   timezone_name: string | null;
 };
 
+export type MetaAdAccountDetails = {
+  id: string;
+  canonicalAdAccountId: string;
+  name: string;
+  account_status: number;
+  currency: string | null;
+  timezone_name: string | null;
+};
+
+export type MetaDiscoveredCampaign = {
+  id: string;
+  name: string;
+  status: string;
+  effective_status?: string | null;
+  created_time?: string | null;
+  updated_time?: string | null;
+};
+
+export type MetaSampleCampaignMetrics = {
+  campaign_id: string;
+  date_start: string;
+  date_stop: string;
+  spend: string | null;
+  impressions: number | null;
+  reach: number | null;
+  clicks: number | null;
+  account_currency: string | null;
+};
+
 export type MetaPublishResult = {
   id: string;
   post_id?: string;
@@ -529,5 +558,113 @@ export class MetaGraphApiClient {
       requestId,
       httpStatus: res.status,
     };
+  }
+
+  /**
+   * Phase 9B.7B — Consulta LECTURA PURA los metadatos de una cuenta publicitaria específica.
+   */
+  async getAdAccountDetails(adAccountId: string, accessToken: string): Promise<MetaAdAccountDetails> {
+    const canonical = adAccountId.replace(/^act_/, '').trim();
+    const url = new URL(`${this.baseUrl}/act_${canonical}`);
+    url.searchParams.set('fields', 'id,name,account_id,account_status,currency,timezone_name');
+    url.searchParams.set('access_token', accessToken);
+
+    const res = await this.fetchFn(url.toString(), { method: 'GET' });
+    const data = await res.json();
+
+    if (!res.ok || data.error) {
+      throw new Error(
+        `Meta Ad Account query failed (HTTP ${res.status}): ${data.error?.message || res.statusText}`,
+      );
+    }
+
+    const rawId = String(data.id || '');
+    return {
+      id: rawId.startsWith('act_') ? rawId : `act_${canonical}`,
+      canonicalAdAccountId: canonical,
+      name: String(data.name || `Ad Account ${canonical}`),
+      account_status: typeof data.account_status === 'number' ? data.account_status : 1,
+      currency: data.currency ? String(data.currency) : null,
+      timezone_name: data.timezone_name ? String(data.timezone_name) : null,
+    };
+  }
+
+  /**
+   * Phase 9B.7B — Descubre hasta N campañas asociadas a una cuenta publicitaria.
+   */
+  async discoverAdAccountCampaigns(
+    adAccountId: string,
+    accessToken: string,
+    limit: number = 10,
+  ): Promise<MetaDiscoveredCampaign[]> {
+    const canonical = adAccountId.replace(/^act_/, '').trim();
+    const url = new URL(`${this.baseUrl}/act_${canonical}/campaigns`);
+    url.searchParams.set('fields', 'id,name,status,effective_status,created_time,updated_time');
+    url.searchParams.set('limit', String(Math.min(Math.max(1, limit), 25)));
+    url.searchParams.set('access_token', accessToken);
+
+    const res = await this.fetchFn(url.toString(), { method: 'GET' });
+    const data = await res.json();
+
+    if (!res.ok || data.error) {
+      throw new Error(
+        `Meta campaigns discovery failed (HTTP ${res.status}): ${data.error?.message || res.statusText}`,
+      );
+    }
+
+    if (!data.data || !Array.isArray(data.data)) {
+      return [];
+    }
+
+    return (data.data as Array<Record<string, unknown>>).map((item) => ({
+      id: String(item['id'] || ''),
+      name: String(item['name'] || 'Unnamed Campaign'),
+      status: String(item['status'] || 'UNKNOWN'),
+      effective_status: item['effective_status'] ? String(item['effective_status']) : null,
+      created_time: item['created_time'] ? String(item['created_time']) : null,
+      updated_time: item['updated_time'] ? String(item['updated_time']) : null,
+    }));
+  }
+
+  /**
+   * Phase 9B.7B — Consulta LECTURA PURA de una ventana de métricas para una campaña de muestra.
+   */
+  async getSampleCampaignInsights(
+    adAccountId: string,
+    campaignId: string,
+    accessToken: string,
+    dateRange: { since: string; until: string },
+  ): Promise<MetaSampleCampaignMetrics[]> {
+    const canonical = adAccountId.replace(/^act_/, '').trim();
+    const url = new URL(`${this.baseUrl}/act_${canonical}/insights`);
+    url.searchParams.set('level', 'campaign');
+    url.searchParams.set('time_range', JSON.stringify({ since: dateRange.since, until: dateRange.until }));
+    url.searchParams.set('fields', 'campaign_id,date_start,date_stop,spend,impressions,reach,clicks,account_currency');
+    url.searchParams.set('filtering', JSON.stringify([{ field: 'campaign.id', operator: 'IN', value: [campaignId] }]));
+    url.searchParams.set('access_token', accessToken);
+
+    const res = await this.fetchFn(url.toString(), { method: 'GET' });
+    const data = await res.json();
+
+    if (!res.ok || data.error) {
+      throw new Error(
+        `Meta campaign insights query failed (HTTP ${res.status}): ${data.error?.message || res.statusText}`,
+      );
+    }
+
+    if (!data.data || !Array.isArray(data.data)) {
+      return [];
+    }
+
+    return (data.data as Array<Record<string, unknown>>).map((row) => ({
+      campaign_id: String(row['campaign_id'] || campaignId),
+      date_start: String(row['date_start'] || dateRange.since),
+      date_stop: String(row['date_stop'] || dateRange.until),
+      spend: row['spend'] !== undefined && row['spend'] !== null ? String(row['spend']) : null,
+      impressions: typeof row['impressions'] === 'number' ? row['impressions'] : row['impressions'] ? Number(row['impressions']) : null,
+      reach: typeof row['reach'] === 'number' ? row['reach'] : row['reach'] ? Number(row['reach']) : null,
+      clicks: typeof row['clicks'] === 'number' ? row['clicks'] : row['clicks'] ? Number(row['clicks']) : null,
+      account_currency: row['account_currency'] ? String(row['account_currency']) : null,
+    }));
   }
 }
