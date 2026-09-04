@@ -98,10 +98,12 @@ export class MetaGraphApiClient {
 
   /**
    * Descubre Páginas de Facebook administradas por el usuario y sus cuentas de Instagram Professional vinculadas (/me/accounts).
+   * Resiliente: solo requiere permisos básicos de páginas (id, name, access_token).
+   * El enriquecimiento de Instagram es opcional e individual por página; si falla (ej. falta instagram_basic), la página se preserva.
    */
   async discoverPagesAndAccounts(userAccessToken: string): Promise<DiscoveredMetaPage[]> {
     const url = new URL(`${this.baseUrl}/me/accounts`);
-    url.searchParams.set('fields', 'id,name,access_token,instagram_business_account{id,username}');
+    url.searchParams.set('fields', 'id,name,access_token');
     url.searchParams.set('access_token', userAccessToken);
 
     const res = await this.fetchFn(url.toString(), { method: 'GET' });
@@ -111,49 +113,151 @@ export class MetaGraphApiClient {
       throw new Error(`Meta accounts discovery failed: ${data.error?.message || res.statusText}`);
     }
 
-    return (data.data as Array<Record<string, unknown>>).map((item) => {
-      const ig = item['instagram_business_account'] as
-        { id?: string; username?: string } | undefined;
-      return {
-        page_id: String(item['id'] || ''),
-        page_name: String(item['name'] || 'Facebook Page'),
-        page_access_token: String(item['access_token'] || ''),
-        instagram_account_id: ig?.id ? String(ig.id) : null,
-        instagram_username: ig?.username ? String(ig.username) : null,
-      };
-    });
+    const pages: DiscoveredMetaPage[] = [];
+
+    for (const item of data.data as Array<Record<string, unknown>>) {
+      const pageId = String(item['id'] || '');
+      const pageName = String(item['name'] || 'Facebook Page');
+      const pageToken = String(item['access_token'] || '');
+
+      let igAccountId: string | null = null;
+      let igUsername: string | null = null;
+
+      // Enriquecimiento opcional de Instagram con aislamiento de fallos
+      if (pageId && pageToken) {
+        try {
+          const igUrl = new URL(`${this.baseUrl}/${pageId}`);
+          igUrl.searchParams.set('fields', 'instagram_business_account{id,username}');
+          igUrl.searchParams.set('access_token', pageToken);
+
+          const igRes = await this.fetchFn(igUrl.toString(), { method: 'GET' });
+          if (igRes.ok) {
+            const igData = await igRes.json();
+            const ig = igData?.['instagram_business_account'] as
+              { id?: string; username?: string } | undefined;
+            if (ig?.id) {
+              igAccountId = String(ig.id);
+              igUsername = ig.username ? String(ig.username) : null;
+            }
+          }
+        } catch {
+          // Enriquecimiento opcional falló de forma segura; se preserva la página
+        }
+      }
+
+      pages.push({
+        page_id: pageId,
+        page_name: pageName,
+        page_access_token: pageToken,
+        instagram_account_id: igAccountId,
+        instagram_username: igUsername,
+      });
+    }
+
+    return pages;
   }
 
   /**
-   * Descubre Cuentas Publicitarias (Meta Ad Accounts) a las que tiene acceso el usuario (/me/adaccounts).
+   * Descubre Cuentas Publicitarias (Meta Ad Accounts).
    * Requiere permiso 'ads_read'.
+   * Estrategia de descubrimiento robusta:
+   * 1. Consulta /me/adaccounts (estándar para usuarios humanos).
+   * 2. Si /me/adaccounts está vacío o falla, consulta /{id}/assigned_ad_accounts
+   *    (endpoint canónico para tokens de System User / Business Login).
+   * 3. Registra diagnósticos seguros (sin exponer tokens ni credenciales).
    */
   async discoverAdAccounts(userAccessToken: string): Promise<DiscoveredMetaAdAccount[]> {
-    const url = new URL(`${this.baseUrl}/me/adaccounts`);
-    url.searchParams.set('fields', 'id,name,account_id,account_status,currency,timezone_name');
-    url.searchParams.set('access_token', userAccessToken);
+    const fields = 'id,name,account_id,account_status,currency,timezone_name';
 
-    const res = await this.fetchFn(url.toString(), { method: 'GET' });
-    const data = await res.json();
+    const normalizeAccounts = (dataList: Array<Record<string, unknown>>): DiscoveredMetaAdAccount[] => {
+      return dataList.map((item) => {
+        const rawId = String(item['id'] || '');
+        const rawAccountId = item['account_id'] ? String(item['account_id']) : rawId;
+        const canonical = rawAccountId.startsWith('act_') ? rawAccountId.slice(4) : rawAccountId;
 
-    if (!res.ok || !data.data || !Array.isArray(data.data)) {
-      throw new Error(`Meta ad accounts discovery failed: ${data.error?.message || res.statusText}`);
+        return {
+          id: rawId.startsWith('act_') ? rawId : `act_${rawId}`,
+          canonicalAdAccountId: canonical,
+          name: String(item['name'] || `Ad Account ${canonical}`),
+          account_status: typeof item['account_status'] === 'number' ? item['account_status'] : 1,
+          currency: item['currency'] ? String(item['currency']) : null,
+          timezone_name: item['timezone_name'] ? String(item['timezone_name']) : null,
+        };
+      });
+    };
+
+    // Intento 1: /me/adaccounts
+    const meUrl = new URL(`${this.baseUrl}/me/adaccounts`);
+    meUrl.searchParams.set('fields', fields);
+    meUrl.searchParams.set('access_token', userAccessToken);
+
+    let meError: string | null = null;
+    try {
+      const res = await this.fetchFn(meUrl.toString(), { method: 'GET' });
+      const data = await res.json();
+
+      if (res.ok && Array.isArray(data.data)) {
+        if (data.data.length > 0) {
+          return normalizeAccounts(data.data as Array<Record<string, unknown>>);
+        }
+      } else if (!res.ok) {
+        meError = data.error?.message || res.statusText;
+        console.warn('[Meta Graph API] /me/adaccounts discovery failed', {
+          status: res.status,
+          errorCode: data.error?.code,
+          errorSubcode: data.error?.error_subcode,
+          errorType: data.error?.type,
+        });
+      } else {
+        meError = 'Response data is malformed';
+      }
+    } catch (err: unknown) {
+      meError = err instanceof Error ? err.message : 'Network failure';
     }
 
-    return (data.data as Array<Record<string, unknown>>).map((item) => {
-      const rawId = String(item['id'] || '');
-      const rawAccountId = item['account_id'] ? String(item['account_id']) : rawId;
-      const canonical = rawAccountId.startsWith('act_') ? rawAccountId.slice(4) : rawAccountId;
+    // Intento 2: /{system_user_id}/assigned_ad_accounts (System User / Business Login)
+    try {
+      const userUrl = new URL(`${this.baseUrl}/me`);
+      userUrl.searchParams.set('fields', 'id');
+      userUrl.searchParams.set('access_token', userAccessToken);
 
-      return {
-        id: rawId.startsWith('act_') ? rawId : `act_${rawId}`,
-        canonicalAdAccountId: canonical,
-        name: String(item['name'] || `Ad Account ${canonical}`),
-        account_status: typeof item['account_status'] === 'number' ? item['account_status'] : 1,
-        currency: item['currency'] ? String(item['currency']) : null,
-        timezone_name: item['timezone_name'] ? String(item['timezone_name']) : null,
-      };
-    });
+      const userRes = await this.fetchFn(userUrl.toString(), { method: 'GET' });
+      if (userRes.ok) {
+        const userData = await userRes.json();
+        const actorId = userData?.id ? String(userData.id) : null;
+        if (actorId) {
+          const assignedUrl = new URL(`${this.baseUrl}/${actorId}/assigned_ad_accounts`);
+          assignedUrl.searchParams.set('fields', fields);
+          assignedUrl.searchParams.set('access_token', userAccessToken);
+
+          const assignedRes = await this.fetchFn(assignedUrl.toString(), { method: 'GET' });
+          const assignedData = await assignedRes.json();
+
+          if (assignedRes.ok && Array.isArray(assignedData.data) && assignedData.data.length > 0) {
+            return normalizeAccounts(assignedData.data as Array<Record<string, unknown>>);
+          } else if (!assignedRes.ok) {
+            console.warn('[Meta Graph API] /{actorId}/assigned_ad_accounts discovery failed', {
+              status: assignedRes.status,
+              actorId,
+              errorCode: assignedData.error?.code,
+              errorSubcode: assignedData.error?.error_subcode,
+              errorType: assignedData.error?.type,
+            });
+          }
+        }
+      }
+    } catch (fallbackErr: unknown) {
+      console.warn('[Meta Graph API] assigned_ad_accounts fallback error', {
+        message: fallbackErr instanceof Error ? fallbackErr.message : String(fallbackErr),
+      });
+    }
+
+    // Si hubo un error explícito de API y ninguno de los dos métodos encontró cuentas, propagar error
+    if (meError) {
+      throw new Error(`Meta ad accounts discovery failed: ${meError}`);
+    }
+
+    return [];
   }
 
   /**

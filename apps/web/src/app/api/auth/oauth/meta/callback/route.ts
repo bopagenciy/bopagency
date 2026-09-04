@@ -16,6 +16,10 @@ import {
   MetaGraphApiClient,
   SupabasePendingConnectionRepository,
 } from '@bop-agency/infrastructure';
+import type {
+  DiscoveredMetaPage,
+  DiscoveredMetaAdAccount,
+} from '@bop-agency/infrastructure';
 
 export async function GET(request: Request) {
   const requestUrl = new URL(request.url);
@@ -26,13 +30,13 @@ export async function GET(request: Request) {
 
   if (errorParam) {
     return NextResponse.redirect(
-      `${requestUrl.origin}/protected/clients?error=${encodeURIComponent(errorParam)}`,
+      `${requestUrl.origin}/clients?error=${encodeURIComponent(errorParam)}`,
     );
   }
 
   if (!code || !stateNonce) {
     return NextResponse.redirect(
-      `${requestUrl.origin}/protected/clients?error=missing_oauth_parameters`,
+      `${requestUrl.origin}/clients?error=missing_oauth_parameters`,
     );
   }
 
@@ -70,9 +74,11 @@ export async function GET(request: Request) {
 
   if (stateErr || !stateResult || stateResult.success !== true) {
     const errMsg = stateResult?.message || stateErr?.message || 'Invalid or expired OAuth state';
-    return NextResponse.redirect(
-      `${requestUrl.origin}/protected/clients?error=${encodeURIComponent(errMsg)}`,
-    );
+    const targetClientId = stateResult?.client_id;
+    const redirectPath = targetClientId
+      ? `/clients/${targetClientId}?error=${encodeURIComponent(errMsg)}`
+      : `/clients?error=${encodeURIComponent(errMsg)}`;
+    return NextResponse.redirect(`${requestUrl.origin}${redirectPath}`);
   }
 
   const organizationId = stateResult.organization_id || '';
@@ -85,14 +91,38 @@ export async function GET(request: Request) {
     const shortUserToken = await apiClient.exchangeCodeForUserToken(code, redirectUri);
     const longUserToken = await apiClient.exchangeUserTokenForLongLived(shortUserToken);
 
-    const [pages, adAccounts] = await Promise.all([
-      apiClient.discoverPagesAndAccounts(longUserToken).catch(() => []),
-      apiClient.discoverAdAccounts(longUserToken).catch(() => []),
-    ]);
+    let pages: DiscoveredMetaPage[] = [];
+    let adAccounts: DiscoveredMetaAdAccount[] = [];
+    let pageDiscoveryError: string | null = null;
+    let adAccountDiscoveryError: string | null = null;
 
-    if ((!pages || pages.length === 0) && (!adAccounts || adAccounts.length === 0)) {
+    try {
+      pages = await apiClient.discoverPagesAndAccounts(longUserToken);
+    } catch (err: unknown) {
+      pageDiscoveryError = err instanceof Error ? err.message : 'Page discovery failed';
+      console.error('[Meta OAuth Callback] Page discovery failed:', {
+        error: pageDiscoveryError,
+        clientId,
+      });
+    }
+
+    try {
+      adAccounts = await apiClient.discoverAdAccounts(longUserToken);
+    } catch (err: unknown) {
+      adAccountDiscoveryError = err instanceof Error ? err.message : 'Ad account discovery failed';
+      console.error('[Meta OAuth Callback] Ad account discovery failed:', {
+        error: adAccountDiscoveryError,
+        clientId,
+      });
+    }
+
+    if (pages.length === 0 && adAccounts.length === 0) {
+      const reason =
+        pageDiscoveryError && adAccountDiscoveryError
+          ? 'Failed to discover Facebook Pages and Meta Ad Accounts'
+          : 'No Facebook Pages or Meta Ad Accounts found for this account';
       return NextResponse.redirect(
-        `${requestUrl.origin}/clients/${clientId}?error=${encodeURIComponent('No Facebook Pages or Meta Ad Accounts found for this account')}`,
+        `${requestUrl.origin}/clients/${clientId}?error=${encodeURIComponent(reason)}`,
       );
     }
 

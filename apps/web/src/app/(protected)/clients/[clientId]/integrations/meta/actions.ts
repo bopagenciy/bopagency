@@ -1,7 +1,7 @@
 'use server';
 
 import type { SupabaseClient } from '@supabase/supabase-js';
-import { createServerSupabaseClient } from '@/lib/supabase/server';
+import { createServerSupabaseClient, createAdminClient } from '@/lib/supabase/server';
 import {
   getPendingMetaResources,
   finalizeMetaConnection,
@@ -27,6 +27,7 @@ export async function getPendingMetaResourcesAction(
   organizationId: string,
   clientId: string,
 ) {
+  // 1. Authenticate the current user with user-scoped client
   const supabase = await createServerSupabaseClient();
   const {
     data: { user },
@@ -36,9 +37,30 @@ export async function getPendingMetaResourcesAction(
     return { success: false, error: 'Unauthorized' };
   }
 
+  // 2. Resolve organization membership & role
   const orgRepo = await getOrgRepository(supabase);
+  const member = await orgRepo.findMember(organizationId, user.id);
+  if (!member || !['owner', 'admin', 'strategist'].includes(member.role?.toLowerCase() || '')) {
+    return { success: false, error: 'Forbidden' };
+  }
+
+  // 3. Verify client exists and belongs to the requested organization
+  const { data: client, error: clientErr } = await supabase
+    .from('clients')
+    .select('id, organization_id')
+    .eq('id', clientId)
+    .eq('organization_id', organizationId)
+    .maybeSingle();
+
+  if (clientErr || !client) {
+    return { success: false, error: 'Client not found or access denied' };
+  }
+
+  // 4. Perform service-role read (RLS boundary) through getPendingMetaResources
+  // which verifies pending session user_id, organization_id, client_id, and expiry
+  const adminClient = createAdminClient();
   const result = await getPendingMetaResources(
-    supabase,
+    adminClient,
     {
       pendingConnectionId,
       organizationId,

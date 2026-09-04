@@ -260,5 +260,177 @@ describe('MetaGraphApiClient Direct Unit Tests (Phase 8G.2 Hardened)', () => {
         /Meta ad accounts discovery failed/,
       );
     });
+
+    it('falls back to /{id}/assigned_ad_accounts when /me/adaccounts is empty', async () => {
+      const mockFetch = vi.fn()
+        // 1. /me/adaccounts returns empty data
+        .mockResolvedValueOnce({
+          ok: true,
+          json: vi.fn().mockResolvedValue({ data: [] }),
+        })
+        // 2. /me?fields=id returns system user id
+        .mockResolvedValueOnce({
+          ok: true,
+          json: vi.fn().mockResolvedValue({ id: 'sys-user-888' }),
+        })
+        // 3. /sys-user-888/assigned_ad_accounts returns assigned accounts
+        .mockResolvedValueOnce({
+          ok: true,
+          json: vi.fn().mockResolvedValue({
+            data: [
+              {
+                id: 'act_998877',
+                account_id: '998877',
+                name: 'Business Assigned Account',
+                account_status: 1,
+                currency: 'COP',
+                timezone_name: 'America/Bogota',
+              },
+            ],
+          }),
+        });
+
+      const client = new MetaGraphApiClient(mockFetch);
+      const accounts = await client.discoverAdAccounts('system-token-xyz');
+
+      expect(accounts).toHaveLength(1);
+      expect(accounts[0]).toEqual({
+        id: 'act_998877',
+        canonicalAdAccountId: '998877',
+        name: 'Business Assigned Account',
+        account_status: 1,
+        currency: 'COP',
+        timezone_name: 'America/Bogota',
+      });
+
+      // Verify the fallback URL
+      const thirdCall = mockFetch.mock.calls[2];
+      const assignedUrl = new URL(String(thirdCall?.[0] ?? ''));
+      expect(assignedUrl.pathname).toBe('/v21.0/sys-user-888/assigned_ad_accounts');
+    });
+
+    it('falls back to /{id}/assigned_ad_accounts when /me/adaccounts returns an error', async () => {
+      const mockFetch = vi.fn()
+        // 1. /me/adaccounts returns 400 error
+        .mockResolvedValueOnce({
+          ok: false,
+          status: 400,
+          json: vi.fn().mockResolvedValue({
+            error: { message: 'Cannot call /me/adaccounts for system user', code: 100 },
+          }),
+        })
+        // 2. /me?fields=id returns system user id
+        .mockResolvedValueOnce({
+          ok: true,
+          json: vi.fn().mockResolvedValue({ id: 'sys-user-999' }),
+        })
+        // 3. /sys-user-999/assigned_ad_accounts returns assigned accounts
+        .mockResolvedValueOnce({
+          ok: true,
+          json: vi.fn().mockResolvedValue({
+            data: [
+              {
+                id: 'act_554433',
+                account_id: '554433',
+                name: 'Legalink Ads',
+                account_status: 1,
+                currency: 'USD',
+                timezone_name: 'America/Bogota',
+              },
+            ],
+          }),
+        });
+
+      const client = new MetaGraphApiClient(mockFetch);
+      const accounts = await client.discoverAdAccounts('system-token-xyz');
+
+      expect(accounts).toHaveLength(1);
+      expect(accounts[0]?.canonicalAdAccountId).toBe('554433');
+    });
+  });
+
+  describe('discoverPagesAndAccounts (Phase 9B.6G Resilience)', () => {
+    it('discovers pages using only basic fields without requesting instagram on /me/accounts', async () => {
+      const mockFetch = vi.fn()
+        .mockResolvedValueOnce({
+          ok: true,
+          json: vi.fn().mockResolvedValue({
+            data: [
+              {
+                id: 'page-101',
+                name: 'Legalink Colombia Page',
+                access_token: 'page-access-token-101',
+              },
+            ],
+          }),
+        })
+        // Optional Instagram enrichment for page-101
+        .mockResolvedValueOnce({
+          ok: true,
+          json: vi.fn().mockResolvedValue({
+            instagram_business_account: {
+              id: 'ig-202',
+              username: 'legalinkcol',
+            },
+          }),
+        });
+
+      const client = new MetaGraphApiClient(mockFetch);
+      const pages = await client.discoverPagesAndAccounts('user-long-token');
+
+      expect(pages).toHaveLength(1);
+      expect(pages[0]).toEqual({
+        page_id: 'page-101',
+        page_name: 'Legalink Colombia Page',
+        page_access_token: 'page-access-token-101',
+        instagram_account_id: 'ig-202',
+        instagram_username: 'legalinkcol',
+      });
+
+      // Confirm /me/accounts only requested id,name,access_token
+      const firstCallUrl = new URL(String(mockFetch.mock.calls[0]?.[0] ?? ''));
+      expect(firstCallUrl.pathname).toBe('/v21.0/me/accounts');
+      expect(firstCallUrl.searchParams.get('fields')).toBe('id,name,access_token');
+    });
+
+    it('preserves Facebook page when Instagram enrichment fails (e.g. missing instagram_basic permission)', async () => {
+      const mockFetch = vi.fn()
+        .mockResolvedValueOnce({
+          ok: true,
+          json: vi.fn().mockResolvedValue({
+            data: [
+              {
+                id: 'page-303',
+                name: 'BopAgency Page',
+                access_token: 'page-access-token-303',
+              },
+            ],
+          }),
+        })
+        // Instagram enrichment returns 400 permissions error
+        .mockResolvedValueOnce({
+          ok: false,
+          status: 400,
+          json: vi.fn().mockResolvedValue({
+            error: {
+              message: 'Permissions error: instagram_basic is missing',
+              code: 200,
+            },
+          }),
+        });
+
+      const client = new MetaGraphApiClient(mockFetch);
+      const pages = await client.discoverPagesAndAccounts('user-long-token');
+
+      // Page is preserved with null Instagram data
+      expect(pages).toHaveLength(1);
+      expect(pages[0]).toEqual({
+        page_id: 'page-303',
+        page_name: 'BopAgency Page',
+        page_access_token: 'page-access-token-303',
+        instagram_account_id: null,
+        instagram_username: null,
+      });
+    });
   });
 });

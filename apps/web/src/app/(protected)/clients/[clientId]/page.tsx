@@ -13,16 +13,27 @@ import type {
 } from '@/lib/supabase/types';
 
 type Params = Promise<{ clientId: string }>;
+type SearchParams = Promise<{
+  error?: string;
+  integration?: string;
+}>;
 
-type Props = { params: Params };
+type Props = {
+  params: Params;
+  searchParams?: SearchParams;
+};
 
 export async function generateMetadata({ params }: Props) {
   const { clientId } = await params;
   return { title: `Cliente: ${clientId}` };
 }
 
-export default async function ClientDetailPage({ params }: Props) {
+export default async function ClientDetailPage({ params, searchParams }: Props) {
   const { clientId } = await params;
+  const resolvedSearchParams = searchParams ? await searchParams : undefined;
+  const errorParam = resolvedSearchParams?.error;
+  const integrationParam = resolvedSearchParams?.integration;
+
   const { organization, membership } = await requireOrganization();
   const supabase = await createServerSupabaseClient();
 
@@ -104,6 +115,26 @@ export default async function ClientDetailPage({ params }: Props) {
       />
 
       <div className="p-6 max-w-5xl mx-auto space-y-6">
+        {errorParam && (
+          <div
+            role="alert"
+            className="p-4 rounded-lg bg-red-500/10 border border-red-500/20 text-red-600 dark:text-red-400 text-sm flex items-start gap-3"
+          >
+            <span className="font-semibold shrink-0">Error de integración:</span>
+            <span>{errorParam}</span>
+          </div>
+        )}
+
+        {integrationParam === 'connected' && (
+          <div
+            role="status"
+            className="p-4 rounded-lg bg-emerald-500/10 border border-emerald-500/20 text-emerald-700 dark:text-emerald-400 text-sm flex items-start gap-3"
+          >
+            <span className="font-semibold shrink-0">Integración conectada:</span>
+            <span>La integración fue vinculada y guardada exitosamente.</span>
+          </div>
+        )}
+
         {/* Client header card */}
         <div className="bg-card text-card-foreground rounded-lg border border-border p-6">
           <div className="flex items-start justify-between gap-4">

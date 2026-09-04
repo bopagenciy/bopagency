@@ -176,4 +176,44 @@ describe('ClientDetailPage — Integrations Section (Phase 9B.6E)', () => {
       ClientDetailPage({ params: Promise.resolve({ clientId: 'wrong-client-id' }) }),
     ).rejects.toThrow('NEXT_NOT_FOUND');
   });
+
+  describe('OAuth Feedback Banners (Phase 9B.6G)', () => {
+    it('renders error alert banner visibly when searchParams.error is provided', async () => {
+      setupMocks({ role: 'admin' });
+
+      const jsx = await ClientDetailPage({
+        params: Promise.resolve({ clientId }),
+        searchParams: Promise.resolve({ error: 'No Facebook Pages or Meta Ad Accounts found for this account' }),
+      });
+      const stringified = JSON.stringify(jsx);
+
+      expect(stringified).toContain('Error de integración:');
+      expect(stringified).toContain('No Facebook Pages or Meta Ad Accounts found for this account');
+    });
+
+    it('renders success status banner when searchParams.integration is connected', async () => {
+      setupMocks({ role: 'admin' });
+
+      const jsx = await ClientDetailPage({
+        params: Promise.resolve({ clientId }),
+        searchParams: Promise.resolve({ integration: 'connected' }),
+      });
+      const stringified = JSON.stringify(jsx);
+
+      expect(stringified).toContain('Integración conectada:');
+      expect(stringified).toContain('La integración fue vinculada y guardada exitosamente.');
+    });
+
+    it('does not render error or success banners when searchParams is empty or absent', async () => {
+      setupMocks({ role: 'admin' });
+
+      const jsx = await ClientDetailPage({
+        params: Promise.resolve({ clientId }),
+      });
+      const stringified = JSON.stringify(jsx);
+
+      expect(stringified).not.toContain('Error de integración:');
+      expect(stringified).not.toContain('Integración conectada:');
+    });
+  });
 });
